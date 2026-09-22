@@ -1,0 +1,233 @@
+/**
+ * FBT (Frequently Bought Together) widget — hook-mode styles.
+ *
+ * Everything is scoped under `.storedash-fbt--tokens`, the modifier only the
+ * helper's PHP renderer emits. The storedash-essentials Elementor/Bricks FBT
+ * widgets share the inner class names but never receive this modifier, so
+ * their own controls keep winning and nothing here can restyle them.
+ *
+ * Values come from CSS custom properties set inline by the renderer from the
+ * merchant's dashboard tokens (`--sd-fbt-*`); every var() carries a fallback
+ * matching FBT_Config::defaults().
+ */
+
+.storedash-fbt--tokens {
+	margin: 16px 0;
+	color: var(--sd-fbt-text, #111111);
+}
+
+.storedash-fbt--tokens .storedash-fbt-bundle {
+	background: var(--sd-fbt-background, transparent);
+	border-radius: var(--sd-fbt-radius, 8px);
+	padding: var(--sd-fbt-padding, 0px);
+}
+
+.storedash-fbt--tokens .storedash-fbt-title {
+	font-size: 1.05em;
+	font-weight: 600;
+	margin: 0 0 12px;
+	color: var(--sd-fbt-text, #111111);
+}
+
+.storedash-fbt--tokens .storedash-fbt-compact-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.storedash-fbt--tokens .storedash-fbt-compact-item {
+	border: 1px solid var(--sd-fbt-border, #e5e7eb);
+	border-radius: var(--sd-fbt-field-radius, 8px);
+	transition: border-color 0.15s ease;
+}
+
+.storedash-fbt--tokens .storedash-fbt-compact-item:hover {
+	border-color: var(--sd-fbt-accent, #111111);
+}
+
+.storedash-fbt--tokens .storedash-fbt-out-of-stock {
+	opacity: 0.55;
+}
+
+.storedash-fbt--tokens .storedash-fbt-compact-label {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 12px;
+	margin: 0;
+	cursor: pointer;
+	font-weight: 400;
+}
+
+.storedash-fbt--tokens .storedash-fbt-out-of-stock .storedash-fbt-compact-label {
+	cursor: not-allowed;
+}
+
+/* Native checkbox hidden; the visual span draws it so theming is consistent. */
+.storedash-fbt--tokens .storedash-fbt-checkbox {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.storedash-fbt--tokens .storedash-fbt-compact-checkbox-visual {
+	flex: 0 0 auto;
+	width: 18px;
+	height: 18px;
+	border: 1.5px solid var(--sd-fbt-border, #e5e7eb);
+	border-radius: 4px;
+	position: relative;
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.storedash-fbt--tokens
+	.storedash-fbt-checkbox:checked
+	+ .storedash-fbt-compact-checkbox-visual {
+	background: var(--sd-fbt-accent, #111111);
+	border-color: var(--sd-fbt-accent, #111111);
+}
+
+.storedash-fbt--tokens
+	.storedash-fbt-checkbox:checked
+	+ .storedash-fbt-compact-checkbox-visual::after {
+	content: '';
+	position: absolute;
+	left: 5px;
+	top: 1px;
+	width: 5px;
+	height: 10px;
+	border: solid var(--sd-fbt-accent-text, #ffffff);
+	border-width: 0 2px 2px 0;
+	transform: rotate(45deg);
+}
+
+.storedash-fbt--tokens .storedash-fbt-checkbox:focus-visible + .storedash-fbt-compact-checkbox-visual {
+	outline: 2px solid var(--sd-fbt-accent, #111111);
+	outline-offset: 2px;
+}
+
+.storedash-fbt--tokens .storedash-fbt-compact-image {
+	flex: 0 0 auto;
+	display: inline-flex;
+	border-radius: calc(var(--sd-fbt-field-radius, 8px) / 2);
+	overflow: hidden;
+}
+
+.storedash-fbt--tokens .storedash-fbt-compact-image img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.storedash-fbt--tokens .storedash-fbt-compact-name {
+	flex: 1 1 auto;
+	font-size: 0.92em;
+	line-height: 1.35;
+}
+
+.storedash-fbt--tokens .storedash-fbt-compact-qty {
+	color: var(--sd-fbt-muted, #6b7280);
+	margin-left: 4px;
+	font-size: 0.9em;
+}
+
+.storedash-fbt--tokens .storedash-fbt-compact-price {
+	flex: 0 0 auto;
+	font-size: 0.92em;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.storedash-fbt--tokens .storedash-fbt-compact-price del {
+	color: var(--sd-fbt-muted, #6b7280);
+	font-weight: 400;
+	margin-right: 6px;
+}
+
+.storedash-fbt--tokens .storedash-fbt-discount-badge {
+	display: inline-block;
+	margin-top: 10px;
+	padding: 3px 10px;
+	font-size: 0.8em;
+	font-weight: 600;
+	color: var(--sd-fbt-accent-text, #ffffff);
+	background: var(--sd-fbt-accent, #111111);
+	border-radius: 999px;
+}
+
+.storedash-fbt--tokens .storedash-fbt-pricing-section {
+	margin-top: 12px;
+	padding-top: 10px;
+	border-top: 1px solid var(--sd-fbt-border, #e5e7eb);
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.storedash-fbt--tokens .storedash-fbt-items-total-row,
+.storedash-fbt--tokens .storedash-fbt-total {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 12px;
+	font-size: 0.92em;
+}
+
+.storedash-fbt--tokens .storedash-fbt-items-label {
+	color: var(--sd-fbt-muted, #6b7280);
+}
+
+.storedash-fbt--tokens .storedash-fbt-items-total del {
+	color: var(--sd-fbt-muted, #6b7280);
+	margin-right: 6px;
+}
+
+.storedash-fbt--tokens .storedash-fbt-total-label {
+	font-weight: 600;
+}
+
+.storedash-fbt--tokens .storedash-fbt-total-price {
+	font-weight: 700;
+}
+
+.storedash-fbt--tokens .storedash-fbt-hidden {
+	display: none;
+}
+
+.storedash-fbt--tokens .storedash-fbt-add-button {
+	display: block;
+	width: 100%;
+	margin-top: 12px;
+	padding: 11px 16px;
+	font-size: 0.95em;
+	font-weight: 600;
+	color: var(--sd-fbt-accent-text, #ffffff);
+	background: var(--sd-fbt-accent, #111111);
+	border: none;
+	border-radius: var(--sd-fbt-field-radius, 8px);
+	cursor: pointer;
+	transition: opacity 0.15s ease;
+}
+
+.storedash-fbt--tokens .storedash-fbt-add-button:hover {
+	opacity: 0.88;
+}
+
+.storedash-fbt--tokens .storedash-fbt-add-button:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+.storedash-fbt--tokens .storedash-fbt-message {
+	margin-top: 8px;
+	font-size: 0.88em;
+}
+
+.storedash-fbt--tokens .storedash-fbt-message--success {
+	color: var(--sd-fbt-text, #111111);
+}
+
+.storedash-fbt--tokens .storedash-fbt-message--error {
+	color: #b91c1c;
+}

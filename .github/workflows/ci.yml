@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    name: phpcs + PHPUnit
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: [ '7.4', '8.2' ]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: PHP lint (syntax) all files
+        run: find . -path ./vendor -prune -o -name '*.php' -print | xargs -n1 -P4 php -l
+
+      - name: WordPress coding standards (phpcs)
+        run: composer phpcs
+
+      - name: PHPUnit
+        run: composer test
+
+  plugin-check:
+    name: WordPress.org Plugin Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer, wp-cli
+          coverage: none
+
+      - name: Build the distributable zip
+        run: composer build-zip
+
+      - name: Start WordPress (wp-env)
+        run: |
+          npm install -g @wordpress/env
+          # wp-env resolves local plugin sources as DIRECTORIES only (zip
+          # sources must be URLs), so extract the built artifact and mount the
+          # directory — Plugin Check then scans exactly what would ship.
+          unzip -q dist/storedash.zip -d dist/unzipped
+          cat > .wp-env.json <<'JSON'
+          {
+            "plugins": [
+              "https://downloads.wordpress.org/plugin/woocommerce.zip",
+              "https://downloads.wordpress.org/plugin/plugin-check.zip",
+              "./dist/unzipped/storedash"
+            ],
+            "testsEnvironment": false
+          }
+          JSON
+          wp-env start
+
+      - name: Run Plugin Check (fail on errors)
+        run: |
+          wp-env run cli wp plugin activate woocommerce storedash
+          # plugin_updater is excluded on purpose: the plugin self-hosts updates from GitHub Releases
+          # (inc/core/class-storedash-updater.php), which wordpress.org forbids but we don't distribute there.
+          wp-env run cli wp plugin check storedash --exclude-checks=plugin_updater --format=csv --fields=type,code,file,line > pc.csv || true
+          echo "----- Plugin Check errors -----"
+          if grep -q '^ERROR,' pc.csv; then
+            grep '^ERROR,' pc.csv
+            echo "Plugin Check reported errors — failing."
+            exit 1
+          fi
+          echo "No Plugin Check errors."

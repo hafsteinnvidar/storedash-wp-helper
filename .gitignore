@@ -1,0 +1,9 @@
+# PHPUnit
+.phpunit.cache/
+.phpunit.result.cache
+
+# Build output
+dist/
+
+# macOS
+.DS_Store

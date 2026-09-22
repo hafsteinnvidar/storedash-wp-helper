@@ -1,0 +1,143 @@
+/**
+ * StoreDash Email Signup Widget styles
+ * Minimal, on-brand defaults — most visuals are overridable via Elementor controls.
+ *
+ * The row is direction-agnostic: the "Button Position" control only flips
+ * `flex-direction`, so nothing here may depend on the main axis being horizontal
+ * (no flex-basis sizing — `min-width` sets the wrap threshold instead).
+ */
+
+.storedash-signup-widget {
+	width: 100%;
+
+	/*
+	 * Text alignment resolves through a two-level custom-property chain: each element
+	 * falls back to the widget-wide `--sd-signup-align`, which itself defaults to
+	 * `inherit` so an untouched widget keeps whatever the theme aligns to. The chain —
+	 * not CSS source order — is what makes a per-element control beat the global one.
+	 */
+	--sd-signup-align: inherit;
+}
+
+.storedash-signup-form {
+	background-color: #f8f8f8;
+	padding: 20px;
+	border-radius: 5px;
+}
+
+.storedash-signup-title {
+	margin: 0 0 10px;
+	font-size: 1.25em;
+	text-align: var(--sd-signup-title-align, var(--sd-signup-align));
+}
+
+.storedash-signup-description {
+	margin: 0 0 15px;
+	color: #666666;
+	text-align: var(--sd-signup-description-align, var(--sd-signup-align));
+}
+
+.storedash-signup-row {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: stretch;
+}
+
+/*
+ * Themes almost universally ship `input { width: 100% }`. Because the field is
+ * sized with `flex-basis: auto`, that width becomes its flex base size — it fills
+ * the whole row and pushes the button onto its own line, no matter how wide the
+ * column is. Reset it above theme specificity. (An explicit flex-basis would also
+ * fix it, but flex-basis is the *height* once "Button Position" flips the row to
+ * a column, so it can't be used here.)
+ */
+.storedash-signup-form .storedash-signup-input {
+	width: auto;
+}
+
+.storedash-signup-input {
+	flex: 1 1 auto;
+	min-width: min(200px, 100%);
+	max-width: 100%;
+	box-sizing: border-box;
+	padding: 10px 15px;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	background-color: #ffffff;
+	color: #333333;
+	font-size: 1em;
+	text-align: var(--sd-signup-input-align, start);
+}
+
+.storedash-signup-input:focus {
+	outline: none;
+	border-color: #0073aa;
+}
+
+.storedash-signup-submit {
+	flex: 0 0 auto;
+	max-width: 100%;
+	box-sizing: border-box;
+	padding: 10px 24px;
+	border: none;
+	border-radius: 3px;
+	background-color: #0073aa;
+	color: #ffffff;
+	font-size: 1em;
+	text-align: var(--sd-signup-button-align, center);
+	-webkit-appearance: none;
+	appearance: none;
+	cursor: pointer;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/*
+ * Width modifiers — in a row the 100% basis also forces the button onto its own
+ * line. Two-class selectors so a theme's `button { width: … }` can't win.
+ */
+.storedash-signup-form .storedash-signup-submit--full {
+	flex: 1 1 100%;
+	width: 100%;
+}
+
+.storedash-signup-form .storedash-signup-submit--auto {
+	width: auto;
+}
+
+.storedash-signup-submit:hover {
+	background-color: #005177;
+}
+
+.storedash-signup-submit:disabled {
+	opacity: 0.7;
+	cursor: default;
+}
+
+.storedash-signup-privacy {
+	margin: 12px 0 0;
+	font-size: 0.85em;
+	color: #666666;
+	text-align: var(--sd-signup-privacy-align, var(--sd-signup-align));
+}
+
+.storedash-signup-message {
+	margin-top: 12px;
+	padding: 10px 15px;
+	border: 1px solid transparent;
+	border-radius: 3px;
+	text-align: var(--sd-signup-message-align, var(--sd-signup-align));
+}
+
+.storedash-signup-message.success {
+	color: #155724;
+	background-color: #d4edda;
+	border-color: #c3e6cb;
+}
+
+.storedash-signup-message.error {
+	color: #721c24;
+	background-color: #f8d7da;
+	border-color: #f5c6cb;
+}

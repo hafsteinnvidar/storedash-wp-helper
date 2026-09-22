@@ -1,0 +1,1525 @@
+/**
+ * Storedash Unified Admin Interface Styles
+ * Modern, clean design inspired by professional cloud storage UIs
+ */
+
+/* ========== FONT ========== */
+/* Inter (OFL-licensed), bundled locally — variable weight axis 100–900, latin subset. */
+@font-face {
+	font-family: 'Inter';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('../fonts/inter-latin-variable.woff2') format('woff2');
+}
+
+/* ========== WRAPPER & LAYOUT ========== */
+.storedash-wp-admin-wrapper {
+	max-width: 1400px;
+	margin: 0 auto 0 0;
+	padding: 40px 40px 60px 40px;
+	font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+	background: #FAFAF9;
+	min-height: 100vh;
+}
+
+/* ========== HEADER ========== */
+.storedash-wp-admin-header {
+	margin-bottom: 40px;
+}
+
+.storedash-wp-logo {
+	display: flex;
+	align-items: center;
+	margin-bottom: 12px;
+}
+
+.storedash-wp-logo img {
+	max-width: 140px;
+	height: auto;
+}
+
+.storedash-wp-subtitle {
+	font-size: 15px;
+	color: #6b7280;
+	margin: 0;
+}
+
+/* ========== NAVIGATION TABS ========== */
+.storedash-wp-admin-nav {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 32px;
+	padding-bottom: 0;
+}
+
+.storedash-wp-nav-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 20px;
+	background: transparent;
+	border: none;
+	border-bottom: 3px solid transparent;
+	cursor: pointer;
+	font-size: 15px;
+	font-weight: 500;
+	color: #6b7280;
+	transition: all 0.2s ease;
+	margin-bottom: -2px;
+}
+
+.storedash-wp-nav-item:hover {
+	color: #6b7280;
+	background: rgba(114, 227, 173, 0.05);
+}
+
+.storedash-wp-nav-item.active {
+	color: #1a202c;
+	border-bottom-color: #72E3AD;
+}
+
+.storedash-wp-nav-item svg {
+	width: 20px;
+	height: 20px;
+}
+
+/* ========== CONTENT AREA ========== */
+.storedash-wp-admin-content {
+	position: relative;
+}
+
+.storedash-wp-tab-panel {
+	display: none;
+}
+
+.storedash-wp-tab-panel.active {
+	display: block;
+	animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* ========== PANEL HEADER ========== */
+.storedash-wp-panel-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: 32px;
+}
+
+.storedash-wp-panel-header h2 {
+	font-size: 24px;
+	font-weight: 600;
+	color: #1a202c;
+	margin: 0 0 4px 0;
+}
+
+.storedash-wp-panel-header p {
+	font-size: 14px;
+	color: #6b7280;
+	margin: 0;
+}
+
+/* ========== CARDS ========== */
+.storedash-wp-cards-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+	gap: 24px;
+	margin-bottom: 32px;
+}
+
+.storedash-wp-card {
+	background: #ffffff;
+	border: none;
+	border-radius: 10px;
+	padding: 0;
+	overflow: hidden;
+	transition: all 0.2s ease;
+}
+
+.storedash-wp-card-full {
+	grid-column: 1 / -1;
+}
+
+.storedash-wp-card-full + .storedash-wp-card-full {
+	margin-top: 24px;
+}
+
+.storedash-wp-card-success {
+	border-color: #10b981;
+	background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+}
+
+.storedash-wp-card-warning {
+	border-color: #f59e0b;
+	background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%);
+}
+
+.storedash-wp-card-header {
+	margin-bottom: 20px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.storedash-wp-card-header h3 {
+	font-size: 18px;
+	font-weight: 600;
+	color: #1a202c;
+	margin: 0;
+}
+
+.storedash-wp-card-content {
+	color: #4b5563;
+	font-size: 14px;
+}
+
+.storedash-wp-card-icon {
+	width: 48px;
+	height: 48px;
+	border-radius: 12px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 16px;
+}
+
+.storedash-wp-card-success .storedash-wp-card-icon {
+	background: #d1fae5;
+	color: #10b981;
+}
+
+.storedash-wp-card-warning .storedash-wp-card-icon {
+	background: #fed7aa;
+	color: #f59e0b;
+}
+
+.storedash-wp-card-footer {
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 1px solid #e5e7eb;
+	color: #6b7280;
+	font-size: 13px;
+}
+
+/* ========== STATISTICS ========== */
+.storedash-wp-stats-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+	gap: 20px;
+}
+
+.storedash-wp-stat {
+	text-align: center;
+}
+
+.storedash-wp-stat-value {
+	font-size: 28px;
+	font-weight: 700;
+	color: #72E3AD;
+	margin-bottom: 4px;
+}
+
+.storedash-wp-stat-label {
+	font-size: 13px;
+	color: #6b7280;
+	font-weight: 500;
+}
+
+/* ========== BUTTONS ========== */
+.storedash-wp-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 20px;
+	border: 1px solid #e5e7eb;
+	border-radius: 0;
+	background: #ffffff;
+	color: #374151;
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.storedash-wp-btn:hover {
+	background: #f9fafb;
+	border-color: #d1d5db;
+}
+
+.storedash-wp-btn-primary {
+	background: #72E3AD;
+	border-color: #72E3AD;
+	color: #1a202c;
+	font-weight: 600;
+}
+
+.storedash-wp-btn-primary:hover {
+	background: #5fd19a;
+	border-color: #5fd19a;
+	color: #1a202c;
+}
+
+.storedash-wp-btn-danger {
+	background: #ef4444;
+	border-color: #ef4444;
+	color: #ffffff;
+}
+
+.storedash-wp-btn-danger:hover {
+	background: #dc2626;
+	border-color: #dc2626;
+}
+
+.storedash-wp-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.storedash-wp-btn svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* ========== ACTION BUTTONS LIST ========== */
+.storedash-wp-actions-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.storedash-wp-action-btn {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 14px 18px;
+	border: 1px solid #e5e7eb;
+	border-radius: 0;
+	background: #ffffff;
+	color: #374151;
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	width: 100%;
+	text-align: left;
+}
+
+.storedash-wp-action-btn:hover {
+	background: #f9fafb;
+	border-color: #72E3AD;
+	color: #72E3AD;
+}
+
+.storedash-wp-action-btn svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* ========== TABLE ========== */
+.storedash-wp-table-wrapper {
+	overflow-x: auto;
+}
+
+.storedash-wp-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+}
+
+.storedash-wp-table thead {
+	background: #f9fafb;
+}
+
+.storedash-wp-table th {
+	padding: 12px 16px;
+	text-align: left;
+	font-weight: 600;
+	color: #374151;
+	border-bottom: 2px solid #e5e7eb;
+}
+
+.storedash-wp-table td {
+	padding: 16px;
+	border-bottom: 1px solid #f3f4f6;
+	vertical-align: middle;
+}
+
+.storedash-wp-table tbody tr:hover {
+	background: #f9fafb;
+}
+
+.storedash-wp-table code {
+	background: #f3f4f6;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 13px;
+	color: #72E3AD;
+	font-family: 'Monaco', 'Courier New', monospace;
+}
+
+/* ========== BADGES ========== */
+.storedash-wp-badge {
+	display: inline-block;
+	padding: 4px 12px;
+	border-radius: 12px;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.storedash-wp-badge-attribute {
+	background: #dbeafe;
+	color: #1e40af;
+}
+
+.storedash-wp-badge-taxonomy {
+	background: #fce7f3;
+	color: #be185d;
+}
+
+.storedash-wp-badge-custom {
+	background: #e5e7eb;
+	color: #374151;
+}
+
+.storedash-wp-badge--success {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.storedash-wp-badge--warning {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.storedash-wp-badge--error {
+	background: #fee2e2;
+	color: #991b1b;
+}
+
+.storedash-wp-badge--info {
+	background: #dbeafe;
+	color: #1e40af;
+}
+
+/* ========== NESTED TABLES ========== */
+.storedash-wp-table--nested {
+	background: rgba(0, 0, 0, 0.02);
+	border-radius: 6px;
+}
+
+.storedash-wp-table--nested th {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: #6b7280;
+	padding: 8px 12px;
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.storedash-wp-table--nested td {
+	padding: 10px 12px;
+	border-bottom: 1px solid #f3f4f6;
+	vertical-align: middle;
+}
+
+.storedash-wp-table--nested tbody tr:last-child td {
+	border-bottom: none;
+}
+
+.storedash-wp-table--nested code {
+	background: #f3f4f6;
+	padding: 2px 6px;
+	border-radius: 4px;
+	font-family: 'Monaco', 'Courier New', monospace;
+}
+
+/* ========== TOGGLE SWITCH ========== */
+.storedash-wp-toggle {
+	position: relative;
+	display: inline-block;
+	width: 48px;
+	height: 24px;
+}
+
+.storedash-wp-toggle input {
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.storedash-wp-toggle-slider {
+	position: absolute;
+	cursor: pointer;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: #d1d5db;
+	transition: 0.3s;
+	border-radius: 24px;
+}
+
+.storedash-wp-toggle-slider:before {
+	position: absolute;
+	content: "";
+	height: 18px;
+	width: 18px;
+	left: 3px;
+	bottom: 3px;
+	background-color: white;
+	transition: 0.3s;
+	border-radius: 50%;
+}
+
+.storedash-wp-toggle input:checked + .storedash-wp-toggle-slider {
+	background-color: #72E3AD;
+}
+
+.storedash-wp-toggle input:checked + .storedash-wp-toggle-slider:before {
+	transform: translateX(24px);
+}
+
+/* ========== MESSAGES ========== */
+.storedash-wp-message {
+	padding: 12px 16px;
+	border-radius: 8px;
+	margin-top: 16px;
+	font-size: 14px;
+}
+
+.storedash-wp-message.success {
+	background: #d1fae5;
+	color: #065f46;
+	border: 1px solid #10b981;
+}
+
+.storedash-wp-message.error {
+	background: #fee2e2;
+	color: #991b1b;
+	border: 1px solid #ef4444;
+}
+
+.storedash-wp-message.info {
+	background: #dbeafe;
+	color: #1e40af;
+	border: 1px solid #3b82f6;
+}
+
+/* ========== TEXT UTILITIES ========== */
+.storedash-wp-text-success {
+	color: #10b981;
+	font-weight: 600;
+}
+
+.storedash-wp-text-warning {
+	color: #f59e0b;
+	font-weight: 600;
+}
+
+.storedash-wp-text-info {
+	color: #3b82f6;
+	font-weight: 600;
+}
+
+.storedash-wp-issues-list {
+	margin: 12px 0 0 0;
+	padding-left: 20px;
+	font-size: 13px;
+	color: #b45309;
+}
+
+/* ========== INFO BOX ========== */
+.storedash-wp-info-box {
+	display: flex;
+	gap: 16px;
+	padding: 16px;
+	background: #f0f9ff;
+	border: 1px solid #bae6fd;
+	border-radius: 8px;
+	margin-top: 20px;
+}
+
+.storedash-wp-info-box svg {
+	flex-shrink: 0;
+	color: #0284c7;
+	margin-top: 2px;
+}
+
+.storedash-wp-info-box strong {
+	color: #0c4a6e;
+}
+
+.storedash-wp-info-box code {
+	background: #ffffff;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 13px;
+	color: #72E3AD;
+	font-family: 'Monaco', 'Courier New', monospace;
+}
+
+.storedash-wp-info-box p {
+	margin: 4px 0 0 0;
+	color: #0369a1;
+	font-size: 13px;
+}
+
+/* ========== FORM FIELDS ========== */
+.storedash-wp-field-group {
+	margin-bottom: 20px;
+}
+
+.storedash-wp-field-group label {
+	display: block;
+	margin-bottom: 8px;
+	font-weight: 500;
+	color: #374151;
+	font-size: 14px;
+}
+
+.storedash-wp-input,
+.storedash-wp-select {
+	width: 100%;
+	padding: 10px 14px;
+	border: 1px solid #d1d5db;
+	border-radius: 0;
+	font-size: 14px;
+	color: #1f2937;
+	background: #ffffff;
+	transition: all 0.2s ease;
+}
+
+.storedash-wp-input:focus,
+.storedash-wp-select:focus {
+	outline: none;
+	border-color: #72E3AD;
+	box-shadow: 0 0 0 3px rgba(114, 227, 173, 0.1);
+}
+
+.storedash-wp-color-input {
+	width: 100px;
+	height: 40px;
+	padding: 4px;
+	border: 1px solid #d1d5db;
+	border-radius: 0;
+	cursor: pointer;
+}
+
+.storedash-wp-help-text {
+	margin: 6px 0 0 0;
+	font-size: 13px;
+	color: #6b7280;
+}
+
+.storedash-wp-input-group {
+	display: flex;
+	gap: 12px;
+}
+
+.storedash-wp-input-group .storedash-wp-select {
+	flex: 1;
+}
+
+/* ========== SETTINGS GRID ========== */
+.storedash-wp-settings-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 24px;
+}
+
+/* ========== RADIO CARDS ========== */
+.storedash-wp-radio-group {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	gap: 16px;
+	margin-bottom: 24px;
+}
+
+.storedash-wp-radio-card {
+	position: relative;
+	display: block;
+	padding: 20px;
+	border: 2px solid #e5e7eb;
+	border-radius: 12px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.storedash-wp-radio-card:hover {
+	border-color: #72E3AD;
+	background: rgba(114, 227, 173, 0.02);
+}
+
+.storedash-wp-radio-card input[type="radio"] {
+	position: absolute;
+	top: 20px;
+	right: 20px;
+	width: 20px;
+	height: 20px;
+	cursor: pointer;
+	accent-color: #72E3AD;
+}
+
+.storedash-wp-radio-card input[type="radio"]:checked ~ .storedash-wp-radio-content {
+	color: #72E3AD;
+}
+
+.storedash-wp-radio-card:has(input:checked) {
+	border-color: #72E3AD;
+	background: rgba(114, 227, 173, 0.05);
+}
+
+.storedash-wp-radio-content strong {
+	display: block;
+	margin-bottom: 4px;
+	font-size: 15px;
+	color: #1a202c;
+}
+
+.storedash-wp-radio-content p {
+	margin: 0;
+	font-size: 13px;
+	color: #6b7280;
+}
+
+/* ========== MENU BUILDER SPECIFIC ========== */
+.storedash-wp-menu-builder .menu-items-sortable {
+	min-height: 100px;
+}
+
+.storedash-wp-menu-builder .menu-item {
+	background: #ffffff;
+	border: 1px solid #e5e7eb;
+	border-radius: 8px;
+	margin-bottom: 16px;
+	padding: 16px;
+}
+
+.storedash-wp-menu-builder .menu-item-header {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	margin-bottom: 16px;
+}
+
+.storedash-wp-menu-builder .menu-item-header .drag-handle {
+	cursor: move;
+	color: #9ca3af;
+}
+
+.storedash-wp-menu-builder .menu-item-header .item-title {
+	flex: 1;
+}
+
+.storedash-wp-menu-builder .menu-item-content {
+	padding-left: 32px;
+	display: none;
+}
+
+.storedash-wp-menu-builder .menu-item-content.active {
+	display: block;
+}
+
+.storedash-wp-menu-builder .sub-items-container {
+	margin-top: 12px;
+	padding-left: 20px;
+	border-left: 2px solid #e5e7eb;
+}
+
+.storedash-wp-menu-builder .sub-item {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	padding: 12px;
+	background: #f9fafb;
+	border-radius: 6px;
+	margin-bottom: 8px;
+}
+
+.storedash-wp-menu-builder .sub-item .drag-handle {
+	cursor: move;
+	color: #9ca3af;
+}
+
+.storedash-wp-menu-builder .sub-item input {
+	flex: 1;
+	min-width: 0;
+}
+
+.no-items-message {
+	padding: 40px;
+	text-align: center;
+	color: #9ca3af;
+	font-size: 14px;
+	border: 2px dashed #e5e7eb;
+	border-radius: 8px;
+}
+
+.wordpress-menu-selector {
+	margin-top: 20px;
+	padding: 20px;
+	background: #f9fafb;
+	border-radius: 8px;
+}
+
+.save-status {
+	margin-left: 12px;
+	font-size: 14px;
+	color: #10b981;
+}
+
+/* ========== ADMIN APP STRUCTURE ========== */
+.storedash-wp-admin-app {
+	min-height: 100vh;
+	background-color: #F4F4F4;
+	font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* WordPress overrides */
+.toplevel_page_storedash-wp #wpcontent {
+	padding: 0 !important;
+	background-color: #F4F4F4 !important;
+}
+
+.toplevel_page_storedash-wp #wpbody-content {
+	padding: 0 !important;
+}
+
+.toplevel_page_storedash-wp #wpfooter {
+	display: none !important;
+}
+
+/* ========== ADMIN HEADER STRUCTURE ========== */
+.storedash-wp-admin-header {
+	background-color: transparent;
+	margin-bottom: 0;
+}
+
+.storedash-wp-admin-header__wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	max-width: 1400px;
+	margin: 0 auto;
+	padding: 0 48px;
+	height: 60px;
+}
+
+.storedash-wp-admin-header__left {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+
+.storedash-wp-admin-header__logo {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.storedash-wp-admin-header__logo-image {
+	max-height: 24px;
+	width: auto;
+}
+
+.storedash-wp-admin-header__version {
+	display: inline-flex;
+	align-items: center;
+	height: 22px;
+	padding: 0 10px;
+	font-size: 11px;
+	font-weight: 500;
+	color: #757575;
+	background-color: #f0f0f0;
+	border-radius: 11px;
+	margin-left: 12px;
+}
+
+.storedash-wp-admin-header__right {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+/* ========== NAVIGATION STRUCTURE ========== */
+.storedash-wp-admin-nav {
+	display: flex;
+	background-color: transparent;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	margin-bottom: 0;
+}
+
+.storedash-wp-admin-nav__wrapper {
+	display: flex;
+	max-width: 1400px;
+	width: 100%;
+	margin: 0 auto;
+	padding: 0 48px;
+}
+
+.storedash-wp-admin-nav__list {
+	display: flex;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.storedash-wp-admin-nav__item {
+	margin: 0;
+}
+
+.storedash-wp-admin-nav__link {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 16px;
+	font-size: 14px;
+	font-weight: 400;
+	color: inherit;
+	text-decoration: none;
+	transition: box-shadow 0.1s linear;
+	white-space: nowrap;
+	position: relative;
+	outline: none !important;
+	box-shadow: none !important;
+}
+
+.storedash-wp-admin-nav__link:after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 16px;
+	right: 16px;
+	height: 0;
+	background: #72E3AD;
+	transition: height 0.1s linear;
+}
+
+.storedash-wp-admin-nav__link--active {
+	color: inherit;
+	font-weight: 500;
+}
+
+.storedash-wp-admin-nav__link--active:after {
+	height: 2px;
+}
+
+/* First tab sits flush with the logo above it (no left padding). */
+.storedash-wp-admin-nav__item:first-child .storedash-wp-admin-nav__link {
+	padding-left: 0;
+}
+
+.storedash-wp-admin-nav__item:first-child .storedash-wp-admin-nav__link:after {
+	left: 0;
+}
+
+.storedash-wp-admin-nav__link svg {
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+}
+
+/* ========== CONTENT AREA ========== */
+.storedash-wp-admin-content {
+	position: relative;
+	padding: 40px 48px 60px 48px;
+	max-width: 1400px;
+	margin: 0 auto;
+}
+
+.storedash-wp-tabs__panel {
+	display: none;
+}
+
+.storedash-wp-tabs__panel--active {
+	display: block;
+	animation: fadeIn 0.3s ease-in;
+}
+
+/* ========== PANEL HEADER STRUCTURE ========== */
+.storedash-wp-panel-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	margin-bottom: 32px;
+	gap: 24px;
+}
+
+.storedash-wp-panel-header__content {
+	flex: 1;
+	min-width: 0;
+}
+
+.storedash-wp-panel-header__title {
+	margin: 0 0 4px;
+	font-size: 22px;
+	font-weight: 400;
+	color: #1e1e1e;
+	line-height: 30px;
+}
+
+.storedash-wp-panel-header__description {
+	margin: 0;
+	font-size: 13px;
+	color: #757575;
+	line-height: 1.5;
+}
+
+.storedash-wp-panel-header__actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-shrink: 0;
+}
+
+/* Fix gap when no actions */
+.storedash-wp-panel-header--no-actions {
+	justify-content: flex-start;
+}
+
+/* ========== CARD STRUCTURE ========== */
+.storedash-wp-card__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 24px;
+	border-bottom: none;
+	margin: 0;
+	position: relative;
+}
+
+.storedash-wp-card__header::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 24px;
+	right: 24px;
+	height: 1px;
+	background: #e0e0e0;
+}
+
+.storedash-wp-card__header-title {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 400;
+	color: #1e1e1e;
+	line-height: 26px;
+}
+
+.storedash-wp-card__body {
+	padding: 24px;
+}
+
+.storedash-wp-card--full {
+	grid-column: 1 / -1;
+}
+
+/* ========== FIELD GROUP STRUCTURE ========== */
+.storedash-wp-field-group__label {
+	display: block;
+	margin-bottom: 8px;
+	font-weight: 500;
+	color: #374151;
+	font-size: 14px;
+}
+
+.storedash-wp-input-wrapper {
+	position: relative;
+}
+
+/* ========== INFO BOX STRUCTURE ========== */
+.storedash-wp-info-box__icon {
+	flex-shrink: 0;
+	width: 20px;
+	height: 20px;
+	color: #0284c7;
+	margin-top: 2px;
+}
+
+.storedash-wp-info-box__content {
+	flex: 1;
+}
+
+.storedash-wp-info-box__title {
+	margin: 0 0 4px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #0c4a6e;
+}
+
+.storedash-wp-info-box__description {
+	margin: 0;
+	font-size: 13px;
+	color: #0369a1;
+	line-height: 1.5;
+}
+
+/* ========== SNACKBAR STRUCTURE ========== */
+.storedash-wp-snackbar-container {
+	position: fixed;
+	bottom: 24px;
+	right: 24px;
+	z-index: 9999;
+	display: flex;
+	flex-direction: column-reverse;
+	gap: 12px;
+	max-width: 400px;
+	pointer-events: none;
+}
+
+.storedash-wp-snackbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 16px;
+	background-color: #1a202c;
+	color: #ffffff;
+	border-radius: 8px;
+	box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+	animation: fadeIn 0.3s ease;
+	pointer-events: all;
+}
+
+.storedash-wp-snackbar--success {
+	background-color: #10b981;
+}
+
+.storedash-wp-snackbar--error {
+	background-color: #ef4444;
+}
+
+.storedash-wp-snackbar--warning {
+	background-color: #f59e0b;
+	color: #1a202c;
+}
+
+.storedash-wp-snackbar--info {
+	background-color: #3b82f6;
+}
+
+.storedash-wp-snackbar__icon {
+	flex-shrink: 0;
+	width: 20px;
+	height: 20px;
+}
+
+.storedash-wp-snackbar__message {
+	flex: 1;
+	font-size: 14px;
+	font-weight: 500;
+}
+
+.storedash-wp-snackbar__close {
+	flex-shrink: 0;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	background: transparent;
+	border: none;
+	color: inherit;
+	cursor: pointer;
+	opacity: 0.8;
+	transition: opacity 0.2s ease;
+}
+
+.storedash-wp-snackbar__close:hover {
+	opacity: 1;
+}
+
+/* ========== RESPONSIVE ========== */
+@media screen and (max-width: 782px) {
+	.storedash-wp-admin-header__wrapper {
+		padding: 12px 16px;
+	}
+
+	.storedash-wp-admin-nav__wrapper {
+		padding: 0 16px;
+	}
+
+	.storedash-wp-admin-content {
+		padding: 24px 16px;
+	}
+
+	.storedash-wp-panel-header {
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	.storedash-wp-panel-header__actions {
+		width: 100%;
+		justify-content: stretch;
+	}
+
+	.storedash-wp-panel-header__actions .storedash-wp-btn {
+		flex: 1;
+	}
+
+	.storedash-wp-cards-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.storedash-wp-snackbar-container {
+		left: 16px;
+		right: 16px;
+		bottom: 16px;
+		max-width: none;
+	}
+}
+
+/* ========== DIAGNOSTICS SPECIFIC STYLES ========== */
+
+/* Quick Actions List */
+.storedash-wp-actions-list {
+	display: flex;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+/* Collapsible Sections */
+.storedash-wp-diagnostics-section .storedash-wp-card__header {
+	cursor: pointer;
+	user-select: none;
+}
+
+/* Heavier accordion titles. */
+.storedash-wp-diagnostics-section .storedash-wp-card__header-title {
+	font-weight: 600;
+	font-size: 16px;
+}
+
+/* Header divider only shows while the section is expanded. */
+.storedash-wp-diagnostics-section.is-collapsed .storedash-wp-card__header::after {
+	display: none;
+}
+
+/* Table row labels sit flush with the start of the row divider (nested
+   sub-tables keep their own padding — they sit inside a tinted box). */
+.storedash-wp-diagnostics-section .storedash-wp-table:not(.storedash-wp-table--nested) > thead > tr > th:first-child,
+.storedash-wp-diagnostics-section .storedash-wp-table:not(.storedash-wp-table--nested) > tbody > tr > td:first-child {
+	padding-left: 0;
+}
+
+.storedash-wp-section-toggle {
+	background: none;
+	border: none;
+	padding: 4px;
+	cursor: pointer;
+	color: #6b7280;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.2s ease;
+	border-radius: 4px;
+}
+
+.storedash-wp-section-toggle:hover {
+	background: rgba(0, 0, 0, 0.05);
+	color: #1a202c;
+}
+
+.storedash-wp-section-toggle svg {
+	width: 16px;
+	height: 16px;
+	transition: transform 0.2s ease;
+}
+
+.storedash-wp-section-content {
+	overflow: hidden;
+}
+
+/* Plugins and Extensions Lists */
+.storedash-wp-plugins-list,
+.storedash-wp-extensions-list {
+	margin-top: 12px;
+	padding: 12px;
+	background: #f9fafb;
+	border-radius: 6px;
+	border: 1px solid #e5e7eb;
+}
+
+.storedash-wp-plugins-list ul {
+	margin: 0;
+	padding-left: 20px;
+	list-style: disc;
+}
+
+.storedash-wp-extensions-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 8px;
+}
+
+.storedash-wp-extensions-list code {
+	font-size: 12px;
+	padding: 4px 8px;
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	border-radius: 4px;
+	display: inline-block;
+}
+
+/* Status Indicators */
+.storedash-wp-text-success {
+	color: #10b981;
+	font-weight: 500;
+}
+
+.storedash-wp-text-warning {
+	color: #f59e0b;
+	font-weight: 500;
+}
+
+.storedash-wp-text-error {
+	color: #ef4444;
+	font-weight: 500;
+}
+
+/* Small Button Variant */
+.storedash-wp-btn-small {
+	padding: 4px 12px;
+	font-size: 13px;
+}
+
+/* Table Code Elements */
+.storedash-wp-table code {
+	background: #f3f4f6;
+	padding: 2px 6px;
+	border-radius: 3px;
+	font-size: 13px;
+	color: #1f2937;
+	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+}
+
+/* Responsive adjustments for diagnostics */
+@media screen and (max-width: 768px) {
+	.storedash-wp-actions-list {
+		flex-direction: column;
+	}
+
+	.storedash-wp-actions-list .storedash-wp-btn {
+		width: 100%;
+	}
+
+	.storedash-wp-extensions-list {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ========== REST API ENDPOINTS STATUS ========== */
+
+/* Endpoints Table */
+.storedash-wp-endpoints-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+	margin-top: 16px;
+}
+
+.storedash-wp-endpoints-table th,
+.storedash-wp-endpoints-table td {
+	padding: 10px 12px;
+	text-align: left;
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.storedash-wp-endpoints-table th {
+	background: #f9fafb;
+	font-weight: 600;
+	color: #374151;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.storedash-wp-endpoints-table tbody tr:hover {
+	background: #f9fafb;
+}
+
+.storedash-wp-endpoints-table code {
+	background: #f3f4f6;
+	padding: 3px 8px;
+	border-radius: 4px;
+	font-size: 12px;
+	color: #1f2937;
+	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+	word-break: break-all;
+}
+
+/* Group Headers */
+.storedash-wp-endpoints-group-header td {
+	background: #f3f4f6;
+	font-weight: 600;
+	color: #374151;
+	font-size: 13px;
+	padding: 12px;
+	border-bottom: 2px solid #e5e7eb;
+}
+
+/* Method Badges */
+.storedash-wp-badge-get,
+.storedash-wp-badge-post,
+.storedash-wp-badge-put,
+.storedash-wp-badge-delete {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.025em;
+}
+
+.storedash-wp-badge-get {
+	background: #dbeafe;
+	color: #1e40af;
+}
+
+.storedash-wp-badge-post {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.storedash-wp-badge-put {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.storedash-wp-badge-delete {
+	background: #fee2e2;
+	color: #991b1b;
+}
+
+/* Status Badges */
+.storedash-wp-status-healthy,
+.storedash-wp-status-registered,
+.storedash-wp-status-error,
+.storedash-wp-status-missing,
+.storedash-wp-status-skipped {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	border-radius: 12px;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.storedash-wp-status-healthy {
+	background: #d1fae5;
+	color: #065f46;
+}
+
+.storedash-wp-status-healthy::before {
+	content: '✓';
+	font-weight: bold;
+}
+
+.storedash-wp-status-registered {
+	background: #dbeafe;
+	color: #1e40af;
+}
+
+.storedash-wp-status-registered::before {
+	content: '●';
+	font-size: 10px;
+}
+
+.storedash-wp-status-error {
+	background: #fee2e2;
+	color: #991b1b;
+}
+
+.storedash-wp-status-error::before {
+	content: '✗';
+	font-weight: bold;
+}
+
+.storedash-wp-status-missing {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.storedash-wp-status-missing::before {
+	content: '⚠';
+}
+
+.storedash-wp-status-skipped {
+	background: #f3f4f6;
+	color: #6b7280;
+}
+
+.storedash-wp-status-skipped::before {
+	content: '—';
+}
+
+/* Endpoints Summary */
+.storedash-wp-endpoints-summary {
+	display: flex;
+	gap: 24px;
+	margin-top: 16px;
+	padding: 16px;
+	background: #f9fafb;
+	border-radius: 6px;
+	border: 1px solid #e5e7eb;
+}
+
+.storedash-wp-endpoints-summary-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 14px;
+}
+
+.storedash-wp-endpoints-summary-item strong {
+	font-weight: 600;
+}
+
+/* Loading state */
+.storedash-wp-endpoints-loading {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 20px;
+	color: #6b7280;
+	font-size: 14px;
+}
+
+.storedash-wp-endpoints-loading .spinner {
+	border: 2px solid #e5e7eb;
+	border-top-color: #72E3AD;
+	border-radius: 50%;
+	width: 20px;
+	height: 20px;
+	animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments for endpoints table */
+@media screen and (max-width: 768px) {
+	.storedash-wp-endpoints-table {
+		display: block;
+		overflow-x: auto;
+	}
+
+	.storedash-wp-endpoints-summary {
+		flex-direction: column;
+		gap: 12px;
+	}
+}

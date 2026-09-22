@@ -1,0 +1,88 @@
+name: Release
+
+# Pushing a tag like `v1.19.0` builds the distributable zip and publishes a GitHub
+# Release with `storedash.zip` + `storedash.json` attached. Installed plugins poll
+# `releases/latest/download/storedash.json` (see inc/core/class-storedash-updater.php),
+# so publishing the release is what makes "Update available" appear on every site.
+#
+# A tag with a pre-release suffix (`v1.19.0-beta.1`) is published as a pre-release,
+# which `releases/latest` ignores — merchants never see it.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+          coverage: none
+
+      - name: Check the tag matches the plugin version
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION="$(sed -nE 's/^ \* Version:[[:space:]]*([^[:space:]]+).*/\1/p' storedash.php | head -1)"
+          STABLE="$(sed -nE 's/^Stable tag:[[:space:]]*([^[:space:]]+).*/\1/p' readme.txt | head -1)"
+          echo "tag=$TAG  storedash.php=$VERSION  readme.txt=$STABLE"
+          if [ "$TAG" != "$VERSION" ] || [ "$TAG" != "$STABLE" ]; then
+            echo "::error::Tag v$TAG does not match Version ($VERSION) / Stable tag ($STABLE). Bump both, commit, then re-tag."
+            exit 1
+          fi
+          if [[ "$TAG" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Lint and test
+        run: composer phpcs && composer test
+
+      - name: Build zip and manifest
+        env:
+          STOREDASH_RELEASE_BASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}
+        run: |
+          composer build-zip
+          unzip -l dist/storedash.zip | grep -E "tests/|docs/|phpcs|phpunit|composer\.(json|lock)|CLAUDE|README\.md" && { echo "::error::Dev files leaked into the zip"; exit 1; }
+          cat dist/storedash.json
+
+      - name: Extract this version's changelog for the release notes
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          awk -v v="$TAG" '
+            $0 == "= " v " =" { on=1; next }
+            on && /^= .* =$/ { exit }
+            on && /^== / { exit }
+            on { print }
+          ' readme.txt | sed '/./,$!d' > dist/notes.md
+          if [ ! -s dist/notes.md ]; then
+            echo "_No changelog entry for $TAG in readme.txt._" > dist/notes.md
+          fi
+          printf '\n---\n`storedash.zip` SHA-256: `%s`\n' "$(sha256sum dist/storedash.zip | cut -d' ' -f1)" >> dist/notes.md
+          cat dist/notes.md
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: ${{ github.ref_name }}
+          body_path: dist/notes.md
+          prerelease: ${{ steps.version.outputs.prerelease }}
+          fail_on_unmatched_files: true
+          files: |
+            dist/storedash.zip
+            dist/storedash.json

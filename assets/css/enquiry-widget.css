@@ -1,0 +1,326 @@
+/**
+ * StoreDash Enquiry Widget Styles
+ *
+ * Structural-only CSS — visual properties are injected by Elementor style controls.
+ */
+
+/* Widget Container */
+.storedash-enquiry-widget {
+	display: flex;
+	margin: 20px 0;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+.storedash-enquiry-widget--full-width {
+	width: 100%;
+}
+
+/* Trigger Button (modal mode) */
+.storedash-enquiry-trigger {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	text-align: center;
+	-webkit-appearance: none;
+	border: none;
+	transition: all 0.3s ease;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+.storedash-enquiry-widget--full-width .storedash-enquiry-trigger {
+	width: 100%;
+}
+
+.storedash-enquiry-trigger .storedash-trigger-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+/* Form Container */
+.storedash-enquiry-form {
+	/* bg-color, padding, border-radius controlled by Elementor */
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+	overflow: hidden;
+}
+
+/* Form Title */
+.storedash-enquiry-title {
+	margin: 0;
+}
+
+/* Form Description */
+.storedash-enquiry-description {
+	margin: 0;
+}
+
+/* Form Fields */
+.storedash-enquiry-form-fields {
+	display: flex;
+	flex-direction: column;
+}
+
+.storedash-enquiry-field {
+	width: 100%;
+}
+
+/* Input Fields */
+.storedash-enquiry-input {
+	width: 100%;
+	box-sizing: border-box;
+	transition: border-color 0.2s ease;
+}
+
+.storedash-enquiry-input:focus {
+	outline: none;
+}
+
+/* Textarea */
+.storedash-enquiry-textarea {
+	width: 100%;
+	min-height: 100px;
+	padding: 10px 12px;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	font-family: inherit;
+	font-size: 14px;
+	line-height: 1.5;
+	resize: vertical;
+	box-sizing: border-box;
+}
+
+.storedash-enquiry-textarea:focus {
+	border-color: #0073aa;
+	outline: none;
+	box-shadow: 0 0 0 1px #0073aa;
+}
+
+/* Privacy Notice */
+.storedash-enquiry-privacy {
+	margin: 0;
+}
+
+/* Submit Button */
+.storedash-enquiry-submit {
+	cursor: pointer;
+	text-align: center;
+	-webkit-appearance: none;
+	border: none;
+	transition: all 0.2s ease;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+.storedash-enquiry-submit--full {
+	width: 100%;
+}
+
+.storedash-enquiry-submit--auto {
+	width: auto;
+}
+
+.storedash-enquiry-submit:active {
+	transform: scale(0.98);
+}
+
+.storedash-enquiry-submit:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+/* Messages */
+.storedash-enquiry-message {
+	margin-top: 10px;
+	opacity: 0;
+	transition: opacity 0.3s ease;
+}
+
+.storedash-enquiry-message--visible {
+	opacity: 1;
+}
+
+.storedash-enquiry-message.success,
+.storedash-enquiry-message.error {
+	border-style: solid;
+	border-width: 1px;
+}
+
+/* Modal Styles */
+.storedash-enquiry-modal {
+	display: none;
+	position: fixed;
+	z-index: 999999;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	overflow-y: auto;
+	opacity: 0;
+	transition: opacity 0.3s ease;
+	pointer-events: none;
+}
+
+.storedash-enquiry-modal--visible {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+.storedash-enquiry-modal-content {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 90%;
+	max-height: 90vh;
+	overflow-y: auto;
+	margin: 0 !important;
+	animation: storedash-slideUp 0.3s ease;
+}
+
+/* Close button */
+.storedash-enquiry-close {
+	position: absolute;
+	right: 15px;
+	top: 15px;
+	font-weight: bold;
+	line-height: 1;
+	cursor: pointer;
+	z-index: 1;
+	transition: color 0.2s ease;
+}
+
+/* Animations */
+@keyframes storedash-fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes storedash-slideUp {
+	from {
+		transform: translate(-50%, -50%) translateY(30px);
+		opacity: 0;
+	}
+	to {
+		transform: translate(-50%, -50%);
+		opacity: 1;
+	}
+}
+
+@keyframes storedash-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+	.storedash-enquiry-modal-content {
+		width: 95%;
+	}
+}
+
+/* Loading state */
+.storedash-enquiry-submit.loading {
+	position: relative;
+	color: transparent;
+}
+
+.storedash-enquiry-submit.loading::after {
+	content: '';
+	position: absolute;
+	width: 16px;
+	height: 16px;
+	top: 50%;
+	left: 50%;
+	margin-left: -8px;
+	margin-top: -8px;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	border-top-color: transparent;
+	animation: storedash-spin 0.6s linear infinite;
+}
+
+/* ==========================================================================
+   Token layer — dashboard-configured styling
+   ==========================================================================
+
+   Everything above is structural and applies to every enquiry form on the
+   storefront, including Elementor widget instances. Everything BELOW is scoped
+   to `.storedash-enquiry-widget--tokens`, a class only Enquiry_Renderer emits.
+
+   That scoping is load-bearing. The Elementor widget carries roughly 1,400
+   lines of its own style controls and merchants have live storefronts built on
+   them; if these rules applied to Elementor instances too, saving a colour in
+   the StoreDash dashboard would silently restyle their product pages. The two
+   paths share this stylesheet and the JavaScript — never the styling.
+
+   Values arrive as CSS custom properties on the wrapper element (inline, so
+   they survive being cloned out of the fallback `<template>`), and every
+   property falls back to the structural default when the merchant has not set
+   it.
+   ========================================================================== */
+
+.storedash-enquiry-widget--tokens {
+	color: var(--sd-eq-text, inherit);
+}
+
+.storedash-enquiry-widget--tokens .storedash-enquiry-form {
+	background: var(--sd-eq-bg, transparent);
+	border-radius: var(--sd-eq-radius, 8px);
+	padding: var(--sd-eq-padding, 0);
+}
+
+.storedash-enquiry-widget--tokens .storedash-enquiry-title {
+	color: var(--sd-eq-text, inherit);
+}
+
+.storedash-enquiry-widget--tokens .storedash-enquiry-description,
+.storedash-enquiry-widget--tokens .storedash-enquiry-privacy {
+	color: var(--sd-eq-muted, #6b7280);
+}
+
+.storedash-enquiry-widget--tokens .storedash-enquiry-input,
+.storedash-enquiry-widget--tokens .storedash-enquiry-textarea {
+	border-color: var(--sd-eq-border, #e5e7eb);
+	border-radius: var(--sd-eq-field-radius, 8px);
+	color: var(--sd-eq-text, inherit);
+}
+
+.storedash-enquiry-widget--tokens .storedash-enquiry-input:focus,
+.storedash-enquiry-widget--tokens .storedash-enquiry-textarea:focus {
+	border-color: var(--sd-eq-accent, #111111);
+	outline: none;
+}
+
+.storedash-enquiry-widget--tokens .storedash-enquiry-submit,
+.storedash-enquiry-widget--tokens .storedash-enquiry-trigger {
+	background: var(--sd-eq-accent, #111111);
+	color: var(--sd-eq-accent-text, #ffffff);
+	border-radius: var(--sd-eq-field-radius, 8px);
+}
+
+/* Consent checkbox — only rendered when the merchant enables it. */
+.storedash-enquiry-widget--tokens .storedash-enquiry-consent {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	margin-bottom: 12px;
+	font-size: 13px;
+	line-height: 1.4;
+	color: var(--sd-eq-muted, #6b7280);
+	cursor: pointer;
+}
+
+.storedash-enquiry-widget--tokens .storedash-enquiry-consent input[type='checkbox'] {
+	margin: 2px 0 0;
+	flex: 0 0 auto;
+	accent-color: var(--sd-eq-accent, #111111);
+}

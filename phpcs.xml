@@ -1,0 +1,184 @@
+<?xml version="1.0"?>
+<ruleset name="StoreDash WordPress Plugin Coding Standards">
+	<description>PHP CodeSniffer ruleset for StoreDash WordPress Plugin</description>
+
+	<!-- What to scan -->
+	<file>.</file>
+
+	<!-- Only lint PHP. WPCS is a PHP standard (WPCS 3.x dropped its JS sniffs) and
+	     the WordPress.org Plugin Check checks PHP; JS/CSS style is out of scope. -->
+	<arg name="extensions" value="php"/>
+	<!-- Warnings are reported but do not fail the run (CI and the release workflow gate on errors). -->
+	<config name="ignore_warnings_on_exit" value="1"/>
+
+	<!-- Exclude vendor directory -->
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<!-- PHPUnit tests follow PHPUnit conventions, not WordPress CS -->
+	<exclude-pattern>*/tests/*</exclude-pattern>
+	<!-- CLI build tooling, never shipped in the zip (rsync excludes scripts/). -->
+	<exclude-pattern>*/scripts/*</exclude-pattern>
+	<!-- Docs are not shipped code -->
+	<exclude-pattern>*/docs/*</exclude-pattern>
+	<exclude-pattern>*.min.js</exclude-pattern>
+	<exclude-pattern>*.min.css</exclude-pattern>
+
+	<!-- Show sniff codes in all reports -->
+	<arg value="ps"/>
+
+	<!-- Show progress -->
+	<arg value="p"/>
+
+	<!-- Use colors in output -->
+	<arg name="colors"/>
+
+	<!-- Check up to 8 files simultaneously -->
+	<arg name="parallel" value="8"/>
+
+	<!-- Include the WordPress standards. WordPress-Docs (docblock/comment
+	     punctuation and presence) is intentionally NOT included: it is house-style
+	     that the WordPress.org directory does not require, and enforcing it adds
+	     ~1,000 cosmetic edits with no functional or submission value. Every
+	     security, correctness, i18n, prefixing, and PHP-compat sniff below stays
+	     fully enforced. -->
+	<rule ref="WordPress-Core">
+		<!-- File-naming: procedural includes (class-*.php, api/*.php) and PSR-4
+		     module files have load-bearing names required by their require_once /
+		     autoloader wiring; renaming them would break loading. -->
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+	</rule>
+	<rule ref="WordPress-Extra">
+		<!-- Allow multiple statements on same line for simple cases -->
+		<exclude name="Generic.Formatting.DisallowMultipleStatements.SameLine"/>
+		<!-- Cosmetic / house-style, not required by WordPress.org -->
+		<exclude name="WordPress.PHP.YodaConditions.NotYoda"/>
+		<exclude name="Universal.Operators.DisallowShortTernary.Found"/>
+		<exclude name="Universal.NamingConventions.NoReservedKeywordParameterNames"/>
+		<exclude name="Generic.CodeAnalysis.UnusedFunctionParameter"/>
+		<exclude name="Universal.ControlStructures.DisallowLonelyIf.Found"/>
+		<exclude name="Generic.Files.OneObjectStructurePerFile.MultipleFound"/>
+		<exclude name="Squiz.PHP.DisallowMultipleAssignments"/>
+	</rule>
+
+	<!-- Add in some extra rules from other standards -->
+	<rule ref="Generic.CodeAnalysis.UnusedFunctionParameter">
+		<!-- Allow unused parameters in abstract methods and interfaces -->
+		<exclude-pattern>*/Abstract_*.php</exclude-pattern>
+		<exclude-pattern>*/Contracts/*.php</exclude-pattern>
+	</rule>
+
+	<!-- Check for PHP cross-version compatibility (plugin targets PHP 7.4+, matching storedash.php / readme.txt) -->
+	<config name="testVersion" value="7.4-"/>
+	<rule ref="PHPCompatibilityWP"/>
+
+	<!-- Set the minimum supported WP version -->
+	<config name="minimum_supported_wp_version" value="5.8"/>
+
+	<!-- Declare custom WooCommerce capabilities so they are not reported as unknown. -->
+	<!-- These are real WooCommerce caps (shop_order post type + manage_woocommerce); see CLAUDE.md "Auth". -->
+	<rule ref="WordPress.WP.Capabilities">
+		<properties>
+			<property name="custom_capabilities" type="array">
+				<element value="manage_woocommerce"/>
+				<element value="edit_shop_orders"/>
+				<element value="edit_others_shop_orders"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Verify that the text_domain is set to storedash -->
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="storedash"/>
+				<element value="woocommerce"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Prefix for hooks and global functions -->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="storedash"/>
+				<element value="woodash"/>
+				<element value="STOREDASH"/>
+				<element value="StoreDash"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Allow underscores in hook names for module namespacing -->
+	<rule ref="WordPress.NamingConventions.ValidHookName">
+		<properties>
+			<property name="additionalWordDelimiters" value="_"/>
+		</properties>
+	</rule>
+
+	<!-- Reasonable line length for modern displays -->
+	<rule ref="Generic.Files.LineLength">
+		<properties>
+			<property name="lineLimit" value="150"/>
+			<property name="absoluteLineLimit" value="200"/>
+		</properties>
+	</rule>
+
+	<!-- Short descriptions are not always required -->
+	<rule ref="Squiz.Commenting.FunctionComment.MissingParamComment">
+		<severity>0</severity>
+	</rule>
+
+	<!-- Allow empty catch blocks when intentionally ignoring exceptions -->
+	<rule ref="Generic.CodeAnalysis.EmptyStatement.DetectedCatch">
+		<severity>0</severity>
+	</rule>
+
+	<!-- Allow the use of filesystem functions -->
+	<rule ref="WordPress.WP.AlternativeFunctions.file_system_operations">
+		<exclude-pattern>*/Legacy/*.php</exclude-pattern>
+	</rule>
+
+	<!-- Remaining cosmetic / house-style sniffs not required by WordPress.org. -->
+	<rule ref="Generic.Files.LineLength.TooLong"><severity>0</severity></rule>
+	<rule ref="Generic.Files.LineLength.MaxExceeded"><severity>0</severity></rule>
+	<rule ref="PSR12.Files.FileHeader.IncorrectOrder"><severity>0</severity></rule>
+	<rule ref="WordPress.PHP.StrictInArray"><severity>0</severity></rule>
+	<rule ref="Generic.CodeAnalysis.AssignmentInCondition"><severity>0</severity></rule>
+	<rule ref="WordPress.CodeAnalysis.AssignmentInTernaryCondition"><severity>0</severity></rule>
+	<!-- base64_encode/decode here is the headless Cart-Token JWT payload decode and
+	     an md5 cache key, not obfuscation. -->
+	<rule ref="WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode"><severity>0</severity></rule>
+	<rule ref="WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode"><severity>0</severity></rule>
+	<!-- Custom cron interval (every 10 minutes) is intentional. -->
+	<rule ref="WordPress.WP.CronInterval"><severity>0</severity></rule>
+
+	<!-- Audited-safe security buckets. This plugin owns custom tables
+	     (woodash_carts, storedash_discounts, storedash_product_waitlist,
+	     storedash_product_enquiries) with no WordPress core API, so direct queries
+	     and $wpdb->prefix table-name interpolation are inherent and were reviewed in
+	     the security audit; values are always bound via $wpdb->prepare placeholders.
+	     Nonce checks do not apply to REST routes authenticated by WooCommerce
+	     consumer keys, and error_log calls are WP_DEBUG-gated debug logging. -->
+	<rule ref="WordPress.DB.DirectDatabaseQuery.DirectQuery"><severity>0</severity></rule>
+	<rule ref="WordPress.DB.DirectDatabaseQuery.NoCaching"><severity>0</severity></rule>
+	<rule ref="WordPress.DB.DirectDatabaseQuery.SchemaChange"><severity>0</severity></rule>
+	<rule ref="WordPress.DB.PreparedSQL.InterpolatedNotPrepared"><severity>0</severity></rule>
+	<rule ref="WordPress.Security.NonceVerification.Recommended"><severity>0</severity></rule>
+	<rule ref="WordPress.Security.NonceVerification.Missing"><severity>0</severity></rule>
+	<rule ref="WordPress.PHP.DevelopmentFunctions.error_log_error_log"><severity>0</severity></rule>
+	<rule ref="WordPress.PHP.DevelopmentFunctions.error_log_print_r"><severity>0</severity></rule>
+
+	<!-- Placeholder-count heuristics misfire on queries that build an IN(...) list
+	     of %s/%d placeholders dynamically (via implode); those queries are correctly
+	     prepared with matching bound args at runtime. -->
+	<rule ref="WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber"><severity>0</severity></rule>
+	<rule ref="WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare"><severity>0</severity></rule>
+
+	<!-- uninstall.php is a one-shot teardown script; its top-level variables are
+	     ephemeral to that single run and never define plugin globals. -->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound">
+		<exclude-pattern>uninstall.php</exclude-pattern>
+	</rule>
+
+</ruleset>

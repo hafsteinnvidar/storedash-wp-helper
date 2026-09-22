@@ -1,0 +1,2008 @@
+# Copyright (C) 2026 Storedash
+# This file is distributed under the GPLv2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Storedash Helper 1.3.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/storedash-helper\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-07-03T15:36:22+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: storedash\n"
+
+#. Plugin Name of the plugin
+#: storedash.php
+msgid "Storedash Helper"
+msgstr ""
+
+#. Plugin URI of the plugin
+#. Author URI of the plugin
+#: storedash.php
+msgid "https://storedash.app"
+msgstr ""
+
+#. Description of the plugin
+#: storedash.php
+msgid "Helper plugin for Storedash to provide enhanced API endpoints and webhooks"
+msgstr ""
+
+#. Author of the plugin
+#: storedash.php
+msgid "Storedash"
+msgstr ""
+
+#: inc/admin/class-admin-assets.php:73
+msgid "Saved successfully!"
+msgstr ""
+
+#: inc/admin/class-admin-assets.php:74
+msgid "Error occurred. Please try again."
+msgstr ""
+
+#: inc/admin/class-admin-assets.php:75
+msgid "Are you sure?"
+msgstr ""
+
+#: inc/admin/class-admin-assets.php:76
+msgid "Loading..."
+msgstr ""
+
+#: inc/admin/class-admin-assets.php:77
+msgid "Rebuilding index..."
+msgstr ""
+
+#: inc/admin/class-admin-assets.php:78
+msgid "Processing..."
+msgstr ""
+
+#: inc/admin/class-admin-components.php:212
+msgid "No items found"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:82
+#: inc/admin/class-storedash-admin.php:83
+msgid "Storedash WP"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:109
+msgid "Helper plugin for Storedash API endpoints and webhooks"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:125
+#: inc/admin/class-storedash-admin.php:168
+msgid "Settings"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:135
+#: inc/admin/class-storedash-admin.php:232
+msgid "Diagnostics"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:169
+msgid "Cart tracking and marketing opt-in are managed from your Storedash dashboard."
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:175
+msgid "Save Settings"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:189
+#: inc/widgets/class-back-in-stock-widget.php:85
+#: inc/widgets/class-product-enquiry-widget.php:85
+msgid "General Settings"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:194
+msgid "Clean Uninstall"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:206
+msgid "Remove all data when plugin is deleted"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:209
+msgid "When enabled, deleting this plugin will remove ALL Storedash data including database tables, settings, and cached data. This cannot be undone."
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:233
+msgid "Comprehensive system information and connectivity diagnostics"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:243
+msgid "Quick Actions"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:255
+msgid "Copy System Info"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:265
+msgid "Download System Info"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:275
+msgid "Export System Info (JSON)"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:289
+msgid "System Overview"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:301
+msgid "WordPress Version"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:305
+msgid "Site URL"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:309
+msgid "Home URL"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:313
+msgid "Active Theme"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:317
+msgid "Active Plugins"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:321
+#: inc/admin/class-storedash-admin.php:409
+msgid "Show List"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:333
+msgid "Multisite"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:334
+#: inc/admin/class-storedash-admin.php:350
+#: inc/admin/class-storedash-admin.php:595
+#: inc/admin/class-storedash-admin.php:609
+#: inc/admin/class-storedash-admin.php:656
+#: inc/admin/class-storedash-admin.php:891
+#: inc/admin/class-storedash-admin.php:895
+#: inc/admin/class-storedash-admin.php:899
+#: inc/widgets/class-back-in-stock-widget.php:109
+#: inc/widgets/class-back-in-stock-widget.php:201
+#: inc/widgets/class-back-in-stock-widget.php:213
+#: inc/widgets/class-product-enquiry-widget.php:109
+#: inc/widgets/class-product-enquiry-widget.php:237
+msgid "Yes"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:334
+#: inc/admin/class-storedash-admin.php:350
+#: inc/admin/class-storedash-admin.php:595
+#: inc/admin/class-storedash-admin.php:609
+#: inc/admin/class-storedash-admin.php:656
+#: inc/admin/class-storedash-admin.php:891
+#: inc/admin/class-storedash-admin.php:895
+#: inc/admin/class-storedash-admin.php:899
+#: inc/widgets/class-back-in-stock-widget.php:110
+#: inc/widgets/class-back-in-stock-widget.php:202
+#: inc/widgets/class-back-in-stock-widget.php:214
+#: inc/widgets/class-product-enquiry-widget.php:110
+#: inc/widgets/class-product-enquiry-widget.php:238
+msgid "No"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:337
+msgid "Language"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:341
+msgid "Permalink Structure"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:342
+msgid "Plain"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:345
+msgid "WP_CACHE"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:346
+#: inc/admin/class-storedash-admin.php:402
+#: inc/admin/class-storedash-admin.php:702
+msgid "Enabled"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:346
+#: inc/admin/class-storedash-admin.php:402
+#: inc/admin/class-storedash-admin.php:702
+msgid "Disabled"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:349
+msgid "External Object Cache"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:361
+msgid "PHP Environment"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:373
+msgid "PHP Version"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:377
+msgid "PHP SAPI"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:381
+#: inc/admin/class-storedash-admin.php:862
+msgid "Memory Limit"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:385
+msgid "Max Execution Time"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:386
+msgid "seconds"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:389
+msgid "Max Input Vars"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:393
+msgid "Post Max Size"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:397
+msgid "Upload Max Filesize"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:401
+msgid "Allow URL FOpen"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:405
+msgid "Loaded Extensions"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:422
+msgid "Disabled Functions"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:435
+msgid "Server Environment"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:447
+msgid "Server Software"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:451
+msgid "Server OS"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:455
+#: inc/admin/class-storedash-admin.php:586
+msgid "Server IP"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:459
+msgid "Server Timezone"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:463
+msgid "Server Time"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:467
+msgid "Document Root"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:471
+msgid "Disk Free Space"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:475
+msgid "Disk Total Space"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:479
+msgid "Server Protocol"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:491
+msgid "Database Information"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:503
+#: inc/admin/class-storedash-admin.php:643
+msgid "Database Version"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:507
+msgid "Database Name"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:511
+msgid "Database Charset"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:515
+msgid "Database Collate"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:519
+msgid "Database Size"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:523
+msgid "Table Count"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:528
+msgid "Storedash Database Tables"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:532
+msgid "Table"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:533
+#: inc/admin/class-storedash-admin.php:1575
+msgid "Status"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:534
+msgid "Rows"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:547
+#: inc/admin/class-storedash-admin.php:904
+#: inc/admin/class-storedash-admin.php:913
+msgid "Exists"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:549
+#: inc/admin/class-storedash-admin.php:669
+msgid "Missing"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:574
+msgid "Network & Connectivity"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:590
+msgid "Outbound IP"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:591
+msgid "(not checked on page load to avoid slowdown)"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:594
+msgid "cURL Enabled"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:599
+msgid "cURL Version"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:603
+msgid "SSL Version"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:608
+msgid "OpenSSL Enabled"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:613
+msgid "OpenSSL Version"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:627
+msgid "WooCommerce Information"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:639
+msgid "WooCommerce Version"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:647
+msgid "Currency"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:651
+msgid "Base Location"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:655
+msgid "Tax Enabled"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:659
+msgid "WooCommerce Pages"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:665
+msgid "Published"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:667
+msgid "Exists but not published"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:685
+msgid "Storedash Plugin"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:697
+msgid "Version"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:701
+msgid "Cart Tracking"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:705
+msgid "Webhook URL"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:709
+#: inc/admin/class-storedash-admin.php:749
+msgid "Store ID"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:734
+msgid "Webhook Configuration"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:743
+msgid "These settings control how your store communicates with Storedash. If cart tracking or waitlist features are not working, check that the webhook secret matches what Storedash expects."
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:753
+msgid "Webhook Secret"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:759
+msgid "Not configured — push config from Storedash dashboard"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:764
+msgid "Secret Hash (first 8)"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:768
+msgid "Compare with Storedash DB to verify match"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:775
+msgid "Cart Webhook URL"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:779
+msgid "Waitlist Webhook URL"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:783
+msgid "Standard Webhook URL"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:793
+msgid "Send Test Webhook"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:807
+msgid "REST API Endpoints Health"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:816
+msgid "Check the health and availability of all Storedash REST API endpoints. These endpoints power the integration between your WooCommerce store and the Storedash dashboard."
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:822
+msgid "Check All Endpoints"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:830
+msgid "Checking endpoints..."
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:842
+msgid "Performance Metrics"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:854
+msgid "Memory Usage"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:858
+msgid "Memory Peak"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:866
+msgid "Query Count"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:878
+msgid "File System Permissions"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:890
+msgid "Uploads Directory Writable"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:894
+msgid "Plugins Directory Writable"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:898
+msgid "Themes Directory Writable"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:904
+#: inc/admin/class-storedash-admin.php:913
+msgid "Not found"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:906
+msgid "Readable"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:906
+msgid "Not readable"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:915
+msgid "Writable"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:915
+msgid "Not writable"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:928
+msgid "Connectivity Test"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:937
+msgid "This test checks if your WordPress site can successfully connect to Storedash's authentication servers. If you're experiencing issues during the onboarding process, run this test to identify the problem."
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:943
+msgid "Run Connectivity Test"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:951
+msgid "Testing..."
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:955
+msgid "Test Results"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:964
+msgid "Common Issues"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:973
+msgid "SSL Certificate Errors:"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:973
+msgid "Your hosting provider may have outdated SSL certificates. Contact them to update."
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:974
+msgid "Firewall Blocking:"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:974
+msgid "Some hosts block outbound HTTPS connections. Ask your host to whitelist app.storedash.io"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:975
+msgid "DNS Issues:"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:975
+msgid "If DNS resolution fails, your server may not be able to resolve app.storedash.io"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:976
+msgid "Timeout:"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:976
+msgid "If requests timeout, your server may have slow network or be behind a restrictive firewall"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:991
+#: inc/admin/class-storedash-admin.php:1017
+#: inc/admin/class-storedash-admin.php:1099
+#: inc/admin/class-storedash-admin.php:1654
+#: inc/admin/class-storedash-admin.php:2138
+#: inc/admin/class-storedash-admin.php:2153
+#: inc/admin/class-storedash-admin.php:2170
+#: inc/admin/class-storedash-admin.php:2194
+msgid "Security check failed"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:994
+#: inc/admin/class-storedash-admin.php:1020
+#: inc/admin/class-storedash-admin.php:1102
+#: inc/admin/class-storedash-admin.php:1657
+#: inc/admin/class-storedash-admin.php:2141
+#: inc/admin/class-storedash-admin.php:2156
+#: inc/admin/class-storedash-admin.php:2173
+#: inc/admin/class-storedash-admin.php:2197
+msgid "Insufficient permissions"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1006
+msgid "Settings saved successfully!"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1029
+msgid "Webhook secret not configured — push config from Storedash first"
+msgstr ""
+
+#. translators: %s: error message
+#: inc/admin/class-storedash-admin.php:1061
+#, php-format
+msgid "Connection failed: %s"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1073
+msgid "Webhook test successful — signature verified"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1080
+msgid "Signature mismatch — webhook secret does not match Storedash. Re-push config from the dashboard."
+msgstr ""
+
+#. translators: %d: HTTP status code
+#: inc/admin/class-storedash-admin.php:1088
+#, php-format
+msgid "Webhook returned HTTP %d"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1213
+msgid "Test Run:"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1217
+msgid "Health Check"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1220
+#: inc/admin/class-storedash-admin.php:1237
+#: inc/admin/class-storedash-admin.php:1253
+#: inc/admin/class-storedash-admin.php:1271
+msgid "SUCCESS"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1221
+#: inc/admin/class-storedash-admin.php:1238
+#: inc/admin/class-storedash-admin.php:1254
+msgid "Status Code:"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1222
+msgid "Response:"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1226
+#: inc/admin/class-storedash-admin.php:1242
+#: inc/admin/class-storedash-admin.php:1259
+#: inc/admin/class-storedash-admin.php:1277
+msgid "FAILED"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1227
+#: inc/admin/class-storedash-admin.php:1243
+#: inc/admin/class-storedash-admin.php:1260
+msgid "Error:"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1228
+#: inc/admin/class-storedash-admin.php:1244
+#: inc/admin/class-storedash-admin.php:1261
+msgid "Error Code:"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1234
+msgid "Callback Endpoint GET Test"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1250
+msgid "Callback Endpoint POST Test"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1255
+msgid "This is the test that matters most - if this passes, WooCommerce OAuth should work!"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1262
+msgid "This is the issue preventing WooCommerce OAuth from working!"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1268
+msgid "DNS Resolution"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1272
+#: inc/admin/class-storedash-admin.php:1278
+msgid "Host:"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1273
+msgid "Resolved IP:"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1279
+msgid "Could not resolve domain name"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1293
+msgid "Overall Assessment"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1296
+msgid "ALL TESTS PASSED"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1297
+msgid "Your WordPress site can successfully connect to Storedash. WooCommerce OAuth should work properly."
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1301
+msgid "SOME TESTS FAILED"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1302
+msgid "There are connectivity issues preventing WooCommerce OAuth from working."
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1303
+msgid "Next Steps:"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1305
+msgid "Contact your hosting provider"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1306
+msgid "Share these test results with them"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1307
+msgid "Ask them to allow outbound HTTPS connections to app.storedash.io"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1308
+msgid "Ask them to update SSL/TLS certificates if needed"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1361
+#: inc/admin/class-storedash-admin.php:1369
+#: inc/admin/class-storedash-admin.php:1377
+msgid "Core"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1366
+msgid "Public endpoint for plugin verification during onboarding"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1374
+msgid "Full plugin status with version info"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1382
+msgid "Plugin verification with webhook status"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1387
+msgid "Products"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1392
+msgid "List and manage products"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1397
+#: inc/admin/class-storedash-admin.php:1405
+msgid "Discounts"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1402
+msgid "Storedash discount rules status"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1410
+msgid "Sync discount rules from Supabase"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1415
+#: inc/admin/class-storedash-admin.php:1423
+#: inc/admin/class-storedash-admin.php:1431
+#: inc/admin/class-storedash-admin.php:1439
+#: inc/Taxonomies/register-brands-taxonomy.php:26
+#: inc/Taxonomies/register-brands-taxonomy.php:36
+msgid "Brands"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1420
+msgid "List product brands"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1428
+msgid "Create a new brand"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1436
+msgid "Batch create/update/delete brands"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1444
+msgid "Batch assign brands to products"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1449
+msgid "Subscriptions"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1454
+msgid "WooCommerce Subscriptions (if plugin active)"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1460
+#: inc/admin/class-storedash-admin.php:1468
+#: inc/admin/class-storedash-admin.php:1476
+msgid "Media"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1465
+msgid "Browse WordPress media library"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1473
+msgid "Upload files to media library"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1481
+msgid "Import media from external URL"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1486
+msgid "Emails"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1491
+msgid "WooCommerce email templates"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1496
+#: inc/admin/class-storedash-admin.php:1504
+msgid "Waitlist"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1501
+msgid "Pending waitlist entries"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1509
+msgid "Waitlist statistics"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1514
+msgid "Integrations"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1519
+msgid "Available third-party integrations"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1571
+msgid "Endpoint"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1572
+msgid "Route"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1573
+msgid "Method"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1574
+msgid "Auth"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1595
+msgid "N/A"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1600
+msgid "Healthy"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1603
+msgid "Error"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1607
+msgid "Registered"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1610
+msgid "Not Found"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1643
+msgid "Legend:"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1644
+msgid "Requires WooCommerce authentication"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1645
+msgid "Public (no auth required)"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1671
+msgid "Plugin not active"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1681
+msgid "Route not registered"
+msgstr ""
+
+#: inc/admin/class-storedash-admin.php:1693
+msgid "Registered (auth required to test)"
+msgstr ""
+
+#. translators: %d: HTTP status code
+#: inc/admin/class-storedash-admin.php:1719
+#, php-format
+msgid "HTTP %d"
+msgstr ""
+
+#: inc/api/api.php:186
+msgid "Storedash Helper: Critical API initialization error. Please check error logs."
+msgstr ""
+
+#: inc/api/coupons.php:81
+msgid "Coupon not found."
+msgstr ""
+
+#: inc/api/dropp.php:80
+#: inc/api/shipment-tracking.php:70
+msgid "Order not found."
+msgstr ""
+
+#: inc/api/dropp.php:89
+msgid "A barcode is required."
+msgstr ""
+
+#: inc/api/dropp.php:103
+msgid "Order has no shipping line item."
+msgstr ""
+
+#: inc/api/emails.php:176
+msgid "No emails were updated."
+msgstr ""
+
+#: inc/api/emails.php:184
+msgid "Email settings updated successfully."
+msgstr ""
+
+#: inc/api/media.php:357
+msgid "Requests to internal or private network addresses are not allowed."
+msgstr ""
+
+#: inc/api/media.php:407
+msgid "Failed to download image from URL. The URL may not be accessible from this server."
+msgstr ""
+
+#: inc/api/media.php:453
+msgid "Failed to process uploaded image."
+msgstr ""
+
+#: inc/api/media.php:474
+msgid "Attachment was created but cannot be found."
+msgstr ""
+
+#: inc/api/media.php:516
+msgid "An unexpected error occurred during upload."
+msgstr ""
+
+#: inc/api/media.php:540
+msgid "Invalid attachment ID."
+msgstr ""
+
+#: inc/api/media.php:575
+msgid "Failed to update attachment."
+msgstr ""
+
+#: inc/api/media.php:635
+msgid "Failed to update media metadata."
+msgstr ""
+
+#: inc/api/orders.php:64
+msgid "order_ids must be an array."
+msgstr ""
+
+#: inc/api/orders.php:72
+msgid "order_ids must not be empty."
+msgstr ""
+
+#: inc/api/orders.php:80
+msgid "order_ids must contain at most 100 items."
+msgstr ""
+
+#. translators: %s: order ID
+#: inc/api/orders.php:90
+#, php-format
+msgid "Invalid order ID: %s"
+msgstr ""
+
+#: inc/api/shipment-tracking.php:79
+msgid "A tracking number is required."
+msgstr ""
+
+#: inc/Carts/Controllers/Carts_Recovery_Controller.php:62
+msgid "You left items in your cart"
+msgstr ""
+
+#. translators: 1: customer name, 2: cart recovery URL
+#: inc/Carts/Controllers/Carts_Recovery_Controller.php:65
+#, php-format
+msgid "Hi %1$s, you left some items in your cart. Click here to complete your purchase: %2$s"
+msgstr ""
+
+#: inc/Carts/Controllers/Carts_Recovery_Controller.php:66
+msgid "there"
+msgstr ""
+
+#: inc/core/class-storedash-activator.php:99
+#: inc/services/cart/Cart_Tracking.php:129
+msgid "Every 10 minutes"
+msgstr ""
+
+#: inc/core/class-storedash-bootstrap.php:243
+msgid "Storedash: Failed to initialize API. Please check error logs."
+msgstr ""
+
+#: inc/core/class-storedash-bootstrap.php:313
+msgid "Storedash: Critical initialization error. Please check error logs."
+msgstr ""
+
+#: inc/core/class-storedash-requirements.php:130
+msgid "Storedash requires WooCommerce to be installed and active."
+msgstr ""
+
+#. translators: %s: minimum WooCommerce version required
+#: inc/core/class-storedash-requirements.php:145
+#, php-format
+msgid "Storedash requires WooCommerce %s or higher. Please update WooCommerce."
+msgstr ""
+
+#. translators: %s: minimum PHP version required
+#: inc/core/class-storedash-requirements.php:164
+#, php-format
+msgid "Storedash requires PHP %s or higher. Please contact your hosting provider to upgrade PHP."
+msgstr ""
+
+#. translators: %s: minimum WordPress version required
+#: inc/core/class-storedash-requirements.php:183
+#, php-format
+msgid "Storedash requires WordPress %s or higher. Please update WordPress."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:144
+msgid "List of applied Storedash discounts."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:158
+msgid "Total savings from Storedash discounts."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:164
+msgid "Formatted total savings."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:170
+msgid "Whether any Storedash discounts are applied."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:243
+msgid "Whether this is a BOGO free item."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:249
+msgid "BOGO discount percentage."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:255
+msgid "Parent cart item key for BOGO items."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:261
+msgid "Quantity discount details."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:267
+#: inc/Discounts/Blocks/Store_API_Integration.php:363
+msgid "Applied discount rule ID."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:273
+#: inc/Discounts/Blocks/Store_API_Integration.php:369
+msgid "Applied discount rule name."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:279
+msgid "Total savings for this item."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:285
+msgid "Formatted savings for this item."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:357
+msgid "Whether the product has a Storedash discount."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:375
+msgid "Discount type (percentage, fixed_amount, fixed_price)."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:381
+msgid "Discount amount value."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:387
+msgid "Original regular price."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:393
+msgid "Calculated discounted price."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:399
+msgid "Discount percentage (0-100)."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:405
+msgid "Savings amount (original - discounted)."
+msgstr ""
+
+#: inc/Discounts/Blocks/Store_API_Integration.php:411
+msgid "Formatted savings amount."
+msgstr ""
+
+#: inc/Discounts/Engine/Quantity_Discount_Rule.php:402
+msgid "Bulk Pricing"
+msgstr ""
+
+#: inc/Discounts/Engine/Quantity_Discount_Rule.php:406
+msgid "Quantity"
+msgstr ""
+
+#: inc/Discounts/Engine/Quantity_Discount_Rule.php:407
+msgid "Price Per Item"
+msgstr ""
+
+#: inc/Discounts/Engine/Quantity_Discount_Rule.php:408
+msgid "Discount"
+msgstr ""
+
+#: inc/services/cart/Cart_Recovery.php:79
+msgid "Too many recovery attempts. Please try again later."
+msgstr ""
+
+#: inc/services/cart/Cart_Recovery.php:133
+msgid "Sorry, we were not able to restore your cart. Please try adding your items to your cart again."
+msgstr ""
+
+#: inc/services/cart/Cart_Tracking.php:704
+msgid "Order cart recovered by Storedash."
+msgstr ""
+
+#: inc/services/cart/Cart_Tracking.php:839
+#: inc/services/optin/class-blocks-optin-field.php:93
+msgid "I want to receive promotional emails with sales, new products, and special offers"
+msgstr ""
+
+#: inc/services/class-custom-order-statuses.php:83
+#: inc/services/class-custom-order-statuses.php:275
+msgctxt "Order status"
+msgid "Ready for Pickup"
+msgstr ""
+
+#. translators: %s: number of orders
+#: inc/services/class-custom-order-statuses.php:89
+#, php-format
+msgid "Ready for Pickup <span class=\"count\">(%s)</span>"
+msgid_plural "Ready for Pickup <span class=\"count\">(%s)</span>"
+msgstr[0] ""
+msgstr[1] ""
+
+#: inc/services/class-custom-order-statuses.php:124
+msgid "Change status to Ready for Pickup"
+msgstr ""
+
+#: inc/services/class-custom-order-statuses.php:163
+msgid "Bulk action: status changed to Ready for Pickup."
+msgstr ""
+
+#. translators: %d: number of orders updated
+#: inc/services/class-custom-order-statuses.php:194
+#, php-format
+msgid "%d order updated to Ready for Pickup."
+msgid_plural "%d orders updated to Ready for Pickup."
+msgstr[0] ""
+msgstr[1] ""
+
+#: inc/services/enquiry/class-enquiry-handler.php:47
+#: inc/services/optin/class-optin-handler.php:153
+#: inc/services/waitlist/class-waitlist-handler.php:47
+msgid "Security verification failed. Please refresh the page and try again."
+msgstr ""
+
+#: inc/services/enquiry/class-enquiry-handler.php:58
+#: inc/services/enquiry/class-enquiry-handler.php:69
+#: inc/services/enquiry/class-enquiry-handler.php:214
+#: inc/widgets/class-product-enquiry-widget.php:295
+msgid "Thank you! Your enquiry has been submitted. We'll get back to you soon."
+msgstr ""
+
+#: inc/services/enquiry/class-enquiry-handler.php:79
+#: inc/services/optin/class-optin-handler.php:185
+#: inc/services/waitlist/class-waitlist-handler.php:83
+msgid "Too many requests. Please try again in a few minutes."
+msgstr ""
+
+#: inc/services/enquiry/class-enquiry-handler.php:96
+#: inc/services/waitlist/class-waitlist-handler.php:101
+msgid "Invalid product."
+msgstr ""
+
+#: inc/services/enquiry/class-enquiry-handler.php:106
+#: inc/services/optin/class-optin-handler.php:197
+#: inc/services/waitlist/class-waitlist-handler.php:111
+#: inc/widgets/class-widgets-manager.php:90
+#: inc/widgets/class-widgets-manager.php:120
+#: inc/widgets/class-widgets-manager.php:151
+msgid "Please enter a valid email address."
+msgstr ""
+
+#: inc/services/enquiry/class-enquiry-handler.php:116
+msgid "Please enter a message."
+msgstr ""
+
+#: inc/services/enquiry/class-enquiry-handler.php:127
+msgid "Message is too long. Please keep it under 2000 characters."
+msgstr ""
+
+#: inc/services/enquiry/class-enquiry-handler.php:139
+msgid "Messages cannot contain multiple links."
+msgstr ""
+
+#: inc/services/enquiry/class-enquiry-handler.php:151
+#: inc/services/waitlist/class-waitlist-handler.php:123
+#: inc/Taxonomies/Controllers/Brands_Controller.php:298
+msgid "Product not found."
+msgstr ""
+
+#: inc/services/enquiry/class-enquiry-handler.php:187
+msgid "Failed to save your enquiry. Please try again."
+msgstr ""
+
+#: inc/services/enquiry/class-enquiry-handler.php:222
+#: inc/services/waitlist/class-waitlist-handler.php:260
+#: inc/widgets/class-widgets-manager.php:88
+#: inc/widgets/class-widgets-manager.php:119
+#: inc/widgets/class-widgets-manager.php:150
+msgid "An error occurred. Please try again."
+msgstr ""
+
+#: inc/services/optin/class-optin-handler.php:164
+#: inc/services/optin/class-optin-handler.php:175
+#: inc/services/optin/class-optin-handler.php:214
+#: inc/widgets/class-signup-widget.php:143
+#: inc/widgets/class-widgets-manager.php:153
+msgid "Thanks for subscribing!"
+msgstr ""
+
+#: inc/services/waitlist/class-waitlist-handler.php:58
+#: inc/services/waitlist/class-waitlist-handler.php:73
+#: inc/services/waitlist/class-waitlist-handler.php:252
+#: inc/widgets/class-back-in-stock-widget.php:281
+msgid "Thank you! We'll notify you when this product is back in stock."
+msgstr ""
+
+#: inc/services/waitlist/class-waitlist-handler.php:134
+msgid "This product is currently in stock."
+msgstr ""
+
+#: inc/services/waitlist/class-waitlist-handler.php:145
+#: inc/services/waitlist/class-waitlist-handler.php:212
+#: inc/widgets/class-widgets-manager.php:89
+msgid "You're already on the waitlist for this product."
+msgstr ""
+
+#: inc/services/waitlist/class-waitlist-handler.php:222
+msgid "Failed to save your request. Please try again."
+msgstr ""
+
+#: inc/Taxonomies/Abstract_Taxonomies_Controller.php:283
+msgid "Term name is required."
+msgstr ""
+
+#: inc/Taxonomies/Abstract_Taxonomies_Controller.php:368
+#: inc/Taxonomies/Abstract_Taxonomies_Controller.php:406
+msgid "Term ID is required."
+msgstr ""
+
+#: inc/Taxonomies/Abstract_Taxonomies_Controller.php:424
+msgid "Term not found."
+msgstr ""
+
+#: inc/Taxonomies/Controllers/Brands_Controller.php:40
+msgid "No brands found."
+msgstr ""
+
+#: inc/Taxonomies/Controllers/Brands_Controller.php:101
+msgid "Product brand taxonomy is not available."
+msgstr ""
+
+#: inc/Taxonomies/Controllers/Brands_Controller.php:110
+#: inc/Taxonomies/Controllers/Brands_Controller.php:473
+msgid "Invalid batch request format."
+msgstr ""
+
+#: inc/Taxonomies/Controllers/Brands_Controller.php:119
+msgid "Invalid brand batch mode."
+msgstr ""
+
+#: inc/Taxonomies/Controllers/Brands_Controller.php:128
+msgid "At least one product ID is required."
+msgstr ""
+
+#: inc/Taxonomies/Controllers/Brands_Controller.php:137
+msgid "At least one brand ID is required."
+msgstr ""
+
+#: inc/Taxonomies/Controllers/Brands_Controller.php:146
+msgid "One or more brand IDs do not exist."
+msgstr ""
+
+#: inc/Taxonomies/Controllers/Brands_Controller.php:207
+#: inc/Taxonomies/Controllers/Brands_Controller.php:416
+msgid "Parent brand not found."
+msgstr ""
+
+#: inc/Taxonomies/Controllers/Brands_Controller.php:393
+msgid "Brand name is required."
+msgstr ""
+
+#: inc/Taxonomies/Controllers/Brands_Controller.php:513
+msgid "Brand ID is required for update."
+msgstr ""
+
+#: inc/Taxonomies/register-brands-taxonomy.php:27
+msgid "Brand"
+msgstr ""
+
+#: inc/Taxonomies/register-brands-taxonomy.php:28
+msgid "Search Brands"
+msgstr ""
+
+#: inc/Taxonomies/register-brands-taxonomy.php:29
+msgid "All Brands"
+msgstr ""
+
+#: inc/Taxonomies/register-brands-taxonomy.php:30
+msgid "Parent Brand"
+msgstr ""
+
+#: inc/Taxonomies/register-brands-taxonomy.php:31
+msgid "Parent Brand:"
+msgstr ""
+
+#: inc/Taxonomies/register-brands-taxonomy.php:32
+msgid "Edit Brand"
+msgstr ""
+
+#: inc/Taxonomies/register-brands-taxonomy.php:33
+msgid "Update Brand"
+msgstr ""
+
+#: inc/Taxonomies/register-brands-taxonomy.php:34
+msgid "Add New Brand"
+msgstr ""
+
+#: inc/Taxonomies/register-brands-taxonomy.php:35
+msgid "New Brand Name"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:31
+msgid "Back In Stock Notification"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:93
+#: inc/widgets/class-product-enquiry-widget.php:93
+msgid "Display Mode"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:97
+#: inc/widgets/class-product-enquiry-widget.php:97
+msgid "Inline Form"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:98
+#: inc/widgets/class-product-enquiry-widget.php:98
+msgid "Modal Popup"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:106
+#: inc/widgets/class-back-in-stock-widget.php:1334
+#: inc/widgets/class-product-enquiry-widget.php:106
+#: inc/widgets/class-product-enquiry-widget.php:1348
+msgid "Full Width"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:108
+msgid "Make the widget fill the entire width of its container."
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:119
+#: inc/widgets/class-product-enquiry-widget.php:155
+#: inc/widgets/class-signup-widget.php:123
+msgid "Button Text"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:121
+msgid "Notify Me When Available"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:131
+#: inc/widgets/class-product-enquiry-widget.php:167
+msgid "Button Icon"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:154
+#: inc/widgets/class-product-enquiry-widget.php:190
+msgid "Icon Position"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:158
+#: inc/widgets/class-product-enquiry-widget.php:194
+msgid "Before Text"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:159
+#: inc/widgets/class-product-enquiry-widget.php:195
+msgid "After Text"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:173
+#: inc/widgets/class-product-enquiry-widget.php:209
+msgid "Form Content"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:181
+#: inc/widgets/class-product-enquiry-widget.php:217
+msgid "Form Title"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:183
+msgid "Get Notified When Back In Stock"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:190
+#: inc/widgets/class-product-enquiry-widget.php:226
+msgid "Form Description"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:192
+msgid "Enter your email and we'll notify you when this product is available again."
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:199
+#: inc/widgets/class-product-enquiry-widget.php:235
+msgid "Show Name Field"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:211
+msgid "Show Phone Field"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:223
+#: inc/widgets/class-back-in-stock-widget.php:1556
+#: inc/widgets/class-product-enquiry-widget.php:247
+#: inc/widgets/class-product-enquiry-widget.php:1570
+#: inc/widgets/class-signup-widget.php:150
+msgid "Privacy Notice"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:225
+msgid "We respect your privacy and will only use your email to notify you about this product."
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:232
+#: inc/widgets/class-product-enquiry-widget.php:256
+msgid "Submit Button Text"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:234
+msgid "Notify Me"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:241
+#: inc/widgets/class-product-enquiry-widget.php:265
+msgid "Name Placeholder"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:243
+#: inc/widgets/class-product-enquiry-widget.php:267
+msgid "Your Name"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:251
+#: inc/widgets/class-product-enquiry-widget.php:275
+#: inc/widgets/class-signup-widget.php:114
+msgid "Email Placeholder"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:253
+#: inc/widgets/class-product-enquiry-widget.php:277
+msgid "Your Email"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:260
+msgid "Phone Placeholder"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:262
+msgid "Your Phone (optional)"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:269
+msgid "Variation Dropdown Placeholder"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:271
+msgid "Select a variation..."
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:279
+#: inc/widgets/class-back-in-stock-widget.php:1422
+#: inc/widgets/class-product-enquiry-widget.php:293
+#: inc/widgets/class-product-enquiry-widget.php:1436
+#: inc/widgets/class-signup-widget.php:141
+msgid "Success Message"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:289
+#: inc/widgets/class-product-enquiry-widget.php:303
+#: inc/widgets/class-signup-widget.php:132
+msgid "Loading Button Text"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:291
+msgid "Submitting..."
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:318
+#: inc/widgets/class-product-enquiry-widget.php:332
+msgid "Trigger Button"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:329
+#: inc/widgets/class-product-enquiry-widget.php:343
+msgid "Icon Size"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:352
+#: inc/widgets/class-product-enquiry-widget.php:366
+msgid "Icon Spacing"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:384
+#: inc/widgets/class-back-in-stock-widget.php:1172
+#: inc/widgets/class-product-enquiry-widget.php:398
+#: inc/widgets/class-product-enquiry-widget.php:1186
+msgid "Normal"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:391
+#: inc/widgets/class-back-in-stock-widget.php:444
+#: inc/widgets/class-back-in-stock-widget.php:1011
+#: inc/widgets/class-back-in-stock-widget.php:1179
+#: inc/widgets/class-back-in-stock-widget.php:1232
+#: inc/widgets/class-back-in-stock-widget.php:1430
+#: inc/widgets/class-back-in-stock-widget.php:1476
+#: inc/widgets/class-product-enquiry-widget.php:405
+#: inc/widgets/class-product-enquiry-widget.php:458
+#: inc/widgets/class-product-enquiry-widget.php:1025
+#: inc/widgets/class-product-enquiry-widget.php:1193
+#: inc/widgets/class-product-enquiry-widget.php:1246
+#: inc/widgets/class-product-enquiry-widget.php:1444
+#: inc/widgets/class-product-enquiry-widget.php:1490
+msgid "Text Color"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:403
+#: inc/widgets/class-back-in-stock-widget.php:455
+#: inc/widgets/class-back-in-stock-widget.php:625
+#: inc/widgets/class-back-in-stock-widget.php:808
+#: inc/widgets/class-back-in-stock-widget.php:1023
+#: inc/widgets/class-back-in-stock-widget.php:1191
+#: inc/widgets/class-back-in-stock-widget.php:1244
+#: inc/widgets/class-back-in-stock-widget.php:1442
+#: inc/widgets/class-back-in-stock-widget.php:1488
+#: inc/widgets/class-product-enquiry-widget.php:417
+#: inc/widgets/class-product-enquiry-widget.php:469
+#: inc/widgets/class-product-enquiry-widget.php:639
+#: inc/widgets/class-product-enquiry-widget.php:822
+#: inc/widgets/class-product-enquiry-widget.php:1037
+#: inc/widgets/class-product-enquiry-widget.php:1205
+#: inc/widgets/class-product-enquiry-widget.php:1258
+#: inc/widgets/class-product-enquiry-widget.php:1456
+#: inc/widgets/class-product-enquiry-widget.php:1502
+#: inc/widgets/class-signup-widget.php:174
+msgid "Background Color"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:415
+#: inc/widgets/class-back-in-stock-widget.php:467
+#: inc/widgets/class-back-in-stock-widget.php:1203
+#: inc/widgets/class-back-in-stock-widget.php:1256
+#: inc/widgets/class-back-in-stock-widget.php:1454
+#: inc/widgets/class-back-in-stock-widget.php:1500
+#: inc/widgets/class-product-enquiry-widget.php:429
+#: inc/widgets/class-product-enquiry-widget.php:481
+#: inc/widgets/class-product-enquiry-widget.php:1217
+#: inc/widgets/class-product-enquiry-widget.php:1270
+#: inc/widgets/class-product-enquiry-widget.php:1468
+#: inc/widgets/class-product-enquiry-widget.php:1514
+msgid "Border Color"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:437
+#: inc/widgets/class-back-in-stock-widget.php:1225
+#: inc/widgets/class-product-enquiry-widget.php:451
+#: inc/widgets/class-product-enquiry-widget.php:1239
+msgid "Hover"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:499
+#: inc/widgets/class-back-in-stock-widget.php:645
+#: inc/widgets/class-back-in-stock-widget.php:839
+#: inc/widgets/class-back-in-stock-widget.php:1067
+#: inc/widgets/class-back-in-stock-widget.php:1288
+#: inc/widgets/class-back-in-stock-widget.php:1513
+#: inc/widgets/class-product-enquiry-widget.php:513
+#: inc/widgets/class-product-enquiry-widget.php:659
+#: inc/widgets/class-product-enquiry-widget.php:853
+#: inc/widgets/class-product-enquiry-widget.php:1081
+#: inc/widgets/class-product-enquiry-widget.php:1302
+#: inc/widgets/class-product-enquiry-widget.php:1527
+msgid "Border Radius"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:511
+#: inc/widgets/class-back-in-stock-widget.php:698
+#: inc/widgets/class-back-in-stock-widget.php:820
+#: inc/widgets/class-back-in-stock-widget.php:1089
+#: inc/widgets/class-back-in-stock-widget.php:1310
+#: inc/widgets/class-back-in-stock-widget.php:1536
+#: inc/widgets/class-product-enquiry-widget.php:525
+#: inc/widgets/class-product-enquiry-widget.php:712
+#: inc/widgets/class-product-enquiry-widget.php:834
+#: inc/widgets/class-product-enquiry-widget.php:1103
+#: inc/widgets/class-product-enquiry-widget.php:1324
+#: inc/widgets/class-product-enquiry-widget.php:1550
+msgid "Padding"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:530
+#: inc/widgets/class-back-in-stock-widget.php:1368
+#: inc/widgets/class-product-enquiry-widget.php:544
+#: inc/widgets/class-product-enquiry-widget.php:1382
+msgid "Hover Animation"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:538
+#: inc/widgets/class-back-in-stock-widget.php:1376
+#: inc/widgets/class-product-enquiry-widget.php:552
+#: inc/widgets/class-product-enquiry-widget.php:1390
+msgid "Transition Duration (s)"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:566
+#: inc/widgets/class-product-enquiry-widget.php:580
+msgid "Modal"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:578
+#: inc/widgets/class-product-enquiry-widget.php:592
+msgid "Overlay"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:586
+#: inc/widgets/class-product-enquiry-widget.php:600
+msgid "Overlay Color"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:598
+#: inc/widgets/class-product-enquiry-widget.php:612
+msgid "Backdrop Blur"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:616
+#: inc/widgets/class-product-enquiry-widget.php:630
+msgid "Dialog"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:672
+#: inc/widgets/class-back-in-stock-widget.php:1329
+#: inc/widgets/class-product-enquiry-widget.php:686
+#: inc/widgets/class-product-enquiry-widget.php:1343
+msgid "Width"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:717
+#: inc/widgets/class-product-enquiry-widget.php:731
+msgid "Vertical Position (%)"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:739
+#: inc/widgets/class-product-enquiry-widget.php:753
+msgid "Close Button"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:748
+#: inc/widgets/class-back-in-stock-widget.php:909
+#: inc/widgets/class-back-in-stock-widget.php:957
+#: inc/widgets/class-back-in-stock-widget.php:1573
+#: inc/widgets/class-product-enquiry-widget.php:762
+#: inc/widgets/class-product-enquiry-widget.php:923
+#: inc/widgets/class-product-enquiry-widget.php:971
+#: inc/widgets/class-product-enquiry-widget.php:1587
+msgid "Color"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:760
+#: inc/widgets/class-product-enquiry-widget.php:774
+msgid "Hover Color"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:772
+#: inc/widgets/class-product-enquiry-widget.php:786
+msgid "Size"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:800
+#: inc/widgets/class-product-enquiry-widget.php:814
+msgid "Form Container"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:884
+#: inc/widgets/class-product-enquiry-widget.php:898
+msgid "Title & Description"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:893
+#: inc/widgets/class-product-enquiry-widget.php:907
+msgid "Title"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:920
+#: inc/widgets/class-back-in-stock-widget.php:969
+#: inc/widgets/class-product-enquiry-widget.php:934
+#: inc/widgets/class-product-enquiry-widget.php:983
+msgid "Margin"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:940
+#: inc/widgets/class-product-enquiry-widget.php:954
+#: inc/widgets/class-signup-widget.php:105
+msgid "Description"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:995
+#: inc/widgets/class-product-enquiry-widget.php:1009
+msgid "Input Fields"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:1035
+#: inc/widgets/class-product-enquiry-widget.php:1049
+msgid "Placeholder Color"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:1055
+#: inc/widgets/class-product-enquiry-widget.php:1069
+msgid "Focus Border Color"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:1108
+#: inc/widgets/class-product-enquiry-widget.php:1122
+msgid "Height"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:1125
+#: inc/widgets/class-product-enquiry-widget.php:1139
+msgid "Field Spacing"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:1153
+#: inc/widgets/class-product-enquiry-widget.php:1167
+msgid "Submit Button"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:1333
+#: inc/widgets/class-product-enquiry-widget.php:1347
+msgid "Auto"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:1335
+#: inc/widgets/class-product-enquiry-widget.php:1349
+msgid "Custom"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:1343
+#: inc/widgets/class-product-enquiry-widget.php:1357
+msgid "Custom Width"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:1404
+#: inc/widgets/class-product-enquiry-widget.php:1418
+msgid "Messages & Privacy"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:1413
+#: inc/widgets/class-product-enquiry-widget.php:1427
+msgid "Message Typography"
+msgstr ""
+
+#: inc/widgets/class-back-in-stock-widget.php:1467
+#: inc/widgets/class-product-enquiry-widget.php:1481
+msgid "Error Message"
+msgstr ""
+
+#: inc/widgets/class-product-enquiry-widget.php:31
+#: inc/widgets/class-product-enquiry-widget.php:219
+msgid "Product Enquiry"
+msgstr ""
+
+#: inc/widgets/class-product-enquiry-widget.php:108
+msgid "Make the button fill the entire width of its container."
+msgstr ""
+
+#: inc/widgets/class-product-enquiry-widget.php:125
+msgid "Alignment"
+msgstr ""
+
+#: inc/widgets/class-product-enquiry-widget.php:129
+msgid "Left"
+msgstr ""
+
+#: inc/widgets/class-product-enquiry-widget.php:133
+msgid "Center"
+msgstr ""
+
+#: inc/widgets/class-product-enquiry-widget.php:137
+msgid "Right"
+msgstr ""
+
+#: inc/widgets/class-product-enquiry-widget.php:157
+msgid "Ask a Question"
+msgstr ""
+
+#: inc/widgets/class-product-enquiry-widget.php:228
+msgid "Have a question about this product? Send us a message and we'll get back to you."
+msgstr ""
+
+#: inc/widgets/class-product-enquiry-widget.php:258
+msgid "Send Enquiry"
+msgstr ""
+
+#: inc/widgets/class-product-enquiry-widget.php:284
+msgid "Message Placeholder"
+msgstr ""
+
+#: inc/widgets/class-product-enquiry-widget.php:286
+msgid "Your message..."
+msgstr ""
+
+#: inc/widgets/class-product-enquiry-widget.php:305
+#: inc/widgets/class-widgets-manager.php:122
+msgid "Sending..."
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:35
+msgid "Email Signup"
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:88
+msgid "Content"
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:96
+msgid "Heading"
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:98
+msgid "Subscribe for news and offers"
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:107
+msgid "Be the first to hear about new products, sales, and special offers."
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:116
+msgid "Your email address"
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:125
+msgid "Subscribe"
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:134
+#: inc/widgets/class-widgets-manager.php:152
+msgid "Subscribing..."
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:152
+msgid "We respect your privacy. Unsubscribe at any time."
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:166
+msgid "Style"
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:186
+msgid "Heading Color"
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:197
+msgid "Description Color"
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:209
+msgid "Button Text Color"
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:221
+msgid "Button Background Color"
+msgstr ""
+
+#: inc/widgets/class-signup-widget.php:233
+msgid "Button Hover Background"
+msgstr ""
+
+#: inc/widgets/class-widgets-manager.php:91
+msgid "Please enter your name."
+msgstr ""
+
+#: inc/widgets/class-widgets-manager.php:92
+msgid "Please select a variation."
+msgstr ""
+
+#: inc/widgets/class-widgets-manager.php:121
+msgid "Please enter a message (at least 10 characters)."
+msgstr ""
+
+#: inc/widgets/class-widgets-manager.php:123
+msgid "Thank you! Your enquiry has been submitted."
+msgstr ""

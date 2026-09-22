@@ -1,0 +1,39 @@
+{
+  "name": "storedash/storedash-wp-helper",
+  "description": "StoreDash WooCommerce Helper Plugin",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later",
+  "minimum-stability": "stable",
+  "require": {
+    "php": ">=7.4"
+  },
+  "require-dev": {
+    "squizlabs/php_codesniffer": "^3.7",
+    "wp-coding-standards/wpcs": "^3.0",
+    "phpunit/phpunit": "^9.6",
+    "phpcompatibility/phpcompatibility-wp": "*",
+    "dealerdirect/phpcodesniffer-composer-installer": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "StoreDash\\Products\\": "inc/Products/",
+      "StoreDash\\Carts\\": "inc/Carts/",
+      "StoreDash\\Discounts\\": "inc/Discounts/",
+      "StoreDash\\Credit\\": "inc/Credit/"
+    }
+  },
+  "scripts": {
+    "phpcs": "phpcs",
+    "phpcbf": "phpcbf",
+    "test": "phpunit",
+    "build-zip": "bash scripts/build-zip.sh"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    },
+    "platform": {
+      "php": "7.4.33"
+    }
+  }
+}
