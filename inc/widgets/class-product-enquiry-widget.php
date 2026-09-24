@@ -1600,6 +1600,17 @@ class Product_Enquiry_Widget extends \Elementor\Widget_Base {
 	 * Render widget output on the frontend
 	 */
 	protected function render(): void {
+		// Billing gate. The widget ignores `enabled` (see is_entitled()), but a
+		// store whose plan no longer includes enquiries must stop collecting
+		// questions its dashboard can no longer show or answer.
+		if ( class_exists( '\\StoreDash\\Services\\Enquiry\\Enquiry_Config' )
+			&& ! \StoreDash\Services\Enquiry\Enquiry_Config::is_entitled() ) {
+			if ( \Elementor\Plugin::$instance->editor->is_edit_mode() ) {
+				echo '<div class="storedash-enquiry-unavailable">' . esc_html__( 'Product enquiries are not included in your current StoreDash plan, so this form is hidden on your store.', 'storedash' ) . '</div>';
+			}
+			return;
+		}
+
 		if ( ! is_product() ) {
 			return;
 		}

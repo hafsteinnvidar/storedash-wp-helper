@@ -88,4 +88,36 @@ class Image_ThumbnailsTest extends TestCase {
 		StoreDash_Image_Thumbnails::with_thumbnail( $image, $resolver );
 		$this->assertSame( 1, $calls );
 	}
+
+	public function test_gallery_images_resolves_ids_in_order_and_skips_missing(): void {
+		$files    = array(
+			11 => array( 'https://shop.test/b.jpg', 1200, 1200, false ),
+			12 => array( 'https://shop.test/c.jpg', 1200, 1200, false ),
+		);
+		$resolver = function ( $id, $size ) use ( $files ) {
+			if ( 'full' !== $size ) {
+				return 12 === $id ? array( 'https://shop.test/c-324x324.jpg', 324, 324, true ) : false;
+			}
+			return $files[ $id ] ?? false;
+		};
+		$labels   = function ( $id ) {
+			return array( 'name' => "n$id", 'alt' => "a$id" );
+		};
+
+		$out = StoreDash_Image_Thumbnails::gallery_images( array( 12, 99, '11', 0 ), $resolver, $labels );
+
+		$this->assertSame(
+			array(
+				array( 'id' => 12, 'src' => 'https://shop.test/c.jpg', 'name' => 'n12', 'alt' => 'a12', 'thumbnail_src' => 'https://shop.test/c-324x324.jpg' ),
+				array( 'id' => 11, 'src' => 'https://shop.test/b.jpg', 'name' => 'n11', 'alt' => 'a11' ),
+			),
+			$out
+		);
+	}
+
+	public function test_gallery_images_empty_for_empty_ids(): void {
+		$this->assertSame( array(), StoreDash_Image_Thumbnails::gallery_images( array(), $this->resolver( false ), function () {
+			return array();
+		} ) );
+	}
 }

@@ -184,6 +184,20 @@ class Enquiry_Handler {
 				return;
 			}
 
+			// Billing gate. A form served from a page cache built before the
+			// plan changed can still post here; refuse rather than accept an
+			// enquiry the merchant's dashboard can no longer show or answer.
+			// An error, never success — the customer must know it was not sent.
+			if ( ! Enquiry_Config::is_entitled() ) {
+				wp_send_json_error(
+					array(
+						'message' => __( 'Product enquiries are not available right now.', 'storedash' ),
+					),
+					403
+				);
+				return;
+			}
+
 			// Honeypot check — if a bot fills the hidden "website" field, answer
 			// success and save nothing. This is the ONE branch allowed to do
 			// that: a filled hidden field has no false-positive mode.

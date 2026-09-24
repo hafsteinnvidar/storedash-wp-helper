@@ -325,7 +325,7 @@ class Waitlist_Settings_Controller {
 			"SELECT l.product_id
 			 FROM {$lookup} l
 			 INNER JOIN {$wpdb->posts} p ON p.ID = l.product_id
-			 WHERE l.stock_status <> 'instock'
+			 WHERE l.stock_status = 'outofstock'
 			   AND p.post_type = 'product'
 			   AND p.post_status = 'publish'
 			 LIMIT 1"
@@ -342,7 +342,7 @@ class Waitlist_Settings_Controller {
 			 FROM {$lookup} l
 			 INNER JOIN {$wpdb->posts} v ON v.ID = l.product_id AND v.post_type = 'product_variation'
 			 INNER JOIN {$wpdb->posts} parent ON parent.ID = v.post_parent
-			 WHERE l.stock_status <> 'instock'
+			 WHERE l.stock_status = 'outofstock'
 			   AND parent.post_status = 'publish'
 			 LIMIT 1"
 		);

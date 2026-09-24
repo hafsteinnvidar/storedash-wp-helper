@@ -213,8 +213,30 @@ class Stock_Monitor {
 			)
 		);
 
+		// Shoppers notified on an earlier restock may be re-notified (Storedash
+		// decides per store — auto re-join). Their rows are 'notified' here, so
+		// counting only 'pending' would never fire for them. The local
+		// notified_at is the FIRST email; Storedash caps re-notify at a 30-day
+		// window x 3 emails, so the last one can land up to 60 days later —
+		// 90 days covers it. The webhook payload's entries/count stay pending-only.
 		if ( 0 === $entry_count ) {
-			return;
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe ($wpdb->prefix + constant)
+			$recently_notified = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COUNT(*) FROM $table_name
+					WHERE product_id = %d
+					AND variation_id = %d
+					AND status = 'notified'
+					AND notified_at >= DATE_SUB( %s, INTERVAL 90 DAY )",
+					$product_id,
+					$variation_id,
+					current_time( 'mysql' )
+				)
+			);
+
+			if ( 0 === $recently_notified ) {
+				return;
+			}
 		}
 
 		// Query pending waitlist entries (bounded to prevent oversized payloads)

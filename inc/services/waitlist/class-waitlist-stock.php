@@ -132,7 +132,10 @@ class Waitlist_Stock {
 				continue;
 			}
 
-			if ( 'instock' !== $statuses[ $child_id ] ) {
+			// Only 'outofstock' is waitlist-eligible. 'onbackorder' is purchasable
+			// (WC's is_in_stock() is true), and create_entry rejects in-stock
+			// variations — listing it would offer a choice that always errors.
+			if ( 'outofstock' === $statuses[ $child_id ] ) {
 				$oos_ids[] = $child_id;
 			}
 		}

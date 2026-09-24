@@ -143,6 +143,28 @@ class Waitlist_API {
 			)
 		);
 
+		// Delete one entry from the local table. The dashboard calls this when a
+		// merchant deletes an entry: the Supabase row alone is not enough, because
+		// the nightly /waitlist/pending sync would re-insert a still-pending local
+		// row the next day.
+		register_rest_route(
+			self::NAMESPACE,
+			'/waitlist/entries/(?P<id>\\d+)',
+			array(
+				'methods'             => 'DELETE',
+				'callback'            => array( $this, 'delete_entry' ),
+				'permission_callback' => array( $this, 'check_permissions' ),
+				'args'                => array(
+					'id' => array(
+						'required'          => true,
+						'type'              => 'integer',
+						'minimum'           => 1,
+						'sanitize_callback' => 'absint',
+					),
+				),
+			)
+		);
+
 		// Get waitlist stats (useful for monitoring)
 		register_rest_route(
 			self::NAMESPACE,
@@ -162,6 +184,41 @@ class Waitlist_API {
 		// WooCommerce handles authentication via consumer key/secret
 		// This is automatically validated by WooCommerce REST API authentication
 		return current_user_can( 'manage_woocommerce' );
+	}
+
+	/**
+	 * Delete a waitlist entry by its local id.
+	 *
+	 * Idempotent: a row that is already gone reports `deleted: false` with a 200,
+	 * so a dashboard retry never surfaces as an error.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return \WP_REST_Response
+	 */
+	public function delete_entry( $request ) {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'storedash_product_waitlist';
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- custom table has no core API.
+		$deleted = $wpdb->delete( $table_name, array( 'id' => (int) $request['id'] ), array( '%d' ) );
+
+		if ( false === $deleted ) {
+			return new \WP_REST_Response(
+				array(
+					'success' => false,
+					'message' => 'Database error',
+				),
+				500
+			);
+		}
+
+		return new \WP_REST_Response(
+			array(
+				'success' => true,
+				'deleted' => $deleted > 0,
+			),
+			200
+		);
 	}
 
 	/**

@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.19.0
+Stable tag: 1.20.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,9 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.20.0 =
+* Variation photo galleries now show in Storedash. WooCommerce returns a variation's extra gallery photos as attachment IDs only, so the plugin adds a `gallery_images` list (id, address, name, alt text and a small thumbnail) next to `gallery_image_ids` on variation REST responses and webhooks. Nothing WooCommerce returns is changed.
 
 = 1.19.0 =
 * The plugin now updates itself from the WordPress Plugins screen. When a new release is published, every site running the plugin shows "Update available" within about 12 hours (or immediately after Dashboard → Updates → "Check again") and installs it with the standard one-click "Update now" link; the WordPress auto-update toggle also works. Updates are fetched from the public release feed at github.com/hafsteinnvidar/storedash-wp-helper, and each downloaded package is checked against the SHA-256 published with the release before it is installed. Sites on 1.18.0 or earlier need one last manual upload to receive this.

@@ -11,6 +11,12 @@
  * Any guard miss or error returns the response unchanged.
  *
  * Covers: product `images[]`, variation `image`, order `line_items[].image`.
+ *
+ * Variations also get `gallery_images`: WooCommerce returns the native
+ * variation gallery as bare attachment IDs (`gallery_image_ids`), so each ID
+ * is resolved to `{ id, src, name, alt, thumbnail_src? }` here — StoreDash has
+ * no other way to show those photos. Same order as `gallery_image_ids`; IDs
+ * that no longer resolve to a file are skipped.
  * WC webhooks build their payload through the same serializers, so they get
  * the field too.
  *
@@ -79,6 +85,13 @@ class StoreDash_Image_Thumbnails {
 			function ( array $data ) {
 				if ( isset( $data['image'] ) ) {
 					$data['image'] = self::with_thumbnail( $data['image'], 'wp_get_attachment_image_src' );
+				}
+				if ( isset( $data['gallery_image_ids'] ) && is_array( $data['gallery_image_ids'] ) ) {
+					$data['gallery_images'] = self::gallery_images(
+						$data['gallery_image_ids'],
+						'wp_get_attachment_image_src',
+						array( __CLASS__, 'attachment_labels' )
+					);
 				}
 				return $data;
 			}
@@ -173,6 +186,53 @@ class StoreDash_Image_Thumbnails {
 			$image['thumbnail_src'] = $thumb;
 		}
 		return $image;
+	}
+
+	/**
+	 * Resolve variation gallery attachment IDs to REST image objects. Pure apart
+	 * from the two resolvers, so it is unit-testable without WordPress.
+	 *
+	 * @param array    $ids      Attachment IDs, in gallery order.
+	 * @param callable $resolver wp_get_attachment_image_src-compatible.
+	 * @param callable $labels   ( int $id ) → array{ name: string, alt: string }.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function gallery_images( array $ids, callable $resolver, callable $labels ) {
+		$images = array();
+		foreach ( $ids as $raw_id ) {
+			$id = is_numeric( $raw_id ) ? (int) $raw_id : 0;
+			if ( $id <= 0 ) {
+				continue;
+			}
+			$full = $resolver( $id, 'full' );
+			if ( ! is_array( $full ) || empty( $full[0] ) || ! is_string( $full[0] ) ) {
+				continue;
+			}
+			$label    = $labels( $id );
+			$images[] = self::with_thumbnail(
+				array(
+					'id'   => $id,
+					'src'  => $full[0],
+					'name' => isset( $label['name'] ) ? (string) $label['name'] : '',
+					'alt'  => isset( $label['alt'] ) ? (string) $label['alt'] : '',
+				),
+				$resolver
+			);
+		}
+		return $images;
+	}
+
+	/**
+	 * Name + alt text for an attachment (same sources WC uses for REST images).
+	 *
+	 * @param int $id Attachment ID.
+	 * @return array{ name: string, alt: string }
+	 */
+	public static function attachment_labels( $id ) {
+		return array(
+			'name' => (string) get_the_title( $id ),
+			'alt'  => (string) get_post_meta( $id, '_wp_attachment_image_alt', true ),
+		);
 	}
 
 	/**

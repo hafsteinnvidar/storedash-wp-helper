@@ -311,6 +311,22 @@ class Enquiry_Config {
 	}
 
 	/**
+	 * Whether the store's plan includes enquiries (billing only).
+	 *
+	 * The Elementor widget and the submit handler gate on this alone, never on
+	 * `enabled`: widget stores have never set `enabled` (it defaults to false),
+	 * so requiring it would blank every existing widget form. Written only by
+	 * the storedash-worker nightly reconcile; defaults to true.
+	 *
+	 * @return bool
+	 */
+	public static function is_entitled(): bool {
+		$config = self::get();
+
+		return ! empty( $config['entitled'] );
+	}
+
+	/**
 	 * Whether automatic (hook) placement is active.
 	 *
 	 * @return bool
