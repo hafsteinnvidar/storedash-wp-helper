@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.20.0
+Stable tag: 1.20.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,10 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.20.1 =
+* Live chat "add to cart" now works for product variations set to "Any" for an attribute (for example "Any size"). WooCommerce refuses such a variation unless the chosen value is sent along, so the cart request failed. The plugin now sends the product's default value for that attribute, or its only value. When the attribute has several values and no default, the chat reports that the item could not be added and points the customer to the product page instead of picking a value for them.
+* When the same add-to-cart is confirmed twice within a few seconds, the second request is still skipped, but the chat now shows the result of the first one instead of showing nothing.
 
 = 1.20.0 =
 * Variation photo galleries now show in Storedash. WooCommerce returns a variation's extra gallery photos as attachment IDs only, so the plugin adds a `gallery_images` list (id, address, name, alt text and a small thumbnail) next to `gallery_image_ids` on variation REST responses and webhooks. Nothing WooCommerce returns is changed.
