@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.21.0
+Stable tag: 1.22.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,10 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.22.0 =
+* Headless storefronts can now show quantity discounts to shoppers. The product data includes the quantity offer a product belongs to (its tiers, whether products mix and match, and the shop's own short texts), and the cart says how many qualifying items it holds, which tier it has reached and what the next tier is.
+* Discounted cart lines now report which tier they got, so the storefront can label them (for example "−15%").
 
 = 1.21.0 =
 * Quantity discounts can now target whole categories, tags and brands, not only hand-picked products. A product qualifies when it is a listed product or sits in a listed category (or one of its subcategories), tag or brand.

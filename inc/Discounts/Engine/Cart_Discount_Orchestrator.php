@@ -177,6 +177,7 @@ class Cart_Discount_Orchestrator {
 						'discounted_price' => $result->unit_price,
 						'savings'          => ( $result->base_price - $result->unit_price ) * (int) $cart_item['quantity'],
 						'kind'             => $result->kind,
+						'tier'             => isset( $result->tier ) ? $result->tier : null,
 					);
 
 					$cart_item['storedash_discount_applied'] = $applied;

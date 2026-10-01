@@ -288,3 +288,9 @@ if ( ! function_exists( 'wp_json_encode' ) ) {
 		return json_encode( $data, $options, $depth );
 	}
 }
+
+if ( ! function_exists( 'wp_strip_all_tags' ) ) {
+	function wp_strip_all_tags( $text ) {
+		return trim( strip_tags( (string) $text ) );
+	}
+}

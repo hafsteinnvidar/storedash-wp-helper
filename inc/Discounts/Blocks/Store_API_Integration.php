@@ -21,6 +21,8 @@ use Automattic\WooCommerce\StoreApi\Schemas\V1\CartSchema;
 use Automattic\WooCommerce\StoreApi\Schemas\V1\CartItemSchema;
 use Automattic\WooCommerce\StoreApi\Schemas\V1\ProductSchema;
 use StoreDash\Discounts\Engine\Discount_Matcher;
+use StoreDash\Discounts\Engine\Discount_Priority_Resolver;
+use StoreDash\Discounts\Sync\Discount_DB_Handler;
 
 /**
  * Registers Store API endpoint data for discounts.
@@ -55,6 +57,23 @@ class Store_API_Integration {
 	 * @var array
 	 */
 	protected $discount_name_cache = array();
+
+	/**
+	 * DB handler (lazy) — reads the active quantity rules for offers.
+	 *
+	 * @since 1.22.0
+	 * @var Discount_DB_Handler|null
+	 */
+	protected $db_handler = null;
+
+	/**
+	 * Priority resolver (lazy) — hides an offer a higher-priority
+	 * disable_lower_priority rule would suppress.
+	 *
+	 * @since 1.22.0
+	 * @var Discount_Priority_Resolver|null
+	 */
+	protected $priority_resolver = null;
 
 	/**
 	 * Re-entrancy guard for the price filters.
@@ -334,6 +353,7 @@ class Store_API_Integration {
 			'total_savings'           => $total_savings,
 			'total_savings_formatted' => \wc_price( $total_savings ),
 			'has_discounts'           => ! empty( $applied_discounts ),
+			'quantity_offers'         => $this->get_cart_quantity_offers(),
 		);
 	}
 
@@ -376,6 +396,13 @@ class Store_API_Integration {
 				'type'        => 'boolean',
 				'context'     => array( 'view', 'edit' ),
 				'readonly'    => true,
+			),
+			'quantity_offers'         => array(
+				'description' => __( 'Mix-and-match quantity offers with qualifying items in the cart: count, current and next tier.', 'storedash' ),
+				'type'        => 'array',
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+				'items'       => array( 'type' => 'object' ),
 			),
 		);
 	}
@@ -542,6 +569,7 @@ class Store_API_Integration {
 			'discount_percentage' => null,
 			'savings'             => null,
 			'savings_formatted'   => null,
+			'quantity_offer'      => $this->get_quantity_offer( $product ),
 		);
 
 		// resolve_for_display(), not resolve(): a variable product has no price
@@ -569,6 +597,7 @@ class Store_API_Integration {
 			'discount_percentage' => $percentage,
 			'savings'             => $savings,
 			'savings_formatted'   => \wc_price( $savings ),
+			'quantity_offer'      => $data['quantity_offer'],
 		);
 	}
 
@@ -640,7 +669,225 @@ class Store_API_Integration {
 				'context'     => array( 'view', 'edit' ),
 				'readonly'    => true,
 			),
+			'quantity_offer'      => array(
+				'description' => __( 'Quantity (tiered) discount this product qualifies for: tiers, counting mode and storefront texts.', 'storedash' ),
+				'type'        => array( 'object', 'null' ),
+				'context'     => array( 'view', 'edit' ),
+				'readonly'    => true,
+			),
 		);
+	}
+
+	/**
+	 * The quantity (tiered) offer a product qualifies for, for the storefront
+	 * product page.
+	 *
+	 * Same pick as the WP theme's tier table (Quantity_Discount_Rule): active
+	 * quantity rules in priority order, skipping any suppressed by a
+	 * higher-priority disable_lower_priority rule, first one whose targeting,
+	 * exclusions and disable_on_sale match. Cart conditions and coupons are
+	 * cart-time gates and are not judged here.
+	 *
+	 * @since 1.22.0
+	 *
+	 * @param \WC_Product $product Product object.
+	 * @return array|null Offer, or null when none applies.
+	 */
+	public function get_quantity_offer( $product ) {
+		if ( ! $product instanceof \WC_Product ) {
+			return null;
+		}
+
+		$discounts = $this->get_db_handler()->get_active_discounts( 'quantity' );
+		if ( empty( $discounts ) ) {
+			return null;
+		}
+
+		$ceiling = $this->get_priority_resolver()->get_priority_ceiling( $product );
+
+		foreach ( $discounts as $discount ) {
+			if ( $this->get_priority_resolver()->is_suppressed( $discount, $ceiling ) ) {
+				continue;
+			}
+			if ( ! $this->get_matcher()->discount_applies_to_product( $discount, $product ) ) {
+				continue;
+			}
+
+			$offer = $this->build_quantity_offer( $discount );
+			if ( null !== $offer ) {
+				return $offer;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Mix-and-match offers that have qualifying lines in the current cart,
+	 * with how far the cart has got: the qualifying count, the tier reached
+	 * and the next tier. Per-product offers are left out — their progress is
+	 * per cart line, which the item-level data already carries.
+	 *
+	 * The count is the engine's own (Discount_Resolver::combined_quantity), so
+	 * what the storefront says always matches what the cart charges.
+	 *
+	 * @since 1.22.0
+	 *
+	 * @return array List of offers.
+	 */
+	public function get_cart_quantity_offers() {
+		if ( ! function_exists( 'WC' ) || ! \WC()->cart ) {
+			return array();
+		}
+
+		$offers = array();
+
+		foreach ( $this->get_db_handler()->get_active_discounts( 'quantity' ) as $discount ) {
+			$offer = $this->build_quantity_offer( $discount );
+			if ( null === $offer || 'combined' !== $offer['count_mode'] ) {
+				continue;
+			}
+
+			$count = (int) $this->get_resolver()->combined_quantity( $discount );
+			if ( $count <= 0 ) {
+				continue;
+			}
+
+			$offers[] = array_merge( $offer, $this->offer_progress( $offer['tiers'], $count ) );
+		}
+
+		return $offers;
+	}
+
+	/**
+	 * Shape a quantity rule row into the storefront offer.
+	 *
+	 * @since 1.22.0
+	 *
+	 * @param object $discount Discount row.
+	 * @return array|null Null when the rule has no usable tiers.
+	 */
+	public function build_quantity_offer( $discount ) {
+		$config = json_decode( $discount->rule_config ?? '', true );
+		if ( ! is_array( $config ) || empty( $config['tiers'] ) || ! is_array( $config['tiers'] ) ) {
+			return null;
+		}
+
+		$tiers = array();
+		foreach ( $config['tiers'] as $tier ) {
+			if ( ! is_array( $tier ) || empty( $tier['discount'] ) ) {
+				continue;
+			}
+			$type    = isset( $tier['discount_type'] ) ? (string) $tier['discount_type'] : (string) $discount->discount_type;
+			$tiers[] = array(
+				'min_quantity'  => isset( $tier['min_quantity'] ) ? max( 1, (int) $tier['min_quantity'] ) : 1,
+				'max_quantity'  => ( isset( $tier['max_quantity'] ) && '' !== $tier['max_quantity'] ) ? (int) $tier['max_quantity'] : null,
+				'discount'      => (float) $tier['discount'],
+				'discount_type' => in_array( $type, array( 'percentage', 'fixed_amount', 'fixed_price' ), true ) ? $type : 'percentage',
+			);
+		}
+		if ( empty( $tiers ) ) {
+			return null;
+		}
+		usort(
+			$tiers,
+			function ( $a, $b ) {
+				return $a['min_quantity'] - $b['min_quantity'];
+			}
+		);
+
+		$categories = array();
+		if ( ! empty( $config['target_category_ids'] ) && is_array( $config['target_category_ids'] ) && function_exists( 'get_term' ) ) {
+			foreach ( $config['target_category_ids'] as $term_id ) {
+				$term = get_term( (int) $term_id, 'product_cat' );
+				if ( $term && ! is_wp_error( $term ) ) {
+					$categories[] = array(
+						'id'   => (int) $term->term_id,
+						'slug' => (string) $term->slug,
+						'name' => wp_strip_all_tags( (string) $term->name ),
+					);
+				}
+			}
+		}
+
+		return array(
+			'id'                  => (int) $discount->id,
+			'count_mode'          => ( isset( $config['count_mode'] ) && 'combined' === $config['count_mode'] ) ? 'combined' : 'per_product',
+			'tiers'               => $tiers,
+			'subtitle'            => $this->offer_text( $config, 'storefront_subtitle' ),
+			'note'                => $this->offer_text( $config, 'storefront_note' ),
+			'apply_to_sale_price' => ! empty( $discount->apply_to_sale_price ),
+			'categories'          => $categories,
+		);
+	}
+
+	/**
+	 * Tier reached and next tier for a qualifying count.
+	 *
+	 * @since 1.22.0
+	 *
+	 * @param array $tiers Offer tiers, sorted by min_quantity.
+	 * @param int   $count Qualifying quantity.
+	 * @return array {count, current_tier, next_tier}
+	 */
+	public function offer_progress( array $tiers, $count ) {
+		$current = null;
+		$next    = null;
+
+		foreach ( $tiers as $tier ) {
+			$max = ( null === $tier['max_quantity'] ) ? PHP_INT_MAX : $tier['max_quantity'];
+			if ( $count >= $tier['min_quantity'] && $count <= $max ) {
+				$current = $tier;
+			} elseif ( null === $next && $tier['min_quantity'] > $count ) {
+				$next = $tier;
+			}
+		}
+
+		return array(
+			'count'        => (int) $count,
+			'current_tier' => $current,
+			'next_tier'    => $next,
+		);
+	}
+
+	/**
+	 * A merchant-written storefront text from rule_config, plain text only.
+	 *
+	 * @param array  $config Decoded rule_config.
+	 * @param string $key    Config key.
+	 * @return string Empty when unset.
+	 */
+	protected function offer_text( array $config, $key ) {
+		if ( empty( $config[ $key ] ) || ! is_string( $config[ $key ] ) ) {
+			return '';
+		}
+		return trim( wp_strip_all_tags( $config[ $key ] ) );
+	}
+
+	/**
+	 * Get DB handler instance (lazy loaded).
+	 *
+	 * @since 1.22.0
+	 * @return Discount_DB_Handler
+	 */
+	protected function get_db_handler() {
+		if ( null === $this->db_handler ) {
+			$this->db_handler = new Discount_DB_Handler();
+		}
+		return $this->db_handler;
+	}
+
+	/**
+	 * Get priority resolver instance (lazy loaded).
+	 *
+	 * @since 1.22.0
+	 * @return Discount_Priority_Resolver
+	 */
+	protected function get_priority_resolver() {
+		if ( null === $this->priority_resolver ) {
+			$this->priority_resolver = new Discount_Priority_Resolver( $this->get_matcher(), $this->get_db_handler() );
+		}
+		return $this->priority_resolver;
 	}
 
 	/**

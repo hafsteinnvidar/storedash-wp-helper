@@ -563,6 +563,12 @@ class Discount_Resolver {
 			'base_price' => $current,
 			'savings'    => ( $current - $unit ) * $quantity,
 			'bogo'       => null,
+			'tier'       => array(
+				'min_quantity'  => isset( $tier['min_quantity'] ) ? (int) $tier['min_quantity'] : 0,
+				'max_quantity'  => ( isset( $tier['max_quantity'] ) && '' !== $tier['max_quantity'] ) ? (int) $tier['max_quantity'] : null,
+				'discount'      => (float) $tier['discount'],
+				'discount_type' => $type,
+			),
 		);
 	}
 
@@ -579,7 +585,7 @@ class Discount_Resolver {
 	 * @param object $discount Discount row.
 	 * @return int
 	 */
-	protected function combined_quantity( $discount ) {
+	public function combined_quantity( $discount ) {
 		if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
 			return 0;
 		}

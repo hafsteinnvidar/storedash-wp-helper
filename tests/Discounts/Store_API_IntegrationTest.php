@@ -259,6 +259,168 @@ class Store_API_IntegrationTest extends TestCase {
 		$this->assertSame( array(), $data['applied_discounts'] );
 	}
 
+	// -----------------------------------------------------------------
+	// Quantity offers (product page + cart progress)
+	// -----------------------------------------------------------------
+
+	private function quantity_rule( array $overrides = array(), array $config = array() ) {
+		return (object) array_merge(
+			array(
+				'id'                     => 3,
+				'rule_type'              => 'quantity',
+				'discount_type'          => 'percentage',
+				'priority'               => 10,
+				'disable_lower_priority' => '0',
+				'apply_to_sale_price'    => '0',
+				'rule_config'            => json_encode(
+					array_merge(
+						array(
+							'count_mode'          => 'combined',
+							'storefront_subtitle' => 'Öll fæðubótarefni telja saman',
+							'storefront_note'     => '<b>Þú getur blandað saman</b>',
+							'tiers'               => array(
+								array( 'min_quantity' => 4, 'max_quantity' => null, 'discount' => 20 ),
+								array( 'min_quantity' => 2, 'max_quantity' => 2, 'discount' => 10 ),
+								array( 'min_quantity' => 3, 'max_quantity' => 3, 'discount' => 15, 'discount_type' => 'percentage' ),
+							),
+						),
+						$config
+					)
+				),
+			),
+			$overrides
+		);
+	}
+
+	private function with_fakes( $integration, array $rules, $applies = true, $combined_count = 0 ) {
+		$db       = new class( $rules ) {
+			public $rules;
+			public function __construct( $rules ) {
+				$this->rules = $rules;
+			}
+			public function get_active_discounts( $rule_type = null ) {
+				return $this->rules;
+			}
+		};
+		$matcher  = new class( $applies ) {
+			public $applies;
+			public function __construct( $applies ) {
+				$this->applies = $applies;
+			}
+			public function discount_applies_to_product( $discount, $product ) {
+				return is_callable( $this->applies ) ? ( $this->applies )( $discount ) : $this->applies;
+			}
+		};
+		$priority = new class() {
+			public function get_priority_ceiling( $product ) {
+				return PHP_INT_MAX;
+			}
+			public function is_suppressed( $discount, $ceiling ) {
+				return false;
+			}
+		};
+		$resolver = new class( $combined_count ) {
+			public $count;
+			public function __construct( $count ) {
+				$this->count = $count;
+			}
+			public function combined_quantity( $discount ) {
+				return $this->count;
+			}
+		};
+
+		$ref = new ReflectionClass( $integration );
+		foreach ( array(
+			'db_handler'        => $db,
+			'matcher'           => $matcher,
+			'priority_resolver' => $priority,
+			'resolver'          => $resolver,
+		) as $prop => $value ) {
+			$ref->getProperty( $prop )->setValue( $integration, $value );
+		}
+		return $integration;
+	}
+
+	public function test_build_quantity_offer_sorts_tiers_and_strips_html_from_texts() {
+		$offer = $this->make_integration()->build_quantity_offer( $this->quantity_rule() );
+
+		$this->assertSame( 3, $offer['id'] );
+		$this->assertSame( 'combined', $offer['count_mode'] );
+		$this->assertSame( array( 2, 3, 4 ), array_column( $offer['tiers'], 'min_quantity' ) );
+		$this->assertSame( 'percentage', $offer['tiers'][0]['discount_type'] ); // Inherited from the rule.
+		$this->assertNull( $offer['tiers'][2]['max_quantity'] );
+		$this->assertSame( 'Öll fæðubótarefni telja saman', $offer['subtitle'] );
+		$this->assertSame( 'Þú getur blandað saman', $offer['note'] );
+	}
+
+	public function test_build_quantity_offer_defaults_to_per_product_and_rejects_empty_tiers() {
+		$integration = $this->make_integration();
+
+		$per_product = $integration->build_quantity_offer( $this->quantity_rule( array(), array( 'count_mode' => null ) ) );
+		$this->assertSame( 'per_product', $per_product['count_mode'] );
+		$this->assertNull( $integration->build_quantity_offer( $this->quantity_rule( array(), array( 'tiers' => array() ) ) ) );
+		$this->assertNull( $integration->build_quantity_offer( $this->quantity_rule( array( 'rule_config' => '{' ) ) ) );
+	}
+
+	public function test_offer_progress_reports_current_and_next_tier() {
+		$integration = $this->make_integration();
+		$tiers       = $integration->build_quantity_offer( $this->quantity_rule() )['tiers'];
+
+		$one = $integration->offer_progress( $tiers, 1 );
+		$this->assertNull( $one['current_tier'] );
+		$this->assertSame( 2, $one['next_tier']['min_quantity'] );
+
+		$three = $integration->offer_progress( $tiers, 3 );
+		$this->assertSame( 15.0, $three['current_tier']['discount'] );
+		$this->assertSame( 4, $three['next_tier']['min_quantity'] );
+
+		$nine = $integration->offer_progress( $tiers, 9 );
+		$this->assertSame( 20.0, $nine['current_tier']['discount'] );
+		$this->assertNull( $nine['next_tier'] );
+	}
+
+	public function test_product_gets_first_matching_quantity_offer() {
+		$rules       = array(
+			$this->quantity_rule( array( 'id' => 1 ) ),
+			$this->quantity_rule( array( 'id' => 2 ) ),
+		);
+		$integration = $this->with_fakes(
+			$this->make_integration(),
+			$rules,
+			function ( $discount ) {
+				return 2 === (int) $discount->id;
+			}
+		);
+
+		$this->assertSame( 2, $integration->get_quantity_offer( new WC_Product( 5 ) )['id'] );
+	}
+
+	public function test_product_outside_every_rule_gets_no_offer() {
+		$integration = $this->with_fakes( $this->make_integration(), array( $this->quantity_rule() ), false );
+
+		$this->assertNull( $integration->get_quantity_offer( new WC_Product( 5 ) ) );
+	}
+
+	public function test_cart_offers_list_combined_rules_with_qualifying_lines_only() {
+		$this->set_cart( array() );
+		$rules = array(
+			$this->quantity_rule( array( 'id' => 1 ) ),
+			$this->quantity_rule( array( 'id' => 2 ), array( 'count_mode' => 'per_product' ) ),
+		);
+
+		$offers = $this->with_fakes( $this->make_integration(), $rules, true, 3 )->get_cart_quantity_offers();
+		$this->assertCount( 1, $offers );
+		$this->assertSame( 1, $offers[0]['id'] );
+		$this->assertSame( 3, $offers[0]['count'] );
+		$this->assertSame( 15.0, $offers[0]['current_tier']['discount'] );
+		$this->assertSame( 4, $offers[0]['next_tier']['min_quantity'] );
+
+		$this->assertSame(
+			array(),
+			$this->with_fakes( $this->make_integration(), $rules, true, 0 )->get_cart_quantity_offers()
+		);
+	}
+
 	public function test_cart_item_schema_declares_price_discount_field() {
 		$integration = $this->make_integration();
 
