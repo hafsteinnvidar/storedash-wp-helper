@@ -176,11 +176,28 @@ class Discount_Matcher {
 				// cart engines. This case is only reached via the shared
 				// applies-to-product test (the display path never loads these),
 				// so it does not change display pricing.
-				if ( empty( $target_ids ) ) {
+				//
+				// Quantity rules may also scope by whole taxonomy terms
+				// (rule_config.target_category_ids / target_tag_ids /
+				// target_brand_ids); a product qualifies when it is a listed
+				// product OR sits in any listed term.
+				$taxonomy_targets = ( 'quantity' === $discount->rule_type )
+					? $this->quantity_taxonomy_targets( $discount )
+					: array();
+
+				if ( empty( $target_ids ) && empty( $taxonomy_targets ) ) {
 					return true;
 				}
-				return in_array( $product_id, $target_ids, true ) ||
-						( $parent_id && in_array( $parent_id, $target_ids, true ) );
+				if ( in_array( $product_id, $target_ids, true ) ||
+						( $parent_id && in_array( $parent_id, $target_ids, true ) ) ) {
+					return true;
+				}
+				foreach ( $taxonomy_targets as $taxonomy => $term_ids ) {
+					if ( $this->product_in_terms( $product, $term_ids, $taxonomy ) ) {
+						return true;
+					}
+				}
+				return false;
 
 			case 'category':
 				return $this->product_in_terms( $product, $target_ids, 'product_cat' );
@@ -216,6 +233,41 @@ class Discount_Matcher {
 			return false;
 		}
 		return $this->discount_matches_product( $discount, $product );
+	}
+
+	/**
+	 * Taxonomy terms a quantity rule targets, read from rule_config
+	 * (target_category_ids / target_tag_ids / target_brand_ids).
+	 *
+	 * @since 1.21.0
+	 *
+	 * @param object $discount Discount object.
+	 * @return array<string,int[]> Taxonomy => term IDs; only non-empty lists.
+	 */
+	protected function quantity_taxonomy_targets( $discount ) {
+		$config = json_decode( $discount->rule_config ?? '', true );
+		if ( ! is_array( $config ) ) {
+			return array();
+		}
+
+		$keys = array(
+			'product_cat'   => 'target_category_ids',
+			'product_tag'   => 'target_tag_ids',
+			'product_brand' => 'target_brand_ids',
+		);
+
+		$targets = array();
+		foreach ( $keys as $taxonomy => $key ) {
+			if ( empty( $config[ $key ] ) || ! is_array( $config[ $key ] ) ) {
+				continue;
+			}
+			$term_ids = array_values( array_filter( array_map( 'intval', $config[ $key ] ) ) );
+			if ( ! empty( $term_ids ) ) {
+				$targets[ $taxonomy ] = $term_ids;
+			}
+		}
+
+		return $targets;
 	}
 
 	/**

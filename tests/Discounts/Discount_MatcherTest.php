@@ -102,6 +102,103 @@ class Discount_MatcherTest extends TestCase {
 		);
 	}
 
+	// ── Quantity rules scoped by category (rule_config.target_category_ids) ──
+
+	public function test_quantity_rule_matches_product_in_a_targeted_category_tree() {
+		$discount = $this->discount(
+			array(
+				'rule_type'   => 'quantity',
+				'target_ids'  => '',
+				'rule_config' => json_encode( array( 'tiers' => array(), 'target_category_ids' => array( self::CAT_PARENT ) ) ),
+			)
+		);
+
+		$this->assertTrue(
+			$this->matcher->discount_applies_to_product( $discount, $this->product( 20, array( self::CAT_CHILD ) ) )
+		);
+		$this->assertFalse(
+			$this->matcher->discount_applies_to_product( $discount, $this->product( 21, array( self::CAT_OTHER ) ) )
+		);
+	}
+
+	public function test_quantity_rule_matches_listed_product_or_listed_category() {
+		$discount = $this->discount(
+			array(
+				'rule_type'   => 'quantity',
+				'target_ids'  => '22',
+				'rule_config' => json_encode( array( 'tiers' => array(), 'target_category_ids' => array( self::CAT_PARENT ) ) ),
+			)
+		);
+
+		$this->assertTrue(
+			$this->matcher->discount_applies_to_product( $discount, $this->product( 22, array( self::CAT_OTHER ) ) )
+		);
+		$this->assertTrue(
+			$this->matcher->discount_applies_to_product( $discount, $this->product( 23, array( self::CAT_PARENT ) ) )
+		);
+		$this->assertFalse(
+			$this->matcher->discount_applies_to_product( $discount, $this->product( 24, array( self::CAT_OTHER ) ) )
+		);
+	}
+
+	public function test_quantity_rule_matches_targeted_tag_or_brand() {
+		$GLOBALS['__test_product_terms'][26]['product_tag']   = array( 40 );
+		$GLOBALS['__test_product_terms'][27]['product_brand'] = array( 88 );
+
+		$discount = $this->discount(
+			array(
+				'rule_type'   => 'quantity',
+				'target_ids'  => '-1', // Dashboard's "no products" sentinel.
+				'rule_config' => json_encode(
+					array(
+						'tiers'            => array(),
+						'target_tag_ids'   => array( 40 ),
+						'target_brand_ids' => array( 88 ),
+					)
+				),
+			)
+		);
+
+		$this->assertTrue(
+			$this->matcher->discount_applies_to_product( $discount, $this->product( 26, array( self::CAT_OTHER ) ) )
+		);
+		$this->assertTrue(
+			$this->matcher->discount_applies_to_product( $discount, $this->product( 27, array( self::CAT_OTHER ) ) )
+		);
+		$this->assertFalse(
+			$this->matcher->discount_applies_to_product( $discount, $this->product( 28, array( self::CAT_OTHER ) ) )
+		);
+	}
+
+	public function test_bogo_rule_ignores_taxonomy_targets_in_rule_config() {
+		$discount = $this->discount(
+			array(
+				'rule_type'   => 'bogo',
+				'target_ids'  => '',
+				'rule_config' => json_encode( array( 'target_category_ids' => array( self::CAT_PARENT ) ) ),
+			)
+		);
+
+		// Empty product targets on BOGO still means store-wide.
+		$this->assertTrue(
+			$this->matcher->discount_applies_to_product( $discount, $this->product( 29, array( self::CAT_OTHER ) ) )
+		);
+	}
+
+	public function test_quantity_rule_without_any_target_stays_store_wide() {
+		$discount = $this->discount(
+			array(
+				'rule_type'   => 'quantity',
+				'target_ids'  => '',
+				'rule_config' => json_encode( array( 'tiers' => array() ) ),
+			)
+		);
+
+		$this->assertTrue(
+			$this->matcher->discount_applies_to_product( $discount, $this->product( 25, array( self::CAT_OTHER ) ) )
+		);
+	}
+
 	public function test_does_not_match_product_outside_the_targeted_tree() {
 		$product = $this->product( 3, array( self::CAT_OTHER ) );
 

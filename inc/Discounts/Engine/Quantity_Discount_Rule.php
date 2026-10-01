@@ -253,6 +253,12 @@ class Quantity_Discount_Rule {
 		?>
 		<div class="storedash-quantity-pricing-table">
 			<h3><?php esc_html_e( 'Bulk Pricing', 'storedash' ); ?></h3>
+			<?php
+			$config = json_decode( $discount->rule_config ?? '', true );
+			if ( is_array( $config ) && isset( $config['count_mode'] ) && 'combined' === $config['count_mode'] ) :
+				?>
+				<p class="storedash-tier-mix-note"><?php esc_html_e( 'Mix and match — all qualifying products in your cart count together.', 'storedash' ); ?></p>
+			<?php endif; ?>
 			<table class="storedash-tier-table">
 				<thead>
 					<tr>

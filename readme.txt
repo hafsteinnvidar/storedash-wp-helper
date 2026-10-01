@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.20.1
+Stable tag: 1.21.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,10 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.21.0 =
+* Quantity discounts can now target whole categories, tags and brands, not only hand-picked products. A product qualifies when it is a listed product or sits in a listed category (or one of its subcategories), tag or brand.
+* Quantity discounts can now be set to "mix and match": every qualifying product in the cart counts together toward the tier, so one each of three different products reaches the "buy 3" tier. Discounts not set to mix and match keep counting each product on its own, as before.
 
 = 1.20.1 =
 * Live chat "add to cart" now works for product variations set to "Any" for an attribute (for example "Any size"). WooCommerce refuses such a variation unless the chosen value is sent along, so the cart request failed. The plugin now sends the product's default value for that attribute, or its only value. When the attribute has several values and no default, the chat reports that the item could not be added and points the customer to the product page instead of picking a value for them.

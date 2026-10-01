@@ -484,6 +484,97 @@ class Discount_ResolverTest extends TestCase {
 		$this->assertSame( 60.0, $result->savings ); // (100-80) * 3
 	}
 
+	/**
+	 * Cart of [product id => quantity] lines, each priced at 100.
+	 */
+	private function set_cart_lines( array $lines, array $free_lines = array() ) {
+		$cart = new \Fake_WC_Cart();
+		foreach ( $lines as $id => $qty ) {
+			$cart->cart_contents[ 'line' . $id ] = array(
+				'data'     => $this->product( 100, '', $id ),
+				'quantity' => $qty,
+			);
+		}
+		foreach ( $free_lines as $id => $qty ) {
+			$cart->cart_contents[ 'free' . $id ] = array(
+				'data'                   => $this->product( 100, '', $id ),
+				'quantity'               => $qty,
+				'storedash_is_free_item' => true,
+			);
+		}
+		$GLOBALS['__test_wc_cart'] = $cart;
+		return $cart;
+	}
+
+	private function mix_tiers() {
+		return array(
+			array( 'min_quantity' => 2, 'max_quantity' => 2, 'discount' => 10 ),
+			array( 'min_quantity' => 3, 'max_quantity' => 3, 'discount' => 15 ),
+			array( 'min_quantity' => 4, 'max_quantity' => null, 'discount' => 20 ),
+		);
+	}
+
+	public function test_combined_quantity_rule_counts_all_qualifying_lines() {
+		$resolver = $this->make_resolver(
+			array(
+				$this->discount(
+					array(
+						'rule_type'   => 'quantity',
+						'rule_config' => json_encode( array( 'tiers' => $this->mix_tiers(), 'count_mode' => 'combined' ) ),
+					)
+				),
+			)
+		);
+		// Three different products, one of each → the 3-item tier (15%).
+		$this->set_cart_lines( array( 201 => 1, 202 => 1, 203 => 1 ) );
+
+		$result = $resolver->resolve( $this->product( 100, '', 201 ), 1, 'cart' );
+		$this->assertSame( 'quantity', $result->kind );
+		$this->assertSame( 85.0, $result->unit_price );
+		$this->assertSame( 15.0, $result->savings ); // Savings stay per line.
+	}
+
+	public function test_combined_quantity_rule_ignores_non_qualifying_and_free_lines() {
+		$discount = $this->discount(
+			array(
+				'id'          => 7,
+				'rule_type'   => 'quantity',
+				'rule_config' => json_encode( array( 'tiers' => $this->mix_tiers(), 'count_mode' => 'combined' ) ),
+			)
+		);
+		$matcher  = new class() {
+			public function discount_applies_to_product( $discount, $product ) {
+				return 299 !== $product->get_id(); // 299 is outside the rule's scope.
+			}
+		};
+		$db            = new Resolver_Fake_DB();
+		$db->discounts = array( $discount );
+		$resolver      = new Discount_Resolver( $matcher, $db );
+
+		// 2 qualifying + 5 non-qualifying + 3 free items → still the 2-item tier.
+		$this->set_cart_lines( array( 201 => 1, 202 => 1, 299 => 5 ), array( 201 => 3 ) );
+
+		$result = $resolver->resolve( $this->product( 100, '', 201 ), 1, 'cart' );
+		$this->assertSame( 90.0, $result->unit_price );
+		$this->assertNull( $resolver->resolve( $this->product( 100, '', 299 ), 5, 'cart' ) );
+	}
+
+	public function test_quantity_rule_without_count_mode_still_counts_per_line() {
+		$resolver = $this->make_resolver(
+			array(
+				$this->discount(
+					array(
+						'rule_type'   => 'quantity',
+						'rule_config' => json_encode( array( 'tiers' => $this->mix_tiers() ) ),
+					)
+				),
+			)
+		);
+		$this->set_cart_lines( array( 201 => 1, 202 => 1, 203 => 1 ) );
+
+		$this->assertNull( $resolver->resolve( $this->product( 100, '', 201 ), 1, 'cart' ) );
+	}
+
 	public function test_bogo_beats_price_rule_on_savings_at_equal_priority() {
 		$this->set_cart( 4, 400.0 );
 		$bogo     = $this->discount(

@@ -100,6 +100,11 @@ class Discount_Resolver {
 
 		$quantity  = max( 1, (int) $quantity );
 		$cache_key = $context . ':' . $product->get_id() . ':' . $quantity;
+		if ( 'cart' === $context && function_exists( 'WC' ) && WC()->cart ) {
+			// Combined-count quantity rules depend on the rest of the cart, not
+			// just this line — don't replay a winner across a cart change.
+			$cache_key .= ':' . $this->cart_paid_quantity( WC()->cart );
+		}
 		if ( array_key_exists( $cache_key, $this->cache ) ) {
 			return $this->cache[ $cache_key ];
 		}
@@ -114,7 +119,7 @@ class Discount_Resolver {
 			if ( ! $this->is_eligible( $discount, $product, $context ) ) {
 				continue;
 			}
-			$application = $this->compute_application( $discount, $product, $quantity );
+			$application = $this->compute_application( $discount, $product, $quantity, $context );
 			if ( null === $application ) {
 				continue;
 			}
@@ -455,9 +460,10 @@ class Discount_Resolver {
 	 * @param object     $discount Discount row.
 	 * @param WC_Product $product  Product object.
 	 * @param int        $quantity Line quantity.
+	 * @param string     $context  'display' or 'cart'.
 	 * @return object|null
 	 */
-	protected function compute_application( $discount, $product, $quantity ) {
+	protected function compute_application( $discount, $product, $quantity, $context = 'display' ) {
 		$regular = (float) $product->get_regular_price();
 		if ( $regular <= 0 ) {
 			return null;
@@ -470,7 +476,7 @@ class Discount_Resolver {
 				return $this->compute_bogo( $discount, $quantity, $current );
 
 			case 'quantity':
-				return $this->compute_quantity( $discount, $quantity, $regular, $current );
+				return $this->compute_quantity( $discount, $quantity, $regular, $current, $context );
 
 			default:
 				return $this->compute_price_rule( $discount, $quantity, $regular, $current );
@@ -516,16 +522,24 @@ class Discount_Resolver {
 	 * @param int    $quantity Line quantity.
 	 * @param float  $regular  Regular price.
 	 * @param float  $current  No-discount price.
+	 * @param string $context  'display' or 'cart'.
 	 * @return object|null
 	 */
-	protected function compute_quantity( $discount, $quantity, $regular, $current ) {
+	protected function compute_quantity( $discount, $quantity, $regular, $current, $context = 'display' ) {
 		$config = json_decode( $discount->rule_config ?? '{}', true );
 		$tiers  = ( isset( $config['tiers'] ) && is_array( $config['tiers'] ) ) ? $config['tiers'] : array();
 		if ( empty( $tiers ) ) {
 			return null;
 		}
 
-		$tier = $this->find_matching_tier( $quantity, $tiers );
+		// Mix and match: the tier is picked by the quantity of EVERY qualifying
+		// cart line together, not this line alone. Savings stay per line.
+		$tier_quantity = $quantity;
+		if ( 'cart' === $context && isset( $config['count_mode'] ) && 'combined' === $config['count_mode'] ) {
+			$tier_quantity = max( $quantity, $this->combined_quantity( $discount ) );
+		}
+
+		$tier = $this->find_matching_tier( $tier_quantity, $tiers );
 		if ( ! $tier || empty( $tier['discount'] ) ) {
 			return null;
 		}
@@ -550,6 +564,45 @@ class Discount_Resolver {
 			'savings'    => ( $current - $unit ) * $quantity,
 			'bogo'       => null,
 		);
+	}
+
+	/**
+	 * Total quantity of the paid cart lines a discount is eligible for.
+	 *
+	 * Used by combined-count quantity rules. A line counts when the rule could
+	 * apply to it (same gate as resolve(): targeting, exclusions,
+	 * disable_on_sale, cart conditions, coupons). BOGO free-item lines are
+	 * outputs of discount application and never count.
+	 *
+	 * @since 1.21.0
+	 *
+	 * @param object $discount Discount row.
+	 * @return int
+	 */
+	protected function combined_quantity( $discount ) {
+		if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+			return 0;
+		}
+
+		$quantity = 0;
+
+		foreach ( WC()->cart->get_cart() as $cart_item ) {
+			if ( isset( $cart_item['storedash_is_free_item'] ) ) {
+				continue;
+			}
+
+			$line_product = isset( $cart_item['data'] ) ? $cart_item['data'] : null;
+			if ( ! $line_product instanceof WC_Product ) {
+				continue;
+			}
+			if ( ! $this->is_eligible( $discount, $line_product, 'cart' ) ) {
+				continue;
+			}
+
+			$quantity += isset( $cart_item['quantity'] ) ? (int) $cart_item['quantity'] : 0;
+		}
+
+		return $quantity;
 	}
 
 	/**
