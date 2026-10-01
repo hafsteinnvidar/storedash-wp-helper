@@ -55,3 +55,11 @@ The module's own surface is scheduled publish:
 
 Everything else (CRUD, bulk, images, variations, stock) is native WooCommerce and
 covered by WooCommerce itself.
+
+## Storedash-owned routes
+
+Two routes are not served by `wc/v3` (registered in `Route_Registry.php`):
+
+- `POST /storedash/v1/products/bulk` — time-budgeted product / variation updates (`Controllers/Products_Bulk_Controller.php`).
+- `POST /storedash/v1/products/menu-order` — shop-order positions, `{ items: [{ id, menu_order }] }` (max 500). Writes `posts.menu_order` directly, the way WooCommerce's own Sorting screen does: no product save, no `woocommerce_update_product`, no `post_modified` change. Cleans the post cache for changed rows and flushes the product-query transients once. Answers `{ done: [{ id, ok, code?, message? }], changed }` (`Controllers/Products_Menu_Order_Controller.php`).
+

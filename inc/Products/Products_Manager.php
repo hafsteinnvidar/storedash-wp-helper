@@ -57,8 +57,9 @@ class Products_Manager {
 		// Keep YouTube/Vimeo iframes that WooCommerce's description kses strips.
 		( new Video_Embeds() )->init();
 
-		// The only Storedash-owned product route: the time-budgeted bulk writer
-		// (POST /storedash/v1/products/bulk). Everything else stays on wc/v3.
+		// The Storedash-owned product routes: the time-budgeted bulk writer
+		// (POST /storedash/v1/products/bulk) and the shop-order writer
+		// (POST /storedash/v1/products/menu-order). Everything else stays on wc/v3.
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 	}
 
