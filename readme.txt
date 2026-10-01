@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.22.0
+Stable tag: 1.22.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,9 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.22.1 =
+* Chat add-to-cart now uses the option the shopper picked in the chat (for example a size or mount) when a variation allows "any" value, instead of failing when that attribute has several values and no default.
 
 = 1.22.0 =
 * Headless storefronts can now show quantity discounts to shoppers. The product data includes the quantity offer a product belongs to (its tiers, whether products mix and match, and the shop's own short texts), and the cart says how many qualifying items it holds, which tier it has reached and what the next tier is.

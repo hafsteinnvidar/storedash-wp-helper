@@ -106,13 +106,38 @@
     return value === null || value === undefined || value === '';
   }
 
+  function sameText(a, b) {
+    return typeof a === 'string' && typeof b === 'string' &&
+      a.trim().toLowerCase() === b.trim().toLowerCase();
+  }
+
+  /** The customer's choice for one "Any" attribute, matched to a parent term. */
+  function findChosenTerm(choices, parent, attrName, terms) {
+    if (!Array.isArray(choices)) {
+      return null;
+    }
+    for (var i = 0; i < choices.length; i++) {
+      var choice = choices[i];
+      if (!choice || !(sameText(choice.attribute, parent.name) || sameText(choice.attribute, attrName))) {
+        continue;
+      }
+      for (var t = 0; t < terms.length; t++) {
+        if (sameText(choice.value, terms[t].name) || sameText(choice.value, terms[t].slug)) {
+          return terms[t];
+        }
+      }
+    }
+    return null;
+  }
+
   /**
    * Resolve the `variation` array for a variation that has "Any" attributes.
-   * Resolves to [] when nothing needs sending (or the product can't be read —
-   * the add then behaves exactly as before), or null when an "Any" attribute
-   * is ambiguous (several values, no default).
+   * The customer's choice (from the chat) wins, then the default, then a
+   * single-value attribute. Resolves to [] when nothing needs sending (or the
+   * product can't be read — the add then behaves exactly as before), or null
+   * when an "Any" attribute is still ambiguous.
    */
-  function resolveAnyAttributes(productId, variationId) {
+  function resolveAnyAttributes(productId, variationId, choices) {
     return fetch(STORE_API_BASE + '/products/' + productId, {
       method: 'GET',
       credentials: 'same-origin',
@@ -149,8 +174,8 @@
             }
           }
           var terms = (parent && parent.terms) || [];
-          var chosen = null;
-          for (var m = 0; m < terms.length; m++) {
+          var chosen = parent ? findChosenTerm(choices, parent, attr.name, terms) : null;
+          for (var m = 0; !chosen && m < terms.length; m++) {
             if (terms[m].default) {
               chosen = terms[m];
               break;
@@ -187,7 +212,8 @@
 
     // Deduplicate — an identical request inside a short window is not sent
     // again, but the widget still gets a result: the first request's outcome.
-    var actionKey = productId + '-' + quantity + '-' + variationId;
+    var actionKey = productId + '-' + quantity + '-' + variationId + '-' +
+      JSON.stringify(data.variationAttributes || []);
     var now = Date.now();
     var previous = lastActions[actionKey];
     if (previous && now - previous.at < DEDUP_WINDOW_MS) {
@@ -210,7 +236,7 @@
     };
 
     var attributesReady = variationId
-      ? resolveAnyAttributes(productId, variationId)
+      ? resolveAnyAttributes(productId, variationId, data.variationAttributes)
       : Promise.resolve([]);
 
     return Promise.all([ensureFreshNonce(), attributesReady]).then(function (results) {
