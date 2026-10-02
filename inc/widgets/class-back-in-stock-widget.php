@@ -1801,7 +1801,7 @@ class Back_In_Stock_Widget extends \Elementor\Widget_Base {
 					<# if ( iconHtml && settings.button_icon_position === 'before' ) { #>
 						{{{ iconHtml }}}
 					<# } #>
-					<span class="storedash-trigger-text">{{{ settings.button_text }}}</span>
+					<span class="storedash-trigger-text">{{ settings.button_text }}</span>
 					<# if ( iconHtml && settings.button_icon_position === 'after' ) { #>
 						{{{ iconHtml }}}
 					<# } #>
@@ -1810,36 +1810,36 @@ class Back_In_Stock_Widget extends \Elementor\Widget_Base {
 
 			<div class="storedash-waitlist-form">
 				<# if ( settings.form_title ) { #>
-					<h3 class="storedash-waitlist-title">{{{ settings.form_title }}}</h3>
+					<h3 class="storedash-waitlist-title">{{ settings.form_title }}</h3>
 				<# } #>
 
 				<# if ( settings.form_description ) { #>
-					<p class="storedash-waitlist-description">{{{ settings.form_description }}}</p>
+					<p class="storedash-waitlist-description">{{ settings.form_description }}</p>
 				<# } #>
 
 				<form class="storedash-waitlist-form-fields">
 					<# if ( settings.show_name_field === 'yes' ) { #>
 						<div class="storedash-waitlist-field">
-							<input type="text" class="storedash-waitlist-input" placeholder="{{{ settings.placeholder_name }}}" />
+							<input type="text" class="storedash-waitlist-input" placeholder="{{ settings.placeholder_name }}" />
 						</div>
 					<# } #>
 
 					<div class="storedash-waitlist-field">
-						<input type="email" class="storedash-waitlist-input" placeholder="{{{ settings.placeholder_email }}}" />
+						<input type="email" class="storedash-waitlist-input" placeholder="{{ settings.placeholder_email }}" />
 					</div>
 
 					<# if ( settings.show_phone_field === 'yes' ) { #>
 						<div class="storedash-waitlist-field">
-							<input type="tel" class="storedash-waitlist-input" placeholder="{{{ settings.placeholder_phone }}}" />
+							<input type="tel" class="storedash-waitlist-input" placeholder="{{ settings.placeholder_phone }}" />
 						</div>
 					<# } #>
 
 					<# if ( settings.privacy_notice ) { #>
-						<p class="storedash-waitlist-privacy">{{{ settings.privacy_notice }}}</p>
+						<p class="storedash-waitlist-privacy">{{ settings.privacy_notice }}</p>
 					<# } #>
 
 					<button type="button" class="{{ submitClass }}">
-						{{{ settings.submit_button_text }}}
+						{{ settings.submit_button_text }}
 					</button>
 
 					<div class="storedash-waitlist-message" style="display:none;">

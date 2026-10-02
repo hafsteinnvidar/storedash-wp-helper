@@ -342,6 +342,25 @@ class StoreDash_Helpers {
 	}
 
 	/**
+	 * Whether the current request comes from a StoreDash headless storefront.
+	 *
+	 * Storefronts talk to the WooCommerce Store API server-side and identify
+	 * themselves with the `X-StoreDash-Storefront: 1` header. Behaviour that
+	 * only makes sense without a WordPress-rendered checkout (cart capture on
+	 * Store API customer updates, cart-token rotation at order creation) is
+	 * gated on this, so stores using the WordPress checkout are unaffected.
+	 *
+	 * @return bool
+	 */
+	public static function is_storefront_request(): bool {
+		if ( ! isset( $_SERVER['HTTP_X_STOREDASH_STOREFRONT'] ) ) {
+			return false;
+		}
+
+		return '1' === sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_STOREDASH_STOREFRONT'] ) );
+	}
+
+	/**
 	 * Whether the store has completed its Storedash connection.
 	 *
 	 * A connection is complete when Storedash has provisioned BOTH the store ID

@@ -199,6 +199,31 @@ class Cart_Tracking {
 
 		// Detect when user visits checkout page (template_redirect runs early)
 		add_action( 'template_redirect', array( $this, 'maybe_sync_on_checkout_page' ), 10 );
+
+		// Headless storefronts never render the checkout page; their checkout
+		// form reports the customer through the Store API instead.
+		add_action( 'woocommerce_store_api_cart_update_customer_from_request', array( $this, 'maybe_sync_on_storefront_customer_update' ) );
+	}
+
+	/**
+	 * Sync the cart when a headless storefront updates the customer.
+	 *
+	 * `POST /wc/store/v1/cart/update-customer` is the only signal a storefront
+	 * checkout sends before the order is placed, so it is the headless
+	 * equivalent of maybe_sync_on_checkout_page(). Limited to storefront
+	 * requests: on a WordPress-rendered cart/checkout this action also fires
+	 * for the cart-page shipping calculator, which must stay untracked.
+	 */
+	public function maybe_sync_on_storefront_customer_update() {
+		if ( ! \StoreDash_Helpers::is_storefront_request() ) {
+			return;
+		}
+
+		if ( ! function_exists( 'WC' ) || empty( WC()->cart ) || WC()->cart->is_empty() ) {
+			return;
+		}
+
+		$this->initiate_sync();
 	}
 
 	/**
@@ -732,6 +757,15 @@ class Cart_Tracking {
 		// Check if pending recovery
 		if ( Cart_Data::cart_is_pending_recovery() ) {
 			$this->mark_order_as_recovered( $order );
+		}
+
+		// A headless storefront never loads the thank-you page, and the payment
+		// callback runs outside the shopper's session, so neither unset_cart_token()
+		// hook reaches this session. Release the token now that the order carries
+		// it — otherwise the shopper's next cart reuses a converted token and is
+		// never tracked.
+		if ( \StoreDash_Helpers::is_storefront_request() ) {
+			$this->unset_cart_token();
 		}
 	}
 

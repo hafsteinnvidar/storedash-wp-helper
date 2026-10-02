@@ -22,6 +22,11 @@ class Cart_Recovery {
 	private static $instance;
 
 	/**
+	 * Store API extension namespace for headless cart recovery.
+	 */
+	const STORE_API_NAMESPACE = 'storedash_cart_recovery';
+
+	/**
 	 * Get instance
 	 *
 	 * @return Cart_Recovery
@@ -44,6 +49,121 @@ class Cart_Recovery {
 		// Coupon features
 		add_action( 'wp_loaded', array( $this, 'add_coupon_code_to_cart_session' ) );
 		add_action( 'woocommerce_add_to_cart', array( $this, 'add_coupon_code_to_cart' ) );
+
+		// Store API recovery for headless storefronts. WooCommerce fires
+		// woocommerce_blocks_loaded during its own plugins_loaded callback.
+		if ( did_action( 'woocommerce_blocks_loaded' ) ) {
+			$this->register_store_api_recovery();
+		} else {
+			add_action( 'woocommerce_blocks_loaded', array( $this, 'register_store_api_recovery' ) );
+		}
+	}
+
+	/**
+	 * Register the Store API cart-recovery callback.
+	 *
+	 * `POST /wc/store/v1/cart/extensions { namespace: "storedash_cart_recovery",
+	 * data: { token, coupon? } }` restores a tracked cart into the caller's
+	 * Store API session (Cart-Token). The REST route below can only restore
+	 * into a WordPress cookie session, which a headless storefront never reads.
+	 */
+	public function register_store_api_recovery() {
+		if ( function_exists( '\woocommerce_store_api_register_update_callback' ) ) {
+			\woocommerce_store_api_register_update_callback(
+				array(
+					'namespace' => self::STORE_API_NAMESPACE,
+					'callback'  => array( $this, 'store_api_recover_cart' ),
+				)
+			);
+		}
+	}
+
+	/**
+	 * `POST /wc/store/v1/cart/extensions` handler.
+	 *
+	 * The cart token is the credential, exactly as on the REST route; request
+	 * throttling is the calling storefront's job because every request reaches
+	 * WordPress from the storefront server's IP.
+	 *
+	 * @param array $data { token: string, coupon?: string }.
+	 * @throws \Exception When the cart cannot be restored (surfaced by the Store API as an error response).
+	 */
+	public function store_api_recover_cart( $data ) {
+		$data       = is_array( $data ) ? $data : array();
+		$cart_token = isset( $data['token'] ) && is_string( $data['token'] ) ? sanitize_text_field( $data['token'] ) : '';
+
+		if ( '' === $cart_token ) {
+			throw $this->store_api_exception( 'storedash_cart_recovery_missing_token', esc_html__( 'Cart token is required.', 'storedash' ), 400 );
+		}
+
+		global $wpdb;
+		$table_name = storedash_get_cart_table_name();
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe ($wpdb->prefix + constant)
+		$status = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT recovery_status FROM $table_name WHERE cart_token = %s",
+				$cart_token
+			)
+		);
+
+		if ( null === $status ) {
+			throw $this->store_api_exception( 'storedash_cart_recovery_not_found', esc_html__( 'Cart not found.', 'storedash' ), 404 );
+		}
+
+		// An already-purchased cart must not be refilled: its token is final,
+		// so the restored session could never be tracked again.
+		if ( in_array( $status, array( 'converted', 'recovered' ), true ) ) {
+			throw $this->store_api_exception( 'storedash_cart_recovery_already_converted', esc_html__( 'This cart has already been purchased.', 'storedash' ), 409 );
+		}
+
+		try {
+			$this->restore_cart( $cart_token );
+		} catch ( \Exception $e ) {
+			\StoreDash_Helpers::log_message(
+				'Cart recovery error',
+				'error',
+				array(
+					'error' => $e->getMessage(),
+					'token' => $cart_token,
+				)
+			);
+			throw $this->store_api_exception( 'storedash_cart_recovery_failed', esc_html__( 'Sorry, we were not able to restore your cart. Please try adding your items to your cart again.', 'storedash' ), 404 );
+		}
+
+		// restore_cart() writes the saved coupons to the session only. The Store
+		// API recalculates from the cart object right after this callback and
+		// would persist it without them, so apply them to the cart itself.
+		$coupons = (array) WC()->session->get( 'applied_coupons', array() );
+		if ( isset( $data['coupon'] ) && is_string( $data['coupon'] ) && '' !== $data['coupon'] ) {
+			$coupons[] = wc_clean( $data['coupon'] );
+		}
+
+		foreach ( array_unique( array_filter( $coupons ) ) as $coupon_code ) {
+			if ( ! WC()->cart->has_discount( $coupon_code ) ) {
+				WC()->cart->apply_coupon( $coupon_code );
+			}
+		}
+
+		// Notices raised while re-adding items or coupons belong to a rendered
+		// page; left in the session they would surface on a later request.
+		wc_clear_notices();
+	}
+
+	/**
+	 * Build the exception the Store API turns into an error response.
+	 *
+	 * @param string $code    Error code.
+	 * @param string $message Error message.
+	 * @param int    $status  HTTP status.
+	 * @return \Exception
+	 */
+	private function store_api_exception( $code, $message, $status ) {
+		if ( class_exists( '\Automattic\WooCommerce\StoreApi\Exceptions\RouteException' ) ) {
+			return new \Automattic\WooCommerce\StoreApi\Exceptions\RouteException( $code, $message, $status );
+		}
+
+		return new \Exception( $message );
 	}
 
 	/**
