@@ -675,6 +675,16 @@ class Cart_Tracking {
 			return;
 		}
 
+		// The Store API checkout fires its update-customer hook before the order
+		// is created, which queues a shutdown sync. The cart keeps its items until
+		// payment completes, so once the token is released below that sync would
+		// mint a fresh token and record the just-ordered cart as a new active cart
+		// (later "abandoned"). The order is placed — nothing left to track in this
+		// request.
+		if ( \StoreDash_Helpers::is_storefront_request() ) {
+			self::$no_sync = true;
+		}
+
 		// Look up existing cart token WITHOUT generating a new one.
 		// Cart_Data::get_cart_token() would create a fresh token if none exists,
 		// which breaks conversion tracking for the original cart.

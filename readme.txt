@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.23.0
+Stable tag: 1.23.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,9 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.23.1 =
+* Headless storefront checkouts no longer leave a duplicate copy of the ordered cart behind, so customers who complete their order are not later treated as having abandoned a cart.
 
 = 1.23.0 =
 * Headless storefronts can now restore abandoned carts from a recovery link, including any saved coupons.
