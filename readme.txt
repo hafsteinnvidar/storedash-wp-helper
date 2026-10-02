@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.22.1
+Stable tag: 1.23.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -143,7 +143,11 @@ Your use of these services is subject to the Storedash Terms of Service
 
 == Changelog ==
 
-= 1.22.1 =
+= 1.23.0 =
+* Headless storefronts can now restore abandoned carts from a recovery link, including any saved coupons.
+* Abandoned-cart tracking now works on headless storefront checkouts, and a new cart is tracked correctly after an order is placed.
+* Storedash can now reorder products in your shop without re-saving them, the same way WooCommerce's own sorting screen does.
+* The back-in-stock widget now safely escapes its text in the Elementor editor preview.
 * Chat add-to-cart now uses the option the shopper picked in the chat (for example a size or mount) when a variation allows "any" value, instead of failing when that attribute has several values and no default.
 
 = 1.22.0 =
