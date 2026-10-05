@@ -32,10 +32,10 @@ class Gift_Card_Webhook {
 	const URL_OPTION = 'storedash_gift_card_webhook_url';
 
 	/**
-	 * Default endpoint — the Rewards credit Hookdeck source until a dedicated
-	 * gift card source exists (storedash-sync routes `giftcard.*` from it).
+	 * Default endpoint — dedicated Hookdeck source `woo-gift-card`
+	 * (-> storedash-sync /webhooks/gift-card).
 	 */
-	const DEFAULT_URL = 'https://webhooks.storedash.io/qruffal2hfp3sy';
+	const DEFAULT_URL = 'https://webhooks.storedash.io/hjduk3dhzxzd7c';
 
 	/**
 	 * Allowed events.

@@ -784,6 +784,10 @@ class StoreDash_Admin {
 									<td><code style="word-break: break-all;"><?php echo esc_html( get_option( 'storedash_credit_webhook_url', 'https://webhooks.storedash.io/qruffal2hfp3sy' ) ); ?></code></td>
 								</tr>
 								<tr>
+									<td><strong><?php esc_html_e( 'Gift Card Webhook URL', 'storedash' ); ?></strong></td>
+									<td><code style="word-break: break-all;"><?php echo esc_html( get_option( 'storedash_gift_card_webhook_url', 'https://webhooks.storedash.io/hjduk3dhzxzd7c' ) ); ?></code></td>
+								</tr>
+								<tr>
 									<td><strong><?php esc_html_e( 'Standard Webhook URL', 'storedash' ); ?></strong></td>
 									<td><code style="word-break: break-all;"><?php echo esc_html( get_option( 'woodash_webhook_url', 'Not configured' ) ); ?></code></td>
 								</tr>
