@@ -7,6 +7,7 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'StoreDash\\Products\\' => array($baseDir . '/inc/Products'),
+    'StoreDash\\GiftCard\\' => array($baseDir . '/inc/GiftCard'),
     'StoreDash\\Discounts\\' => array($baseDir . '/inc/Discounts'),
     'StoreDash\\Credit\\' => array($baseDir . '/inc/Credit'),
     'StoreDash\\Carts\\' => array($baseDir . '/inc/Carts'),

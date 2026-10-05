@@ -142,6 +142,11 @@ class Discount_Matcher {
 		// Parse target IDs
 		$target_ids = $this->parse_ids( $discount->target_ids );
 
+		// Gift cards are never discounted.
+		if ( class_exists( '\StoreDash\GiftCard\Product\Gift_Card_Product' ) && \StoreDash\GiftCard\Product\Gift_Card_Product::is_gift_card( $product ) ) {
+			return false;
+		}
+
 		// Check exclusions first (products and taxonomy terms)
 		if ( $this->product_excluded( $discount, $product, $product_id, $parent_id ) ) {
 			return false;

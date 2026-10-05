@@ -29,6 +29,7 @@ class StoreDash_Loader {
 		'StoreDash\\Carts\\'     => 'inc/Carts/',
 		'StoreDash\\Discounts\\' => 'inc/Discounts/',
 		'StoreDash\\Credit\\'    => 'inc/Credit/',
+		'StoreDash\\GiftCard\\'  => 'inc/GiftCard/',
 	);
 
 	/**

@@ -12,6 +12,7 @@ Contracts: woo-dash `docs/plans/2026-09-11-store-credit-contracts.md` (frozen fo
 | `Settings.php` | `storedash_credit_settings` option + `storedash_credit_enabled_at`. |
 | `Rules_Repository.php` | `{prefix}storedash_credit_rules` full-replace mirror (`supabase_id`). |
 | `Ledger.php` | `{prefix}storedash_credit_ledger` — FIFO consume/release/reverse/expire, idempotent via `idem_key`. |
+| `Payment_Fee_Pass.php` | Shared with gift cards: one `woocommerce_cart_totals_get_fees_from_cart_taxes` finaliser so negative payment fees carry no VAT split and take off exactly the claimed amount (WC otherwise splits VAT onto negative fees and clamps them ex-tax). |
 | `Money.php` | Rounding, decimal strings (REST/webhook), minor-unit strings (Store API), `LedgerRow` formatter. |
 | `Credit_Webhook.php` | Signed `credit.*` events → `resolve_webhook_url('storedash_credit_webhook_url', …)`. |
 | `Engine/Earn_Handler.php` | Earn on `woocommerce_order_status_{completed\|processing}` / `woocommerce_payment_complete`. |
@@ -32,12 +33,12 @@ Contracts: woo-dash `docs/plans/2026-09-11-store-credit-contracts.md` (frozen fo
 - Failed → paid again: `spend:{order_id}:{n}` / `release:{order_id}:{n}` for the n-th attempt.
 - `Checkout/Account_Prompt`: while credit is on, forces WC "create account at checkout" ON and "generate password" OFF (shopper picks a password; classic/blocks field, Store API `create_account` + `customer_password`), pre-ticks the classic checkbox, prints a hint. Guests earn but only accounts can spend — this is how they get one.
 - Customer key = `lower(trim(email))` — account email (`user_email`) for registered customers, billing email for guests; the checkout billing field is never trusted for a logged-in shopper. Guests earn by email; spending requires login (classic/blocks cookie or `X-StoreDash-Customer` on the Store API).
-- Fee id `storedash_credit` (visible name translated); the order fee line carries meta `_storedash_credit_fee=1`.
+- Fee id `storedash_credit` (visible name translated); the order fee line carries meta `_storedash_credit_fee=1`. The fee carries no tax: VAT stays on the full goods value and the fee total == the amount the ledger consumes.
 - Order meta: `_storedash_credit_earned`, `_storedash_credit_earned_ledger_id`, `_storedash_credit_applied`, `_storedash_credit_spend_ledger_id`, `_storedash_credit_released`. **storedash-sync must preserve `_storedash_credit_*`.**
 
 ## P1 limitations
 
 - Block checkout: the `order`-location field value only arrives with the checkout request, so the fee is applied at submit (session flag set in `woocommerce_store_api_checkout_update_order_from_request`, fee lines re-synced from the cart). No live preview and no partial amount in blocks; headless storefronts get both via the update callback.
-- `spend_covers_shipping` reads the chosen rates from the last calculated packages (fees are computed before shipping in `WC_Cart_Totals`), so it is empty on the very first cart render.
+- `spend_covers_shipping` uses the cart's shipping total: `WC_Cart_Totals` calculates shipping BEFORE fees (since WC 3.2), so it is correct on the first render too.
 - "Sale item" = merchant `sale_price` at earn/spend time (same rule as `Discount_Matcher`).
 - Cancelling an order that already earned does not claw the credit back (only refunds do).

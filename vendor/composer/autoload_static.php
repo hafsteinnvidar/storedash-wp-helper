@@ -15,6 +15,7 @@ class ComposerStaticInitb99d1516db6e80927fd43658dfb5e85c
         'S' =>
         array (
             'StoreDash\\Products\\' => 19,
+            'StoreDash\\GiftCard\\' => 19,
             'StoreDash\\Discounts\\' => 20,
             'StoreDash\\Credit\\' => 17,
             'StoreDash\\Carts\\' => 16,
@@ -35,6 +36,10 @@ class ComposerStaticInitb99d1516db6e80927fd43658dfb5e85c
         'StoreDash\\Products\\' =>
         array (
             0 => __DIR__ . '/../..' . '/inc/Products',
+        ),
+        'StoreDash\\GiftCard\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/inc/GiftCard',
         ),
         'StoreDash\\Discounts\\' =>
         array (

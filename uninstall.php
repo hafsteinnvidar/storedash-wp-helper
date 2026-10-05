@@ -48,6 +48,8 @@ $tables = array(
 	$wpdb->prefix . 'storedash_webhook_logs',
 	$wpdb->prefix . 'storedash_credit_ledger',
 	$wpdb->prefix . 'storedash_credit_rules',
+	$wpdb->prefix . 'storedash_gift_cards',
+	$wpdb->prefix . 'storedash_gift_card_ledger',
 );
 
 foreach ( $tables as $table ) {

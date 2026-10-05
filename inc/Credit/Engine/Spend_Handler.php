@@ -4,7 +4,9 @@
  *
  * Credit is applied as a negative, non-taxable cart fee (`woocommerce_cart_calculate_fees`,
  * priority 20) — the one mechanism WooCommerce supports on classic checkout,
- * Cart/Checkout Blocks and the Store API alike. The ledger is only touched once
+ * Cart/Checkout Blocks and the Store API alike. Payment_Fee_Pass keeps
+ * WooCommerce from splitting VAT onto it, so the order's VAT stays on the full
+ * goods value and the fee takes off exactly what the ledger consumes. The ledger is only touched once
  * the order exists (`woocommerce_checkout_order_processed` /
  * `woocommerce_store_api_checkout_order_processed`), inside a locked FIFO
  * transaction, and released again when the order is cancelled or fails.
@@ -21,6 +23,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use StoreDash\Credit\Credit_Webhook;
 use StoreDash\Credit\Ledger;
+use StoreDash\Credit\Money;
+use StoreDash\Credit\Payment_Fee_Pass;
 use StoreDash\Credit\Settings;
 
 /**
@@ -83,6 +87,7 @@ class Spend_Handler {
 	 * Register hooks.
 	 */
 	public function register_hooks(): void {
+		Payment_Fee_Pass::instance();
 		add_action( 'woocommerce_cart_calculate_fees', array( $this, 'apply_fee' ), 20, 1 );
 		add_filter( 'woocommerce_cart_needs_payment', array( $this, 'cart_needs_payment' ), 20, 2 );
 		add_action( 'woocommerce_checkout_create_order_fee_item', array( $this, 'mark_fee_item' ), 10, 4 );
@@ -125,6 +130,15 @@ class Spend_Handler {
 			if ( $state['applied'] <= 0 ) {
 				return;
 			}
+
+			$applied  = (float) $state['applied'];
+			$decimals = wc_get_price_decimals();
+			Payment_Fee_Pass::instance()->claim(
+				self::FEE_ID,
+				static function ( float $payable ) use ( $applied, $decimals ): float {
+					return Money::round( min( $applied, $payable ), 'down', $decimals );
+				}
+			);
 
 			$cart->fees_api()->add_fee(
 				array(
@@ -212,34 +226,17 @@ class Spend_Handler {
 	}
 
 	/**
-	 * Cost (inc. tax) of the chosen shipping rates.
+	 * Cost (inc. tax) of the cart's shipping.
 	 *
-	 * Fees are calculated before shipping inside WC_Cart_Totals, so the cart's
-	 * own shipping total is still 0 here; read the chosen rates from the last
-	 * calculated packages instead (empty on the very first cart render — the
-	 * next recalculation picks it up).
+	 * WC_Cart_Totals calculates shipping BEFORE fees (since WC 3.2), so inside
+	 * the fee hook the cart already holds this pass's shipping total — also on
+	 * the very first render.
 	 *
 	 * @param \WC_Cart $cart Cart.
 	 * @return float
 	 */
 	protected function chosen_shipping_total( $cart ): float {
-		if ( ! function_exists( 'WC' ) || ! WC()->shipping() || ! WC()->session ) {
-			return 0.0;
-		}
-		$chosen   = (array) WC()->session->get( 'chosen_shipping_methods', array() );
-		$packages = WC()->shipping()->get_packages();
-		$total    = 0.0;
-
-		foreach ( $packages as $index => $package ) {
-			$rate_id = $chosen[ $index ] ?? '';
-			if ( '' === $rate_id || empty( $package['rates'][ $rate_id ] ) ) {
-				continue;
-			}
-			$rate   = $package['rates'][ $rate_id ];
-			$total += (float) $rate->get_cost() + (float) $rate->get_shipping_tax();
-		}
-
-		return $total;
+		return Payment_Fee_Pass::shipping_gross( $cart );
 	}
 
 	/**

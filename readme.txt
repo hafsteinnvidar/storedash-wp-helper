@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.23.2
+Stable tag: 1.24.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,13 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.24.0 =
+* New: gift cards. Tick "Gift card" on a simple or variable product and every unit sold becomes its own gift card code, worth the price paid. Codes are issued when the order is paid and emailed by Storedash to the recipient (or the buyer), on a chosen date if one was picked. Gift cards never expire.
+* Shoppers can add a recipient email, name, message and send date on the product page, and redeem codes at checkout (classic checkout, Cart/Checkout blocks and headless storefronts). A card pays as much of the order as it can, including shipping; whatever is left stays on the card.
+* Gift card products are not taxed at sale (VAT is charged when the card is used), are always virtual, and cannot be discounted with coupons, Storedash discounts or rewards credit. Gift cards cannot be used to buy gift cards.
+* Cancelled or failed orders give the card money back, refunds return the card part to the card, and refunding a gift card purchase takes the value off its cards.
+* Storedash can list gift cards, issue them by hand, adjust balances, disable or re-enable cards and resend the email.
 
 = 1.23.2 =
 * Headless storefront checkouts no longer create a second copy of the cart when a customer cancels or retries payment, so they get one abandoned-cart reminder instead of two (and none after paying on a retry).

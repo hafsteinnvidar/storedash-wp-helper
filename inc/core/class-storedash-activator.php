@@ -100,6 +100,9 @@ class StoreDash_Activator {
 		// Rewards credit ledger + rules mirror
 		self::create_credit_tables();
 
+		// Gift cards + their ledger
+		self::create_gift_card_tables();
+
 		self::maybe_upgrade_tables();
 
 		// Ensure custom interval exists during activation before scheduling.
@@ -441,6 +444,87 @@ class StoreDash_Activator {
 		dbDelta( $sql_rules );
 		if ( ! empty( $wpdb->last_error ) ) {
 			self::log( 'Database error during credit rules table creation: ' . $wpdb->last_error, 'error' );
+		}
+	}
+
+	/**
+	 * Create the gift card tables.
+	 *
+	 * Cards hold their live balance (codes only as HMAC hash + encrypted copy,
+	 * never raw); the ledger records every movement with the balance after it.
+	 * `idem_key` is UNIQUE so every write is idempotent, and
+	 * (order_item_id, unit_index) is UNIQUE so a purchase line mints one card
+	 * per unit even when status hooks race. Cards never expire.
+	 */
+	private static function create_gift_card_tables(): void {
+		global $wpdb;
+		$charset_collate = $wpdb->get_charset_collate();
+		$cards_table     = $wpdb->prefix . 'storedash_gift_cards';
+		$ledger_table    = $wpdb->prefix . 'storedash_gift_card_ledger';
+
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+		$sql_cards = "CREATE TABLE {$cards_table} (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            code_hash char(64) NOT NULL,
+            code_enc text DEFAULT NULL,
+            code_last4 char(4) NOT NULL DEFAULT '',
+            initial_amount decimal(19,4) NOT NULL DEFAULT 0,
+            balance decimal(19,4) NOT NULL DEFAULT 0,
+            currency varchar(3) NOT NULL DEFAULT '',
+            status varchar(16) NOT NULL DEFAULT 'active',
+            source varchar(16) NOT NULL DEFAULT 'purchase',
+            order_id bigint(20) unsigned DEFAULT NULL,
+            order_item_id bigint(20) unsigned DEFAULT NULL,
+            unit_index int(11) DEFAULT NULL,
+            product_id bigint(20) unsigned DEFAULT NULL,
+            purchaser_email varchar(191) DEFAULT NULL,
+            recipient_email varchar(191) DEFAULT NULL,
+            recipient_name varchar(191) DEFAULT NULL,
+            sender_name varchar(191) DEFAULT NULL,
+            message text DEFAULT NULL,
+            send_at datetime DEFAULT NULL,
+            sent_at datetime DEFAULT NULL,
+            note text DEFAULT NULL,
+            created_at datetime NOT NULL,
+            updated_at datetime NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY idx_code_hash (code_hash),
+            UNIQUE KEY idx_item_unit (order_item_id,unit_index),
+            KEY idx_order_id (order_id),
+            KEY idx_updated_at (updated_at)
+        ) $charset_collate;";
+
+		$sql_ledger = "CREATE TABLE {$ledger_table} (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            card_id bigint(20) unsigned NOT NULL,
+            type varchar(16) NOT NULL,
+            amount decimal(19,4) NOT NULL DEFAULT 0,
+            balance_after decimal(19,4) NOT NULL DEFAULT 0,
+            currency varchar(3) NOT NULL DEFAULT '',
+            order_id bigint(20) unsigned DEFAULT NULL,
+            refund_id bigint(20) unsigned DEFAULT NULL,
+            note text DEFAULT NULL,
+            meta longtext DEFAULT NULL,
+            idem_key varchar(191) NOT NULL,
+            created_at datetime NOT NULL,
+            PRIMARY KEY  (id),
+            UNIQUE KEY idx_idem_key (idem_key),
+            KEY idx_card_id (card_id),
+            KEY idx_order_id (order_id),
+            KEY idx_created_at (created_at)
+        ) $charset_collate;";
+
+		self::log( 'Creating gift card tables...' );
+
+		dbDelta( $sql_cards );
+		if ( ! empty( $wpdb->last_error ) ) {
+			self::log( 'Database error during gift card table creation: ' . $wpdb->last_error, 'error' );
+		}
+
+		dbDelta( $sql_ledger );
+		if ( ! empty( $wpdb->last_error ) ) {
+			self::log( 'Database error during gift card ledger table creation: ' . $wpdb->last_error, 'error' );
 		}
 	}
 

@@ -50,6 +50,11 @@ class Eligibility {
 			return true;
 		}
 
+		// Gift cards never earn or take rewards credit.
+		if ( class_exists( '\StoreDash\GiftCard\Product\Gift_Card_Product' ) && \StoreDash\GiftCard\Product\Gift_Card_Product::is_gift_card( $product ) ) {
+			return true;
+		}
+
 		$product_id = (int) $product->get_id();
 		$parent_id  = (int) $product->get_parent_id();
 

@@ -60,6 +60,13 @@ class StoreDash_API {
 	private $credit_controller;
 
 	/**
+	 * Gift cards module.
+	 *
+	 * @var StoreDash\GiftCard\Gift_Card_Manager
+	 */
+	private $gift_card_controller;
+
+	/**
 	 * Get singleton instance
 	 *
 	 * @return StoreDash_API
@@ -169,6 +176,17 @@ class StoreDash_API {
 					$this->credit_controller->init();
 				} catch ( Exception $e ) {
 					$this->log_api_error( 'Failed to initialize Credit Manager: ' . $e->getMessage() );
+				}
+			}
+
+			// Gift cards (cards + ledger, checkout fee, REST, Store API). Always on;
+			// gated by the synced `enabled` setting.
+			if ( class_exists( 'StoreDash\GiftCard\Gift_Card_Manager' ) ) {
+				try {
+					$this->gift_card_controller = new \StoreDash\GiftCard\Gift_Card_Manager();
+					$this->gift_card_controller->init();
+				} catch ( Exception $e ) {
+					$this->log_api_error( 'Failed to initialize Gift Card Manager: ' . $e->getMessage() );
 				}
 			}
 
