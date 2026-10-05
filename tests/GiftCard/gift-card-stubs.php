@@ -37,6 +37,8 @@ if ( ! function_exists( 'get_post_meta' ) ) {
 
 $storedash_gc_root = __DIR__ . '/../../inc/';
 require_once $storedash_gc_root . 'Credit/Money.php';
+require_once $storedash_gc_root . 'Credit/Payment_Fee_Pass.php';
+require_once $storedash_gc_root . 'Credit/Engine/Fee_Calculator.php';
 require_once $storedash_gc_root . 'GiftCard/Settings.php';
 require_once $storedash_gc_root . 'GiftCard/Code.php';
 require_once $storedash_gc_root . 'GiftCard/Serializer.php';
