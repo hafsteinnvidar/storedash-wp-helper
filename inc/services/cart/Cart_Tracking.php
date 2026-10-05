@@ -88,6 +88,10 @@ class Cart_Tracking {
 		add_action( 'woocommerce_payment_complete', array( $this, 'unset_cart_token' ), 20 );
 		add_action( 'woocommerce_thankyou', array( $this, 'unset_cart_token' ), 20 );
 
+		// Headless storefronts never reach either hook above in the shopper's
+		// session; emptying the cart (after the order is confirmed) is their end.
+		add_action( 'woocommerce_cart_emptied', array( $this, 'maybe_unset_cart_token_for_storefront' ), 20 );
+
 		// Checkout order processed - use priority 10 to run before cart token is unset
 		add_action( 'woocommerce_checkout_order_processed', array( $this, 'checkout_order_processed' ), 10 );
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'checkout_order_processed' ), 10 );
@@ -676,11 +680,10 @@ class Cart_Tracking {
 		}
 
 		// The Store API checkout fires its update-customer hook before the order
-		// is created, which queues a shutdown sync. The cart keeps its items until
-		// payment completes, so once the token is released below that sync would
-		// mint a fresh token and record the just-ordered cart as a new active cart
-		// (later "abandoned"). The order is placed — nothing left to track in this
-		// request.
+		// is created, which queues a shutdown sync. The order is placed — nothing
+		// left to track in this request (and a gateway that empties the cart in
+		// process_payment releases the token, which would let that sync mint a
+		// fresh one for the just-ordered cart).
 		if ( \StoreDash_Helpers::is_storefront_request() ) {
 			self::$no_sync = true;
 		}
@@ -769,14 +772,29 @@ class Cart_Tracking {
 			$this->mark_order_as_recovered( $order );
 		}
 
-		// A headless storefront never loads the thank-you page, and the payment
-		// callback runs outside the shopper's session, so neither unset_cart_token()
-		// hook reaches this session. Release the token now that the order carries
-		// it — otherwise the shopper's next cart reuses a converted token and is
-		// never tracked.
-		if ( \StoreDash_Helpers::is_storefront_request() ) {
-			$this->unset_cart_token();
+		// Storefront carts keep their token here, like the classic checkout does
+		// until the thank-you page: the cart still holds its items until payment,
+		// so a shopper who cancels at the gateway and retries must reuse this
+		// cart, not mint a duplicate. maybe_unset_cart_token_for_storefront()
+		// releases it once the storefront empties the confirmed cart.
+	}
+
+	/**
+	 * Release the cart token when a headless storefront empties the cart.
+	 *
+	 * A headless storefront never loads the WP thank-you page, and the payment
+	 * callback runs outside the shopper's session, so neither unset_cart_token()
+	 * hook reaches this session. The storefront empties the cart once the order
+	 * is confirmed; release the token then so the shopper's next cart is
+	 * tracked under a fresh one. Limited to storefront requests — WordPress
+	 * checkouts keep their existing release points.
+	 */
+	public function maybe_unset_cart_token_for_storefront() {
+		if ( ! \StoreDash_Helpers::is_storefront_request() ) {
+			return;
 		}
+
+		$this->unset_cart_token();
 	}
 
 	/**
