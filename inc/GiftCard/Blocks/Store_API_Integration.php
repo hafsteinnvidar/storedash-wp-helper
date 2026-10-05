@@ -64,7 +64,7 @@ class Store_API_Integration {
 						'endpoint'        => $endpoint,
 						'namespace'       => self::NAMESPACE,
 						'data_callback'   => array( $this, 'cart_data' ),
-						'schema_callback' => array( $this, 'cart_schema' ),
+						'schema_callback' => 'checkout' === $endpoint ? array( $this, 'checkout_schema_callback' ) : array( $this, 'cart_schema' ),
 						'schema_type'     => ARRAY_A,
 					)
 				);
@@ -211,6 +211,22 @@ class Store_API_Integration {
 	 */
 	public function product_schema(): array {
 		return array( 'is_gift_card' => self::prop( 'boolean', __( 'Whether this product is a gift card.', 'storedash' ) ) );
+	}
+
+	/**
+	 * Checkout endpoint schema: intentionally empty.
+	 *
+	 * On the checkout route the `extensions` schema is also the REQUEST schema
+	 * (CheckoutSchema exposes it as an input arg, and WordPress validates nested
+	 * properties regardless of `readonly`). Clients that echo the cart's
+	 * extension data back — or send anything else under this namespace — would
+	 * get `400 rest_invalid_param` on every checkout. An empty property list
+	 * accepts any input; the response still carries the data.
+	 *
+	 * @return array
+	 */
+	public function checkout_schema_callback(): array {
+		return array();
 	}
 
 	/**

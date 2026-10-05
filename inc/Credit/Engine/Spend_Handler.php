@@ -201,7 +201,7 @@ class Spend_Handler {
 		$eligible = 0.0;
 		$subtotal = 0.0;
 		foreach ( $cart->get_cart() as $item ) {
-			$line_total = (float) ( $item['line_total'] ?? 0 ) + (float) ( $item['line_tax'] ?? 0 );
+			$line_total = self::line_gross( $item, $decimals );
 			$subtotal  += $line_total;
 
 			$product = $item['data'] ?? null;
@@ -223,6 +223,23 @@ class Spend_Handler {
 		$state['applied']        = ! empty( $request['apply'] ) ? Fee_Calculator::applied( $state['max_applicable'], $request['amount'], $decimals ) : 0.0;
 
 		return $state;
+	}
+
+	/**
+	 * Gross (inc. tax) total of a cart line, rounded to the store's decimals.
+	 *
+	 * WooCommerce keeps line_total / line_tax unrounded (12 000 kr × 2 incl.
+	 * 24% VAT = 19 354.84 + 4 645.16 → 23 999.99…); without rounding the floor in
+	 * Fee_Calculator left the shopper 1 kr to pay.
+	 *
+	 * Pure function — unit tested.
+	 *
+	 * @param array $item     Cart item.
+	 * @param int   $decimals Price decimals.
+	 * @return float
+	 */
+	public static function line_gross( array $item, int $decimals ): float {
+		return round( (float) ( $item['line_total'] ?? 0 ) + (float) ( $item['line_tax'] ?? 0 ), $decimals );
 	}
 
 	/**

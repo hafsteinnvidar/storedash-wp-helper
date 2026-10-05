@@ -2,9 +2,13 @@
 /**
  * Failed gift card apply attempts limiter (contract D).
  *
- * More than MAX failed applies within WINDOW seconds per WC session OR per IP
- * blocks further applies until the window passes. Counters live in
- * transients; the window starts at the first failure.
+ * Failed applies are counted per WC session AND per IP. A key that reaches its
+ * limit within WINDOW seconds blocks further applies until the window passes.
+ * Session: 5 / 10 min (contract D). IP: 30 / 10 min — headless storefronts
+ * proxy the Store API server-side, so many shoppers can share one IP (the
+ * storefront should forward the shopper IP in X-Forwarded-For, which
+ * WC_Geolocation reads). Codes carry ~78 bits, so this is defense in depth.
+ * Limits are filterable via `storedash_gift_card_rate_limits`.
  *
  * @package StoreDash\GiftCard\Engine
  * @since   1.24.0
@@ -24,9 +28,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Rate_Limiter {
 
 	/**
-	 * Failures allowed per window.
+	 * Failures allowed per window, per session.
 	 */
-	const MAX = 5;
+	const MAX_SESSION = 5;
+
+	/**
+	 * Failures allowed per window, per IP.
+	 */
+	const MAX_IP = 30;
 
 	/**
 	 * Window in seconds.
@@ -34,21 +43,45 @@ class Rate_Limiter {
 	const WINDOW = 600;
 
 	/**
-	 * Counter keys for the current shopper (session + IP).
+	 * Effective limits.
 	 *
-	 * @return string[]
+	 * @return array { session: int, ip: int, window: int }
+	 */
+	public function limits(): array {
+		$limits = array(
+			'session' => self::MAX_SESSION,
+			'ip'      => self::MAX_IP,
+			'window'  => self::WINDOW,
+		);
+		if ( function_exists( 'apply_filters' ) ) {
+			$filtered = apply_filters( 'storedash_gift_card_rate_limits', $limits );
+			if ( is_array( $filtered ) ) {
+				foreach ( $limits as $key => $value ) {
+					if ( isset( $filtered[ $key ] ) && (int) $filtered[ $key ] > 0 ) {
+						$limits[ $key ] = (int) $filtered[ $key ];
+					}
+				}
+			}
+		}
+		return $limits;
+	}
+
+	/**
+	 * Counter keys for the current shopper.
+	 *
+	 * @return array { session?: string, ip?: string }
 	 */
 	public function current_keys(): array {
 		$keys = array();
 		if ( function_exists( 'WC' ) && WC()->session ) {
 			$session_id = (string) WC()->session->get_customer_id();
 			if ( '' !== $session_id ) {
-				$keys[] = 'storedash_gc_rl_s_' . md5( $session_id );
+				$keys['session'] = 'storedash_gc_rl_s_' . md5( $session_id );
 			}
 		}
 		$ip = class_exists( '\WC_Geolocation' ) ? (string) \WC_Geolocation::get_ip_address() : '';
 		if ( '' !== $ip ) {
-			$keys[] = 'storedash_gc_rl_i_' . md5( $ip );
+			$keys['ip'] = 'storedash_gc_rl_i_' . md5( $ip );
 		}
 		return $keys;
 	}
@@ -56,14 +89,16 @@ class Rate_Limiter {
 	/**
 	 * Whether any key has used up its failures.
 	 *
-	 * @param string[] $keys Counter keys.
+	 * @param array $keys type (session|ip) => counter key.
 	 * @return bool
 	 */
 	public function is_limited( array $keys ): bool {
-		$now = $this->now();
-		foreach ( $keys as $key ) {
+		$limits = $this->limits();
+		$now    = $this->now();
+		foreach ( $keys as $type => $key ) {
+			$max   = 'ip' === $type ? $limits['ip'] : $limits['session'];
 			$entry = $this->read( $key );
-			if ( $entry && $now - $entry['first'] < self::WINDOW && $entry['count'] >= self::MAX ) {
+			if ( $entry && $now - $entry['first'] < $limits['window'] && $entry['count'] >= $max ) {
 				return true;
 			}
 		}
@@ -73,20 +108,21 @@ class Rate_Limiter {
 	/**
 	 * Record one failed attempt on every key.
 	 *
-	 * @param string[] $keys Counter keys.
+	 * @param array $keys type (session|ip) => counter key.
 	 */
 	public function record_failure( array $keys ): void {
-		$now = $this->now();
+		$window = $this->limits()['window'];
+		$now    = $this->now();
 		foreach ( $keys as $key ) {
 			$entry = $this->read( $key );
-			if ( ! $entry || $now - $entry['first'] >= self::WINDOW ) {
+			if ( ! $entry || $now - $entry['first'] >= $window ) {
 				$entry = array(
 					'count' => 0,
 					'first' => $now,
 				);
 			}
 			++$entry['count'];
-			$this->write( $key, $entry, max( 1, self::WINDOW - ( $now - $entry['first'] ) ) );
+			$this->write( $key, $entry, max( 1, $window - ( $now - $entry['first'] ) ) );
 		}
 	}
 

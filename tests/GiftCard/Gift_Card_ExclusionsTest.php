@@ -15,6 +15,31 @@ require_once __DIR__ . '/gift-card-stubs.php';
 require_once __DIR__ . '/../../inc/Credit/Engine/Eligibility.php';
 
 /**
+ * Product double with the save-time setters/getters.
+ */
+class Gift_Card_Saving_Product extends WC_Product {
+	public $meta        = array();
+	public $virtual     = false;
+	public $tax_status  = 'taxable';
+
+	public function get_meta( $key = '', $single = true, $context = 'view' ) {
+		return $this->meta[ $key ] ?? '';
+	}
+	public function get_virtual( $context = 'view' ) {
+		return $this->virtual;
+	}
+	public function set_virtual( $virtual ) {
+		$this->virtual = (bool) $virtual;
+	}
+	public function get_tax_status( $context = 'view' ) {
+		return $this->tax_status;
+	}
+	public function set_tax_status( $status ) {
+		$this->tax_status = $status;
+	}
+}
+
+/**
  * Matcher without its DB handler.
  */
 class Gift_Card_Test_Discount_Matcher extends Discount_Matcher {
@@ -90,5 +115,29 @@ class Gift_Card_ExclusionsTest extends TestCase {
 		$this->assertTrue( $flag->filter_is_virtual( false, $gift ) );
 		$this->assertSame( 'none', $flag->filter_tax_status( 'taxable', $gift ) );
 		$this->assertSame( 'taxable', $flag->filter_tax_status( 'taxable', new WC_Product( self::PLAIN ) ) );
+	}
+
+	public function test_any_save_forces_virtual_and_tax_none() {
+		$flag = new Gift_Card_Product();
+
+		// Parent created via WC REST with the flag in meta_data, not yet saved (id 0).
+		$parent                                     = new Gift_Card_Saving_Product( 0 );
+		$parent->meta['_storedash_gift_card']       = 'yes';
+		$flag->enforce_on_save( $parent );
+		$this->assertTrue( $parent->virtual );
+		$this->assertSame( 'none', $parent->tax_status );
+
+		// Variation of a flagged parent: virtual (tax status is inherited from the parent).
+		$variation            = new Gift_Card_Saving_Product( 9104 );
+		$variation->parent_id = self::GIFT_PARENT;
+		$flag->enforce_on_save( $variation );
+		$this->assertTrue( $variation->virtual );
+		$this->assertSame( 'taxable', $variation->tax_status );
+
+		// Plain product untouched.
+		$plain = new Gift_Card_Saving_Product( self::PLAIN );
+		$flag->enforce_on_save( $plain );
+		$this->assertFalse( $plain->virtual );
+		$this->assertSame( 'taxable', $plain->tax_status );
 	}
 }

@@ -170,6 +170,11 @@ if ( ! class_exists( 'StoreDash_Helpers' ) ) {
 		}
 
 		public static function debug_log( $message, $context = array() ) {}
+
+		/** Outbound webhooks are never sent from unit tests. */
+		public static function is_store_connected(): bool {
+			return false;
+		}
 	}
 }
 

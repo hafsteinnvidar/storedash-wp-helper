@@ -20,7 +20,7 @@ Contracts: woo-dash `docs/plans/2026-10-05-gift-cards-contracts.md` (frozen for 
 | `Engine/Issuer.php` | Mint on paid status, one card per unit, `issue:{order_item_id}:{unit}`. |
 | `Engine/Redemption.php` | Session apply/remove, fee per card (`woocommerce_cart_calculate_fees`:30), claimed in `Credit\Payment_Fee_Pass`. |
 | `Engine/Fee_Allocator.php` | Pure cap math (unit tested). |
-| `Engine/Rate_Limiter.php` | 5 failed applies / 10 min per session or IP (transients). |
+| `Engine/Rate_Limiter.php` | Failed applies per 10 min: 5 per session, 30 per IP (headless proxies share IPs; forward X-Forwarded-For). Filter `storedash_gift_card_rate_limits`. |
 | `Engine/Reservation.php` | Spend on order processed (one locked transaction), re-sync on retry, release on cancelled/failed. |
 | `Engine/Refund_Handler.php` | Card part of a refund back to the cards; refunded gift card purchases reduce their cards. |
 | `Checkout/Classic_Checkout.php` | Code box on `woocommerce_review_order_before_submit` + `wc_ajax_storedash_gift_card_{apply,remove}` + `assets/js/gift-card-checkout.js`. |

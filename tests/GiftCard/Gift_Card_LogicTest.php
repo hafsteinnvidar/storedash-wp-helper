@@ -342,17 +342,61 @@ class Gift_Card_LogicTest extends TestCase {
 
 	// ── Rate limiting ─────────────────────────────────────────────────────
 
-	public function test_sixth_failed_code_within_ten_minutes_is_blocked() {
+	public function test_sixth_failed_code_in_one_session_is_blocked() {
 		$limiter = new Memory_Rate_Limiter();
-		$keys    = array( 'session-key', 'ip-key' );
+		$keys    = array(
+			'session' => 'session-a',
+			'ip'      => 'ip-shared',
+		);
 		for ( $i = 0; $i < 5; $i++ ) {
 			$this->assertFalse( $limiter->is_limited( $keys ) );
 			$limiter->record_failure( $keys );
 		}
 		$this->assertTrue( $limiter->is_limited( $keys ) );
-		$this->assertTrue( $limiter->is_limited( array( 'other-session', 'ip-key' ) ), 'same IP, new session is still blocked' );
+
+		// Another shopper behind the same (proxy) IP is not blocked yet.
+		$this->assertFalse(
+			$limiter->is_limited(
+				array(
+					'session' => 'session-b',
+					'ip'      => 'ip-shared',
+				)
+			)
+		);
 
 		$limiter->clock += 601;
 		$this->assertFalse( $limiter->is_limited( $keys ) );
+	}
+
+	public function test_ip_is_blocked_after_30_failures_across_sessions() {
+		$limiter = new Memory_Rate_Limiter();
+		for ( $i = 0; $i < 30; $i++ ) {
+			$keys = array(
+				'session' => 'session-' . intdiv( $i, 4 ), // Never 5 in one session.
+				'ip'      => 'ip-shared',
+			);
+			$this->assertFalse( $limiter->is_limited( $keys ), "attempt {$i}" );
+			$limiter->record_failure( $keys );
+		}
+		$this->assertTrue(
+			$limiter->is_limited(
+				array(
+					'session' => 'fresh',
+					'ip'      => 'ip-shared',
+				)
+			)
+		);
+		$this->assertFalse( $limiter->is_limited( array( 'session' => 'fresh', 'ip' => 'other-ip' ) ) );
+	}
+
+	public function test_rate_limit_defaults() {
+		$this->assertSame(
+			array(
+				'session' => 5,
+				'ip'      => 30,
+				'window'  => 600,
+			),
+			( new Memory_Rate_Limiter() )->limits()
+		);
 	}
 }

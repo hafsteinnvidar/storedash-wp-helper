@@ -4,8 +4,8 @@
  *
  * - Parent meta `_storedash_gift_card = yes` (simple or variable; variations
  *   inherit). Checkbox in the product General tab.
- * - Saving a flagged product forces virtual=yes and tax_status=none (VAT is
- *   charged at redemption, never at sale). The same is enforced at runtime
+ * - Saving a flagged product — from wp-admin, WC REST, imports or code — forces
+ *   virtual=yes and tax_status=none (VAT is charged at redemption, never at sale). The same is enforced at runtime
  *   through getter filters, so a later manual change cannot make a gift card
  *   taxable or shippable.
  * - Gift card products are excluded from WooCommerce coupons (Storedash
@@ -100,6 +100,9 @@ class Gift_Card_Product {
 		add_action( 'woocommerce_product_options_general_product_data', array( $this, 'render_field' ) );
 		add_action( 'woocommerce_admin_process_product_object', array( $this, 'save_product' ), 20, 1 );
 		add_action( 'woocommerce_admin_process_variation_object', array( $this, 'save_variation' ), 20, 2 );
+		// Every other save path too (WC REST, Storedash sync, imports, code): products
+		// and variations both fire woocommerce_before_product_object_save.
+		add_action( 'woocommerce_before_product_object_save', array( $this, 'enforce_on_save' ), 20, 1 );
 
 		// Runtime enforcement: virtual + not taxable.
 		add_filter( 'woocommerce_is_virtual', array( $this, 'filter_is_virtual' ), 20, 2 );
@@ -161,6 +164,37 @@ class Gift_Card_Product {
 					$variation->save();
 				}
 			}
+		}
+	}
+
+	/**
+	 * Any save: a flagged product (or a variation of one) is stored virtual and
+	 * tax-free, so the WC REST API, sync and the dashboard see the real values.
+	 *
+	 * @param \WC_Product $product Product or variation about to be saved.
+	 */
+	public function enforce_on_save( $product ): void {
+		if ( ! $product instanceof \WC_Product ) {
+			return;
+		}
+		$parent_id = (int) $product->get_parent_id();
+		if ( $parent_id > 0 ) {
+			$flagged = self::is_gift_card_id( $parent_id );
+		} else {
+			// Read the object's own (possibly unsaved) meta — REST sets it in the same save.
+			$flagged = 'yes' === (string) $product->get_meta( self::META, true, 'edit' );
+			if ( (int) $product->get_id() > 0 ) {
+				self::$cache[ (int) $product->get_id() ] = $flagged;
+			}
+		}
+		if ( ! $flagged ) {
+			return;
+		}
+		if ( ! $product->get_virtual( 'edit' ) ) {
+			$product->set_virtual( true );
+		}
+		if ( 0 === $parent_id && 'none' !== $product->get_tax_status( 'edit' ) ) {
+			$product->set_tax_status( 'none' );
 		}
 	}
 

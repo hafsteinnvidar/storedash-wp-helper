@@ -206,15 +206,33 @@ class Reservation {
 			\StoreDash_Helpers::log_message( 'Gift card reserve failed: ' . $result->get_error_message(), 'error', array( 'order_id' => $order->get_id() ) );
 			$order->add_order_note( __( 'Gift card payment could not be reserved: the card balance changed. The gift card was removed from this order.', 'storedash' ) );
 
+			// Only the cards that could not be (re)spent lose their fee lines;
+			// cards still held by the order keep theirs.
+			$this->strip_card_fees( $order, array_keys( $plan['spend'] ) );
+
 			if ( $checkout ) {
-				$this->strip_card_fees( $order );
 				$message = __( 'Your gift card balance has changed. Please re-enter your gift card and try again.', 'storedash' );
 				if ( $store_api && class_exists( '\Automattic\WooCommerce\StoreApi\Exceptions\RouteException' ) ) {
 					throw new \Automattic\WooCommerce\StoreApi\Exceptions\RouteException( 'storedash_gift_card_insufficient', esc_html( $message ), 400 );
 				}
 				throw new \Exception( esc_html( $message ) );
 			}
-			$order->save();
+
+			// Reactivated order (e.g. cancelled → processing): the total now includes
+			// the part the card no longer covers, which nobody has paid yet.
+			$this->write_applied_meta( $order, self::fees_on_order( $order ) );
+			if ( in_array( $order->get_status(), array( 'processing', 'completed' ), true ) ) {
+				$order->update_status(
+					'on-hold',
+					sprintf(
+						/* translators: %s: new order total */
+						__( 'Gift card could not be charged again, so the order total is now %s and has not been paid. Collect the payment before shipping.', 'storedash' ),
+						wp_strip_all_tags( wc_price( (float) $order->get_total(), array( 'currency' => $order->get_currency() ) ) )
+					)
+				);
+			} else {
+				$order->save();
+			}
 			return;
 		}
 
@@ -320,12 +338,15 @@ class Reservation {
 	/**
 	 * Remove gift card fee lines and recompute totals (no tax recalculation).
 	 *
-	 * @param \WC_Order $order Order.
+	 * @param \WC_Order $order    Order.
+	 * @param int[]     $card_ids Only these cards' lines (all when empty).
 	 */
-	protected function strip_card_fees( \WC_Order $order ): void {
+	protected function strip_card_fees( \WC_Order $order, array $card_ids = array() ): void {
+		$card_ids = array_map( 'intval', $card_ids );
 		try {
 			foreach ( $order->get_items( 'fee' ) as $item_id => $fee ) {
-				if ( (int) $fee->get_meta( Redemption::FEE_ITEM_META, true ) > 0 ) {
+				$card_id = (int) $fee->get_meta( Redemption::FEE_ITEM_META, true );
+				if ( $card_id > 0 && ( empty( $card_ids ) || in_array( $card_id, $card_ids, true ) ) ) {
 					$order->remove_item( $item_id );
 				}
 			}
