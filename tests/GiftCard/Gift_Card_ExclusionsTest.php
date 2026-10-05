@@ -1,7 +1,8 @@
 <?php
 /**
- * Gift card products are excluded from Storedash discounts, Rewards credit
- * (earn + spend) and WooCommerce coupons, and are forced virtual + tax-free.
+ * Gift card products: excluded from Storedash automatic discounts and from
+ * Rewards credit EARN; WooCommerce coupons and Rewards credit SPEND are allowed;
+ * always virtual + tax-free.
  *
  * @package StoreDash\Tests\GiftCard
  */
@@ -9,10 +10,12 @@
 use PHPUnit\Framework\TestCase;
 use StoreDash\Credit\Engine\Eligibility;
 use StoreDash\Discounts\Engine\Discount_Matcher;
+use StoreDash\GiftCard\Checkout\Gift_Card_Only_Checkout;
 use StoreDash\GiftCard\Product\Gift_Card_Product;
 
 require_once __DIR__ . '/gift-card-stubs.php';
 require_once __DIR__ . '/../../inc/Credit/Engine/Eligibility.php';
+require_once __DIR__ . '/../../inc/GiftCard/Checkout/Gift_Card_Only_Checkout.php';
 
 /**
  * Product double with the save-time setters/getters.
@@ -88,33 +91,45 @@ class Gift_Card_ExclusionsTest extends TestCase {
 		$this->assertFalse( $matcher->discount_applies_to_product( $discount, $this->variation_of_gift_card() ) );
 	}
 
-	public function test_rewards_credit_treats_gift_cards_as_excluded() {
+	public function test_rewards_credit_earn_skips_gift_cards_but_spend_allows_them() {
 		$eligibility = new Eligibility();
-		$this->assertTrue( $eligibility->product_excluded( $this->variation_of_gift_card(), array() ) );
-		$this->assertFalse( $eligibility->product_excluded( new WC_Product( self::PLAIN ), array() ) );
+		$this->assertTrue( $eligibility->excluded_from_earn( $this->variation_of_gift_card(), array() ) );
+		$this->assertFalse( $eligibility->product_excluded( $this->variation_of_gift_card(), array() ), 'credit may pay for a gift card' );
+		$this->assertFalse( $eligibility->excluded_from_earn( new WC_Product( self::PLAIN ), array() ) );
 	}
 
-	public function test_coupons_and_runtime_enforcement() {
+	public function test_coupons_allowed_and_runtime_enforcement() {
 		$flag = new Gift_Card_Product();
 		$gift = $this->variation_of_gift_card();
 
-		$this->assertFalse( $flag->filter_coupon_valid_for_product( true, $gift ) );
-		$this->assertTrue( $flag->filter_coupon_valid_for_product( true, new WC_Product( self::PLAIN ) ) );
-
-		$items = $flag->filter_coupon_items(
-			array(
-				(object) array( 'product' => $gift ),
-				(object) array( 'product' => new WC_Product( self::PLAIN ) ),
-			)
-		);
-		$this->assertCount( 1, $items );
-
-		$this->assertSame( 0, $flag->filter_coupon_discount( 500, 1000, array( 'data' => $gift ) ) );
-		$this->assertSame( 500, $flag->filter_coupon_discount( 500, 1000, array( 'data' => new WC_Product( self::PLAIN ) ) ) );
+		$this->assertFalse( method_exists( $flag, 'filter_coupon_valid_for_product' ), 'coupons are allowed on gift cards' );
 
 		$this->assertTrue( $flag->filter_is_virtual( false, $gift ) );
 		$this->assertSame( 'none', $flag->filter_tax_status( 'taxable', $gift ) );
 		$this->assertSame( 'taxable', $flag->filter_tax_status( 'taxable', new WC_Product( self::PLAIN ) ) );
+	}
+
+	public function test_gift_card_only_cart_detection_and_locale_relaxing() {
+		$gift  = array( 'data' => $this->variation_of_gift_card() );
+		$plain = array( 'data' => new WC_Product( self::PLAIN ) );
+		$this->assertTrue( Gift_Card_Only_Checkout::is_gift_card_only( array( $gift, $gift ) ) );
+		$this->assertFalse( Gift_Card_Only_Checkout::is_gift_card_only( array( $gift, $plain ) ) );
+		$this->assertFalse( Gift_Card_Only_Checkout::is_gift_card_only( array() ) );
+
+		$entry = Gift_Card_Only_Checkout::relax_entry(
+			array(
+				'first_name' => array( 'required' => true ),
+				'postcode'   => array( 'required' => true, 'label' => 'Postcode' ),
+				'country'    => array( 'required' => true ),
+			)
+		);
+		foreach ( array( 'address_1', 'address_2', 'city', 'state', 'postcode' ) as $field ) {
+			$this->assertFalse( $entry[ $field ]['required'], $field );
+			$this->assertTrue( $entry[ $field ]['hidden'], $field );
+		}
+		$this->assertSame( 'Postcode', $entry['postcode']['label'] );
+		$this->assertTrue( $entry['first_name']['required'], 'name stays required' );
+		$this->assertTrue( $entry['country']['required'], 'country stays required' );
 	}
 
 	public function test_any_save_forces_virtual_and_tax_none() {

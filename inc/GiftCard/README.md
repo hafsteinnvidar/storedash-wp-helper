@@ -24,6 +24,7 @@ Contracts: woo-dash `docs/plans/2026-10-05-gift-cards-contracts.md` (frozen for 
 | `Engine/Reservation.php` | Spend on order processed (one locked transaction), re-sync on retry, release on cancelled/failed. |
 | `Engine/Refund_Handler.php` | Card part of a refund back to the cards; refunded gift card purchases reduce their cards. |
 | `Checkout/Classic_Checkout.php` | Code box on `woocommerce_review_order_before_submit` + `wc_ajax_storedash_gift_card_{apply,remove}` + `assets/js/gift-card-checkout.js`. |
+| `Checkout/Gift_Card_Only_Checkout.php` | No billing address for gift-card-only carts (classic, blocks, Store API). |
 | `Checkout/Blocks_Checkout.php` | `assets/js/gift-card-blocks.js` (no build): DiscountsMeta slot fill → `extensionCartUpdate`. |
 | `Blocks/Store_API_Integration.php` | `extensions.storedash_gift_card` on cart / checkout / cart-item / product; update callback namespace `storedash_gift_card`. |
 
@@ -34,7 +35,8 @@ Contracts: woo-dash `docs/plans/2026-10-05-gift-cards-contracts.md` (frozen for 
 - Idempotency keys (UNIQUE `idem_key`): `issue:{order_item_id}:{unit}`, `issue:manual:{key}`, `spend:{order}:{card}:{n}`, `release:{order}:{card}:{n}`, `refund:{refund_id}:{card}`, `refund:order-{order}:{card}` (order marked Refunded), `refund_purchase:{refund_id}:{card}`, `adjust:{key}`, `disable|enable:{card}:{n}`. Cards also UNIQUE on `(order_item_id, unit_index)`.
 - What an order holds per card = spent − released − refunded (`Card_Ledger::summarize_order_rows`).
 - Fee id `storedash_gift_card_{id}`, name "Gift card ····K9QZ" (is: "Gjafabréf ····K9QZ"); order fee line meta `_storedash_gift_card_id`; order meta `_storedash_gift_cards_applied` = `[{card_id, last4, amount}]`. Purchase line meta `_storedash_gc_card_ids`. **storedash-sync must preserve `_storedash_gift_card*` and `_storedash_gc_*`.**
-- Gift card products: virtual, `tax_status=none` (forced on save AND by getter filters), excluded from WC coupons, Storedash discounts (`Discount_Matcher`) and Rewards credit earn + spend (`Eligibility::product_excluded`). A card cannot be applied while the cart holds a gift card product.
+- Gift card products: virtual, `tax_status=none` (forced on every save AND by getter filters). WooCommerce coupons DO apply (card value stays the pre-coupon line subtotal ÷ qty; a purchase refund takes back the refunded share of the FACE value). Excluded from Storedash automatic discounts (`Discount_Matcher`) and Rewards credit EARN (`Eligibility::excluded_from_earn`); Rewards credit may PAY for them. A card cannot be applied while the cart holds a gift card product.
+- Gift-card-only carts (`Checkout/Gift_Card_Only_Checkout.php`): billing address_1/2, city, state, postcode optional + hidden (country locales + `woocommerce_billing_fields`, locale cache reset once the cart is known); name + email still required; Store API checkout without a country gets the store base country. Cart extension `gift_card_only` tells storefronts.
 
 ## The totals trap (how the fee covers shipping)
 

@@ -11,7 +11,7 @@
  *    cards in full). Orders paid entirely by card (cash total 0) use the value
  *    of the refunded lines instead. `refund:{refund_id}:{card_id}`.
  * 2. Refund of a gift card PURCHASE line: the cards minted for that line lose
- *    the refunded value (never below 0; what was already spent is noted on the
+ *    the refunded share of their FACE value (coupons may have discounted the line) (never below 0; what was already spent is noted on the
  *    order for the merchant). `adjust` row, `refund_purchase:{refund_id}:{card_id}`.
  *
  * Marking an order Refunded also returns whatever the cards still hold on it
@@ -132,6 +132,37 @@ class Refund_Handler {
 		}
 
 		return $out;
+	}
+
+	/**
+	 * Card value to take back for a refunded gift card purchase line.
+	 *
+	 * Pure function — unit tested. Coupons may discount gift card lines, but a
+	 * card is always worth its pre-coupon face value, so the refunded share of
+	 * what was PAID maps to the same share of the face value (a 10k card bought
+	 * for 8k and refunded 8k loses 10k). A line paid 0 (100% coupon) uses the
+	 * refunded quantity.
+	 *
+	 * @param float $refunded_paid Refunded amount on the line (incl. tax).
+	 * @param int   $refunded_qty  Refunded quantity.
+	 * @param float $line_paid     Line total paid (incl. tax, after coupons).
+	 * @param float $line_face     Line subtotal (pre-coupon) = total face value.
+	 * @param int   $line_qty      Ordered quantity.
+	 * @param int   $decimals      Price decimals.
+	 * @return float
+	 */
+	public static function face_value_refunded( float $refunded_paid, int $refunded_qty, float $line_paid, float $line_face, int $line_qty, int $decimals ): float {
+		if ( $line_face <= 0 ) {
+			return 0.0;
+		}
+		if ( $line_paid > Money::EPSILON ) {
+			$share = max( 0.0, min( 1.0, $refunded_paid / $line_paid ) );
+			return round( $line_face * $share, $decimals );
+		}
+		if ( $line_qty > 0 && $refunded_qty > 0 ) {
+			return round( $line_face * min( 1.0, $refunded_qty / $line_qty ), $decimals );
+		}
+		return 0.0;
 	}
 
 	/**
@@ -341,7 +372,14 @@ class Refund_Handler {
 			if ( empty( $card_ids ) || ! is_array( $card_ids ) ) {
 				continue;
 			}
-			$value = abs( (float) $refund_item->get_total() ) + abs( (float) $refund_item->get_total_tax() );
+			$value = self::face_value_refunded(
+				abs( (float) $refund_item->get_total() ) + abs( (float) $refund_item->get_total_tax() ),
+				abs( (int) $refund_item->get_quantity() ),
+				(float) $original->get_total() + (float) $original->get_total_tax(),
+				(float) $original->get_subtotal(),
+				(int) $original->get_quantity(),
+				$decimals
+			);
 			if ( $value <= 0 ) {
 				continue;
 			}

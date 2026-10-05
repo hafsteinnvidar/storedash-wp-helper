@@ -230,7 +230,7 @@ class Earn_Handler {
 			$lines[] = array(
 				'total'    => (float) $item->get_total(),
 				'tax'      => (float) $item->get_total_tax(),
-				'excluded' => ! $product || $this->eligibility->product_excluded( $product, $settings ),
+				'excluded' => ! $product || $this->eligibility->excluded_from_earn( $product, $settings ),
 				'on_sale'  => $product ? $this->eligibility->is_on_sale( $product ) : false,
 			);
 			if ( $product ) {

@@ -24,6 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use StoreDash\Credit\Payment_Fee_Pass;
 use StoreDash\GiftCard\Card_Ledger;
+use StoreDash\GiftCard\Checkout\Gift_Card_Only_Checkout;
 use StoreDash\GiftCard\Code;
 use StoreDash\GiftCard\Product\Gift_Card_Product;
 use StoreDash\GiftCard\Settings;
@@ -334,7 +335,7 @@ class Redemption {
 	 * Full state for the Store API / checkout UIs (major-unit floats).
 	 *
 	 * @param \WC_Cart|null $cart Cart.
-	 * @return array { enabled, max_cards, cart_has_gift_card, currency, cards: [{id,last4,balance,applied}], applied_total }
+	 * @return array { enabled, max_cards, cart_has_gift_card, gift_card_only, currency, cards: [{id,last4,balance,applied}], applied_total }
 	 */
 	public function cart_state( $cart = null ): array {
 		$settings = Settings::get();
@@ -364,6 +365,7 @@ class Redemption {
 			'enabled'            => ! empty( $settings['enabled'] ),
 			'max_cards'          => (int) $settings['max_cards_per_order'],
 			'cart_has_gift_card' => Gift_Card_Product::cart_has_gift_card( $cart ),
+			'gift_card_only'     => $cart ? Gift_Card_Only_Checkout::is_gift_card_only( $cart->get_cart() ) : false,
 			'currency'           => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : '',
 			'cards'              => $cards,
 			'applied_total'      => $total,

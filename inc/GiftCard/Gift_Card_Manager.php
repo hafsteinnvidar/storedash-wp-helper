@@ -19,6 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 use StoreDash\GiftCard\Blocks\Store_API_Integration;
 use StoreDash\GiftCard\Checkout\Blocks_Checkout;
 use StoreDash\GiftCard\Checkout\Classic_Checkout;
+use StoreDash\GiftCard\Checkout\Gift_Card_Only_Checkout;
 use StoreDash\GiftCard\Engine\Issuer;
 use StoreDash\GiftCard\Engine\Redemption;
 use StoreDash\GiftCard\Engine\Refund_Handler;
@@ -85,6 +86,7 @@ class Gift_Card_Manager {
 		// Checkout UIs.
 		( new Classic_Checkout( $this->redemption ) )->register_hooks();
 		( new Blocks_Checkout() )->register_hooks();
+		( new Gift_Card_Only_Checkout() )->register_hooks();
 
 		// Store API extension. WooCommerce fires woocommerce_blocks_loaded during
 		// its own plugins_loaded callback, i.e. before this plugin's (priority 20).

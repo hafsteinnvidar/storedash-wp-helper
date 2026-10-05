@@ -93,6 +93,16 @@ class Gift_Card_LogicTest extends TestCase {
 		$this->assertEqualsWithDelta( 100.0, array_sum( $out ), 0.0001 );
 	}
 
+	public function test_purchase_refund_takes_back_face_value_even_when_bought_with_a_coupon() {
+		// 10k card bought for 8k (20% coupon), full refund of the 8k paid → 10k off the card.
+		$this->assertSame( 10000.0, Refund_Handler::face_value_refunded( 8000, 1, 8000, 10000, 1, 0 ) );
+		// Half of a 2 × 10k line refunded.
+		$this->assertSame( 10000.0, Refund_Handler::face_value_refunded( 8000, 1, 16000, 20000, 2, 0 ) );
+		// 100% coupon: paid 0, use refunded quantity.
+		$this->assertSame( 10000.0, Refund_Handler::face_value_refunded( 0, 1, 0, 20000, 2, 0 ) );
+		$this->assertSame( 0.0, Refund_Handler::face_value_refunded( 0, 0, 0, 20000, 2, 0 ) );
+	}
+
 	public function test_reclaim_purchase_refund_takes_fullest_cards_first_and_reports_shortfall() {
 		$plan = Refund_Handler::reclaim( 10000, array( 7 => 10000, 8 => 4000 ), 0 );
 		$this->assertSame( array( 7 => 10000.0 ), $plan['take'] );
@@ -221,6 +231,7 @@ class Gift_Card_LogicTest extends TestCase {
 				'enabled'            => true,
 				'max_cards'          => 5,
 				'cart_has_gift_card' => false,
+				'gift_card_only'     => false,
 				'cards'              => array(
 					array(
 						'id'      => 7,

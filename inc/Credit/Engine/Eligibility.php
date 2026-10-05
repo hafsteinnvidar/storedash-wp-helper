@@ -50,11 +50,6 @@ class Eligibility {
 			return true;
 		}
 
-		// Gift cards never earn or take rewards credit.
-		if ( class_exists( '\StoreDash\GiftCard\Product\Gift_Card_Product' ) && \StoreDash\GiftCard\Product\Gift_Card_Product::is_gift_card( $product ) ) {
-			return true;
-		}
-
 		$product_id = (int) $product->get_id();
 		$parent_id  = (int) $product->get_parent_id();
 
@@ -77,6 +72,23 @@ class Eligibility {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Whether a product may EARN credit: not excluded and not a gift card.
+	 *
+	 * Gift cards are a liability, not revenue, so buying one never earns credit;
+	 * paying for one WITH credit is allowed (spend uses product_excluded()).
+	 *
+	 * @param \WC_Product $product  Product (or variation).
+	 * @param array       $settings Normalized settings.
+	 * @return bool
+	 */
+	public function excluded_from_earn( $product, array $settings ): bool {
+		if ( $product && class_exists( '\StoreDash\GiftCard\Product\Gift_Card_Product' ) && \StoreDash\GiftCard\Product\Gift_Card_Product::is_gift_card( $product ) ) {
+			return true;
+		}
+		return $this->product_excluded( $product, $settings );
 	}
 
 	/**

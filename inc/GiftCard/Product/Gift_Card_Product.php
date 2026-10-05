@@ -8,8 +8,9 @@
  *   virtual=yes and tax_status=none (VAT is charged at redemption, never at sale). The same is enforced at runtime
  *   through getter filters, so a later manual change cannot make a gift card
  *   taxable or shippable.
- * - Gift card products are excluded from WooCommerce coupons (Storedash
- *   discounts and Rewards credit check is_gift_card() themselves).
+ * - WooCommerce coupons DO apply to gift card products (the card's value stays
+ *   the pre-coupon line subtotal ÷ qty). Storedash automatic discounts and
+ *   Rewards credit EARN check is_gift_card() themselves and skip them.
  *
  * @package StoreDash\GiftCard\Product
  * @since   1.24.0
@@ -108,11 +109,6 @@ class Gift_Card_Product {
 		add_filter( 'woocommerce_is_virtual', array( $this, 'filter_is_virtual' ), 20, 2 );
 		add_filter( 'woocommerce_product_get_tax_status', array( $this, 'filter_tax_status' ), 20, 2 );
 		add_filter( 'woocommerce_product_variation_get_tax_status', array( $this, 'filter_tax_status' ), 20, 2 );
-
-		// Coupons never touch gift card products.
-		add_filter( 'woocommerce_coupon_is_valid_for_product', array( $this, 'filter_coupon_valid_for_product' ), 20, 2 );
-		add_filter( 'woocommerce_coupon_get_items_to_apply', array( $this, 'filter_coupon_items' ), 20, 1 );
-		add_filter( 'woocommerce_coupon_get_discount_amount', array( $this, 'filter_coupon_discount' ), 20, 3 );
 	}
 
 	/**
@@ -230,54 +226,5 @@ class Gift_Card_Product {
 	 */
 	public function filter_tax_status( $status, $product ) {
 		return self::is_gift_card( $product ) ? 'none' : $status;
-	}
-
-	/**
-	 * Product-restricted coupons never match gift cards.
-	 *
-	 * @param bool        $valid   Valid.
-	 * @param \WC_Product $product Product.
-	 * @return bool
-	 */
-	public function filter_coupon_valid_for_product( $valid, $product ) {
-		return ( $valid && self::is_gift_card( $product ) ) ? false : $valid;
-	}
-
-	/**
-	 * Cart-wide coupons skip gift card lines (WC 8.8+).
-	 *
-	 * @param array $items Items the coupon would apply to.
-	 * @return array
-	 */
-	public function filter_coupon_items( $items ) {
-		if ( ! is_array( $items ) ) {
-			return $items;
-		}
-		return array_values(
-			array_filter(
-				$items,
-				static function ( $item ) {
-					return ! ( isset( $item->product ) && self::is_gift_card( $item->product ) );
-				}
-			)
-		);
-	}
-
-	/**
-	 * Older WooCommerce: zero any coupon discount computed for a gift card line.
-	 *
-	 * @param float        $discount          Discount.
-	 * @param float        $discounting_amount Amount being discounted.
-	 * @param array|object $cart_item          Cart item array or order item.
-	 * @return float
-	 */
-	public function filter_coupon_discount( $discount, $discounting_amount, $cart_item ) {
-		$product = null;
-		if ( is_array( $cart_item ) && isset( $cart_item['data'] ) ) {
-			$product = $cart_item['data'];
-		} elseif ( is_object( $cart_item ) && method_exists( $cart_item, 'get_product' ) ) {
-			$product = $cart_item->get_product();
-		}
-		return ( $product && self::is_gift_card( $product ) ) ? 0 : $discount;
 	}
 }

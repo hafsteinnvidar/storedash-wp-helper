@@ -3,7 +3,7 @@
  * Store API extension for gift cards (contract A / D).
  *
  * - cart + checkout: `extensions.storedash_gift_card = { enabled, max_cards,
- *   cart_has_gift_card, cards: [{id, last4, balance, applied}], applied_total }`
+ *   cart_has_gift_card, gift_card_only, cards: [{id, last4, balance, applied}], applied_total }`
  *   (minor-unit integer strings, like WooCommerce's own totals).
  * - cart item: `extensions.storedash_gift_card = { is_gift_card, recipient_email, … }`.
  * - product: `extensions.storedash_gift_card = { is_gift_card }`.
@@ -131,6 +131,7 @@ class Store_API_Integration {
 			'enabled'            => ! empty( $state['enabled'] ),
 			'max_cards'          => (int) ( $state['max_cards'] ?? 0 ),
 			'cart_has_gift_card' => ! empty( $state['cart_has_gift_card'] ),
+			'gift_card_only'     => ! empty( $state['gift_card_only'] ),
 			'cards'              => $cards,
 			'applied_total'      => Money::to_minor( $state['applied_total'] ?? 0, $decimals ),
 		);
@@ -146,6 +147,7 @@ class Store_API_Integration {
 			'enabled'            => self::prop( 'boolean', __( 'Whether gift cards are enabled on this store.', 'storedash' ) ),
 			'max_cards'          => self::prop( 'integer', __( 'Maximum gift cards per order.', 'storedash' ) ),
 			'cart_has_gift_card' => self::prop( 'boolean', __( 'Whether the cart contains a gift card product (gift cards cannot be applied then).', 'storedash' ) ),
+			'gift_card_only'     => self::prop( 'boolean', __( 'Whether every cart line is a gift card (no billing address needed: name + email).', 'storedash' ) ),
 			'cards'              => array(
 				'description' => __( 'Applied gift cards, in apply order.', 'storedash' ),
 				'type'        => 'array',
