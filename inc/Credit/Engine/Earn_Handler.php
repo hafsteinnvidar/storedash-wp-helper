@@ -157,8 +157,7 @@ class Earn_Handler {
 		$basis    = Earn_Calculator::basis(
 			$context['lines'],
 			$settings,
-			(float) $order->get_meta( Spend_Handler::META_APPLIED, true ),
-			$context['extras']
+			(float) $order->get_meta( Spend_Handler::META_APPLIED, true )
 		);
 		$amount   = Earn_Calculator::amount( $rule, $basis, $settings, $decimals );
 		if ( $amount <= 0 ) {
@@ -245,14 +244,6 @@ class Earn_Handler {
 		$categories = $this->with_ancestors( array_unique( $categories ), 'product_cat' );
 		$brands     = $this->with_ancestors( array_unique( $brands ), 'product_brand' );
 
-		$extras = (float) $order->get_shipping_total() + (float) $order->get_shipping_tax();
-		foreach ( $order->get_items( 'fee' ) as $fee ) {
-			$fee_total = (float) $fee->get_total();
-			if ( $fee_total > 0 ) {
-				$extras += $fee_total + (float) $fee->get_total_tax();
-			}
-		}
-
 		$roles = array();
 		if ( $order->get_customer_id() ) {
 			$user = get_user_by( 'id', $order->get_customer_id() );
@@ -265,7 +256,6 @@ class Earn_Handler {
 
 		return array(
 			'lines'          => $lines,
-			'extras'         => $extras,
 			'order_total'    => (float) $order->get_total(),
 			'roles'          => $roles,
 			'category_ids'   => $categories,

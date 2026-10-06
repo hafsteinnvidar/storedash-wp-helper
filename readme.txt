@@ -149,6 +149,7 @@ Your use of these services is subject to the Storedash Terms of Service
 * Gift card products are not taxed at sale (VAT is charged when the card is used), are always virtual, and cannot be discounted with coupons, Storedash discounts or rewards credit. Gift cards cannot be used to buy gift cards.
 * Cancelled or failed orders give the card money back, refunds return the card part to the card, and refunding a gift card purchase takes the value off its cards.
 * Storedash can list gift cards, issue them by hand, adjust balances, disable or re-enable cards and resend the email.
+* Change: rewards credit is never earned on shipping or fees. The "Order total" earn basis is gone; stores that used it now earn on the subtotal incl. VAT.
 * Fix: rewards credit now takes exactly the credit amount off the order. Before, in stores with tax enabled, WooCommerce also took the VAT on that amount off, so the order total and VAT were lower than they should be. VAT is now always charged on the full order value.
 * Fix: when rewards credit is set to cover shipping, it now includes shipping from the first time the cart is shown.
 

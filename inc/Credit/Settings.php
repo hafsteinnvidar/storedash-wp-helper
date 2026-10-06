@@ -78,7 +78,7 @@ class Settings {
 			}
 		}
 
-		if ( isset( $raw['earn_basis'] ) && in_array( $raw['earn_basis'], array( 'subtotal_ex_tax', 'subtotal_inc_tax', 'total' ), true ) ) {
+		if ( isset( $raw['earn_basis'] ) && in_array( $raw['earn_basis'], array( 'subtotal_ex_tax', 'subtotal_inc_tax' ), true ) ) {
 			$out['earn_basis'] = $raw['earn_basis'];
 		}
 		if ( isset( $raw['earn_on_status'] ) && in_array( $raw['earn_on_status'], array( 'completed', 'processing' ), true ) ) {

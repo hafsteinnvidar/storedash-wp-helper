@@ -30,8 +30,7 @@ class Earn_Calculator {
 	 * Basis per `earn_basis`:
 	 * - subtotal_ex_tax  → eligible line totals after discounts, excluding tax.
 	 * - subtotal_inc_tax → eligible line totals after discounts, including tax.
-	 * - total            → subtotal_inc_tax + shipping (inc tax) + positive non-credit fees.
-	 * Shipping / fees are never included for the two subtotal bases.
+	 * Shipping and fees never earn credit (no basis includes them).
 	 *
 	 * The part of the order paid with rewards credit is subtracted unless
 	 * `earn_on_credit_paid_part` is on.
@@ -39,13 +38,12 @@ class Earn_Calculator {
 	 * @param array[] $lines          Each: { total: float (ex tax, after discounts), tax: float, excluded: bool, on_sale: bool }.
 	 * @param array   $settings       Normalized settings.
 	 * @param float   $credit_applied Credit spent on this order (positive).
-	 * @param float   $extras         Shipping inc. tax + positive fees (only used for `total`).
 	 * @return float Never negative.
 	 */
-	public static function basis( array $lines, array $settings, float $credit_applied = 0.0, float $extras = 0.0 ): float {
+	public static function basis( array $lines, array $settings, float $credit_applied = 0.0 ): float {
 		$mode        = $settings['earn_basis'] ?? 'subtotal_ex_tax';
 		$on_sale_ok  = ! empty( $settings['earn_on_sale_items'] );
-		$include_tax = in_array( $mode, array( 'subtotal_inc_tax', 'total' ), true );
+		$include_tax = 'subtotal_inc_tax' === $mode;
 		$basis       = 0.0;
 
 		foreach ( $lines as $line ) {
@@ -59,10 +57,6 @@ class Earn_Calculator {
 			if ( $include_tax ) {
 				$basis += (float) ( $line['tax'] ?? 0 );
 			}
-		}
-
-		if ( 'total' === $mode ) {
-			$basis += max( 0.0, $extras );
 		}
 
 		if ( empty( $settings['earn_on_credit_paid_part'] ) && $credit_applied > 0 ) {

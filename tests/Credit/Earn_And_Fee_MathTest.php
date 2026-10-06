@@ -13,6 +13,7 @@ use StoreDash\Credit\Engine\Eligibility;
 use StoreDash\Credit\Engine\Fee_Calculator;
 use StoreDash\Credit\Engine\Refund_Handler;
 use StoreDash\Credit\Money;
+use StoreDash\Credit\Settings;
 
 require_once __DIR__ . '/../../inc/Credit/Money.php';
 require_once __DIR__ . '/../../inc/Credit/Engine/Earn_Calculator.php';
@@ -68,8 +69,7 @@ class Earn_And_Fee_MathTest extends TestCase {
 		$this->assertSame( 1000.0, Earn_Calculator::basis( $lines, $this->settings() ), 'sale + excluded lines dropped, ex tax' );
 		$this->assertSame( 1500.0, Earn_Calculator::basis( $lines, $this->settings( array( 'earn_on_sale_items' => true ) ) ) );
 		$this->assertSame( 1240.0, Earn_Calculator::basis( $lines, $this->settings( array( 'earn_basis' => 'subtotal_inc_tax' ) ) ) );
-		$this->assertSame( 1240.0, Earn_Calculator::basis( $lines, $this->settings( array( 'earn_basis' => 'subtotal_inc_tax' ) ), 0.0, 990.0 ), 'shipping ignored for subtotal bases' );
-		$this->assertSame( 2230.0, Earn_Calculator::basis( $lines, $this->settings( array( 'earn_basis' => 'total' ) ), 0.0, 990.0 ) );
+		$this->assertSame( 'subtotal_ex_tax', Settings::normalize( array( 'earn_basis' => 'total' ) )['earn_basis'], 'legacy total basis falls back to the default — shipping never earns credit' );
 	}
 
 	public function test_credit_paid_part_is_subtracted_unless_allowed(): void {
