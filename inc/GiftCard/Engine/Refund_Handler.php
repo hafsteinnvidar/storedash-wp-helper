@@ -227,10 +227,15 @@ class Refund_Handler {
 		if ( ! $order instanceof \WC_Order ) {
 			return;
 		}
-		$changed = false;
+		// wc_create_refund flips the status (→ here) BEFORE woocommerce_order_refunded,
+		// so the refund already exists: pass its id so the ledger row (and the mirror's
+		// woo_refund_id) link to it. Manual status changes have no refund → null.
+		$refunds   = $order->get_refunds();
+		$refund_id = ! empty( $refunds ) && $refunds[0] instanceof \WC_Order_Refund ? (int) $refunds[0]->get_id() : null;
+		$changed   = false;
 		foreach ( $this->ledger->order_summary( $order->get_id() ) as $card_id => $totals ) {
 			if ( $totals['outstanding'] > Money::EPSILON ) {
-				$changed = $this->refund_to_card( $order, (int) $card_id, (float) $totals['outstanding'], 'refund:order-' . $order->get_id() . ':' . (int) $card_id, null ) || $changed;
+				$changed = $this->refund_to_card( $order, (int) $card_id, (float) $totals['outstanding'], 'refund:order-' . $order->get_id() . ':' . (int) $card_id, $refund_id ) || $changed;
 			}
 		}
 		if ( $changed ) {

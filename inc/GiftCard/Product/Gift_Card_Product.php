@@ -189,13 +189,15 @@ class Gift_Card_Product {
 		if ( ! $product->get_virtual( 'edit' ) ) {
 			$product->set_virtual( true );
 		}
-		if ( 0 === $parent_id && 'none' !== $product->get_tax_status( 'edit' ) ) {
+		// Variations too — the runtime filter already resolves them to 'none', but the
+		// STORED value is what WC REST / the sync mirror / the product sheet show.
+		if ( 'none' !== $product->get_tax_status( 'edit' ) ) {
 			$product->set_tax_status( 'none' );
 		}
 	}
 
 	/**
-	 * Variations of a gift card parent are always virtual.
+	 * Variations of a gift card parent are always virtual and untaxed.
 	 *
 	 * @param \WC_Product_Variation $variation Variation being saved.
 	 * @param int                   $index     Loop index.
@@ -203,6 +205,7 @@ class Gift_Card_Product {
 	public function save_variation( $variation, $index ): void {
 		if ( $variation instanceof \WC_Product && self::is_gift_card_id( (int) $variation->get_parent_id() ) ) {
 			$variation->set_virtual( true );
+			$variation->set_tax_status( 'none' );
 		}
 	}
 

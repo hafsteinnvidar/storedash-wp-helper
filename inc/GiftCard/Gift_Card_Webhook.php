@@ -83,13 +83,32 @@ class Gift_Card_Webhook {
 	 * @return bool Whether a request was dispatched.
 	 */
 	public static function send( string $event, $card, $row = null, $delivery = null ): bool {
-		if ( ! $card || ! in_array( $event, self::EVENTS, true ) || ! \StoreDash_Helpers::is_store_connected() ) {
-			return false;
+		return ! is_wp_error( self::dispatch( $event, $card, $row, $delivery ) );
+	}
+
+	/**
+	 * Send an event, reporting WHY it could not be dispatched. Codes (all 503):
+	 * `storedash_gift_card_not_connected`, `storedash_gift_card_webhook_disabled`,
+	 * `storedash_gift_card_dispatch_failed`. Controllers that must tell the
+	 * dashboard the cause (resend) use this; fire-and-forget callers use `send()`.
+	 *
+	 * @param string      $event    Event.
+	 * @param object      $card     Card DB row.
+	 * @param object|null $row      Ledger DB row.
+	 * @param array|null  $delivery { code, to_email, reason }.
+	 * @return true|\WP_Error
+	 */
+	public static function dispatch( string $event, $card, $row = null, $delivery = null ) {
+		if ( ! $card || ! in_array( $event, self::EVENTS, true ) ) {
+			return new \WP_Error( 'storedash_gift_card_dispatch_failed', 'Unknown gift card event', array( 'status' => 503 ) );
+		}
+		if ( ! \StoreDash_Helpers::is_store_connected() ) {
+			return new \WP_Error( 'storedash_gift_card_not_connected', 'Store is not connected to Storedash', array( 'status' => 503 ) );
 		}
 
 		$url = \StoreDash_Helpers::resolve_webhook_url( self::URL_OPTION, self::DEFAULT_URL );
 		if ( '' === $url ) {
-			return false;
+			return new \WP_Error( 'storedash_gift_card_webhook_disabled', 'Gift card webhook URL is empty', array( 'status' => 503 ) );
 		}
 
 		$decimals = wc_get_price_decimals();
@@ -134,7 +153,7 @@ class Gift_Card_Webhook {
 					'card_id' => (int) $card->id,
 				)
 			);
-			return false;
+			return new \WP_Error( 'storedash_gift_card_dispatch_failed', 'Gift card webhook could not be sent: ' . $response->get_error_message(), array( 'status' => 503 ) );
 		}
 
 		return true;

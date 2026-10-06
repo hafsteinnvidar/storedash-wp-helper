@@ -191,9 +191,14 @@ class Gift_Card_Action_Controller extends Abstract_Gift_Card_Controller {
 				: $this->error( 'storedash_gift_card_no_recipient', 'No email to send the gift card to', 400 );
 		}
 
-		$queued = Gift_Card_Webhook::send( 'send', $card, null, $delivery );
+		// Not sent → 503 with the cause (not connected / webhook URL empty /
+		// dispatch failed) so the dashboard can show it instead of a generic failure.
+		$dispatched = Gift_Card_Webhook::dispatch( 'send', $card, null, $delivery );
+		if ( is_wp_error( $dispatched ) ) {
+			return $dispatched;
+		}
 
-		return rest_ensure_response( array( 'queued' => $queued ) );
+		return rest_ensure_response( array( 'queued' => true ) );
 	}
 
 	/**
