@@ -142,12 +142,12 @@ class Gift_Card_ExclusionsTest extends TestCase {
 		$this->assertTrue( $parent->virtual );
 		$this->assertSame( 'none', $parent->tax_status );
 
-		// Variation of a flagged parent: virtual (tax status is inherited from the parent).
+		// Variation of a flagged parent: virtual and stored untaxed too.
 		$variation            = new Gift_Card_Saving_Product( 9104 );
 		$variation->parent_id = self::GIFT_PARENT;
 		$flag->enforce_on_save( $variation );
 		$this->assertTrue( $variation->virtual );
-		$this->assertSame( 'taxable', $variation->tax_status );
+		$this->assertSame( 'none', $variation->tax_status );
 
 		// Plain product untouched.
 		$plain = new Gift_Card_Saving_Product( self::PLAIN );
