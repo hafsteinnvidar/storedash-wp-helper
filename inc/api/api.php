@@ -420,17 +420,20 @@ class StoreDash_API {
 	 * @return array
 	 */
 	private function get_webhook_system_info() {
-		$webhook_status = get_option( 'woodash_webhooks_setup' ) === 'completed';
-		$webhook_count  = 0;
-		if ( $webhook_status ) {
-			global $wpdb;
-			$webhook_count = $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT COUNT(*) FROM {$wpdb->prefix}wc_webhooks WHERE name LIKE %s",
-					'WooDash - %'
-				)
-			);
-		}
+		global $wpdb;
+		// Count the webhooks woo-dash registers on this store. Current names
+		// start with 'StoreDash - '; 'WooDash - ' is the pre-rebrand prefix still
+		// present on stores onboarded before the rename. Derived from the table
+		// rather than the 'woodash_webhooks_setup' option — nothing ever writes
+		// that option, so it reported webhooks=false forever.
+		$webhook_count  = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->prefix}wc_webhooks WHERE name LIKE %s OR name LIKE %s",
+				$wpdb->esc_like( 'StoreDash - ' ) . '%',
+				$wpdb->esc_like( 'WooDash - ' ) . '%'
+			)
+		);
+		$webhook_status = $webhook_count > 0;
 
 		return array(
 			'status'              => 'active',
