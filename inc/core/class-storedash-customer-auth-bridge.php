@@ -50,6 +50,13 @@ class StoreDash_Customer_Auth_Bridge {
 	private static $resolved = null;
 
 	/**
+	 * The only Storedash route a customer token may reach: its own rewards
+	 * credit balance. Everything else a token can touch is the WooCommerce
+	 * Store API (`/wc/store/`).
+	 */
+	const CREDIT_ME_ROUTE = '/storedash/v1/credit/me';
+
+	/**
 	 * Get singleton instance.
 	 *
 	 * @return StoreDash_Customer_Auth_Bridge
@@ -68,6 +75,52 @@ class StoreDash_Customer_Auth_Bridge {
 		// Priority 30: after StoreDash_Auth_Handler (20), so consumer-key auth
 		// always wins and this only ever sees requests it did not claim.
 		add_filter( 'determine_current_user', array( $this, 'authenticate_customer' ), 30 );
+
+		// Second lock on the route scope, evaluated on the route the REST server
+		// actually dispatches (security audit 2026-10-13 #42).
+		add_filter( 'rest_pre_dispatch', array( $this, 'guard_route_scope' ), 1, 3 );
+	}
+
+	/**
+	 * Refuse to carry a customer-token identity into a route the token was
+	 * never meant for. Only acts when this bridge resolved the user.
+	 *
+	 * @since 1.24.1
+	 *
+	 * @param mixed           $result  Dispatch short-circuit value (null = continue).
+	 * @param WP_REST_Server  $server  REST server (unused).
+	 * @param WP_REST_Request $request The request being dispatched.
+	 * @return mixed WP_Error 403 when the scope is violated, otherwise $result.
+	 */
+	public function guard_route_scope( $result, $server, $request ) {
+		if ( ! self::$resolved || null !== $result ) {
+			return $result;
+		}
+
+		$route = is_object( $request ) && method_exists( $request, 'get_route' ) ? (string) $request->get_route() : '';
+		if ( self::route_allowed( $route ) ) {
+			return $result;
+		}
+
+		return new WP_Error(
+			'storedash_customer_token_forbidden',
+			__( 'Customer tokens are only accepted on the Store API.', 'storedash' ),
+			array( 'status' => 403 )
+		);
+	}
+
+	/**
+	 * Whether a REST route is one a customer token may authenticate.
+	 *
+	 * @param string $route Route with a leading slash.
+	 * @return bool
+	 */
+	private static function route_allowed( string $route ): bool {
+		if ( StoreDash_REST_Route::in_namespaces( $route, array( 'wc/store' ) ) ) {
+			return true;
+		}
+
+		return self::CREDIT_ME_ROUTE === $route || 0 === strpos( $route, self::CREDIT_ME_ROUTE . '/' );
 	}
 
 	/**
@@ -157,31 +210,26 @@ class StoreDash_Customer_Auth_Bridge {
 	}
 
 	/**
-	 * Whether the current request targets the WooCommerce Store API.
+	 * Whether the current request targets the WooCommerce Store API (or the
+	 * customer's own credit balance route).
 	 *
-	 * Uses the raw request URI rather than the REST route, because
-	 * determine_current_user runs before the route is parsed.
+	 * Decided on the route WordPress will dispatch (StoreDash_REST_Route — it
+	 * works before parse_request too, because the init-time call above has
+	 * only REQUEST_URI / ?rest_route= to go on). The query string is never
+	 * searched: `?x=/wp-json/wc/store/` on a wp/v2 request must not log a
+	 * token in (security audit 2026-10-13 #42).
 	 *
 	 * @return bool
 	 */
 	private function is_store_api_request(): bool {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- endpoint detection, not a form submission.
-		if ( empty( $_SERVER['REQUEST_URI'] ) ) {
+		$route = StoreDash_REST_Route::current();
+		if ( '' === $route ) {
 			return false;
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- unslashed and sanitized on the next line.
-		$request_uri = esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) );
-		$rest_prefix = trailingslashit( rest_get_url_prefix() );
-
-		if ( false !== strpos( $request_uri, $rest_prefix . 'wc/store/' ) ) {
-			return true;
-		}
-
-		// The only storedash/v1 route a customer token may reach: its own rewards
-		// credit balance. The route's permission_callback is is_user_logged_in();
+		// The credit route's permission_callback is is_user_logged_in();
 		// consumer-key auth (priority 20) still wins when present.
-		return (bool) preg_match( '#/storedash/v1/credit/me(?:/|\?|$)#', $request_uri );
+		return self::route_allowed( $route );
 	}
 
 	/**

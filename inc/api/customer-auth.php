@@ -301,11 +301,12 @@ class StoreDash_API_Customer_Auth {
 			);
 		}
 
-		// Attach any past guest orders placed with this email to the new account,
-		// so order history is populated from day one.
-		if ( function_exists( 'wc_update_new_customer_past_orders' ) ) {
-			wc_update_new_customer_past_orders( $user_id );
-		}
+		// Deliberately NO wc_update_new_customer_past_orders() here. The email is
+		// unverified at this point, so linking guest orders by email let anyone
+		// register with a victim's address and read their past orders (names,
+		// addresses, phone, items). WooCommerce's own My Account registration
+		// does not link either; past orders become visible only through its
+		// email-verification flow. (Security audit 2026-10-13 #12.)
 
 		$user = get_user_by( 'id', $user_id );
 		if ( ! $user ) {

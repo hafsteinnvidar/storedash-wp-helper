@@ -29,6 +29,24 @@ class StoreDash_Auth_Handler {
 	private static $validated_keys = array();
 
 	/**
+	 * REST namespaces a consumer key may authenticate against through this
+	 * handler. Everything else (wp/v2, wc/v3, batch/v1, ...) keeps whatever
+	 * authentication WordPress / WooCommerce give it on their own.
+	 *
+	 * @var string[]
+	 */
+	const ALLOWED_NAMESPACES = array( 'storedash', 'woodash' );
+
+	/**
+	 * Whether THIS handler authenticated the current request. Read by
+	 * guard_route_scope() so a consumer-key identity can never be carried into
+	 * a non-Storedash route (security audit 2026-10-13 #8).
+	 *
+	 * @var bool
+	 */
+	private static $authenticated_here = false;
+
+	/**
 	 * Get singleton instance
 	 */
 	public static function instance() {
@@ -45,6 +63,10 @@ class StoreDash_Auth_Handler {
 		// CRITICAL: Authenticate WooCommerce API keys for StoreDash endpoints
 		// This runs BEFORE permission callbacks, making current_user_can() work globally
 		add_filter( 'determine_current_user', array( $this, 'authenticate_api_keys_for_storedash' ), 20 );
+
+		// Second lock on the route scope, evaluated on the route the REST server
+		// actually dispatches (security audit 2026-10-13 #8).
+		add_filter( 'rest_pre_dispatch', array( $this, 'guard_route_scope' ), 1, 3 );
 
 		// Hook into WooCommerce auth process
 		add_action( 'woocommerce_api_auth', array( $this, 'log_auth_request' ), 5 );
@@ -105,6 +127,7 @@ class StoreDash_Auth_Handler {
 		}
 
 		if ( $authenticated_user_id ) {
+			self::$authenticated_here = true;
 			return $authenticated_user_id;
 		}
 
@@ -114,25 +137,62 @@ class StoreDash_Auth_Handler {
 	/**
 	 * Check if current request is to a StoreDash REST API endpoint.
 	 *
+	 * Decided on the route WordPress will dispatch (see StoreDash_REST_Route),
+	 * never on a substring of the raw REQUEST_URI: the old
+	 * `strpos( $request_uri, 'wp-json/storedash/' )` also matched the QUERY
+	 * STRING, so `POST /wp-json/wp/v2/users?x=/wp-json/storedash/` with any
+	 * WooCommerce consumer key ran as the key's (admin) user — account
+	 * creation, plugin install, the whole WP REST API (security audit
+	 * 2026-10-13 #8; WooCommerce 11.1 closed the same pattern in core).
+	 *
 	 * @since 2.0.0
 	 *
 	 * @return bool True if request is to our endpoints.
 	 */
 	private function is_storedash_rest_request() {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- REST API endpoint detection, no nonce needed
-		if ( empty( $_SERVER['REQUEST_URI'] ) ) {
+		$route = StoreDash_REST_Route::current();
+		if ( '' === $route ) {
 			return false;
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- REST API endpoint detection, no nonce needed
-		$request_uri = esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) );
-		$rest_prefix = trailingslashit( rest_get_url_prefix() );
+		return StoreDash_REST_Route::in_namespaces( $route, self::ALLOWED_NAMESPACES );
+	}
 
-		// Check for both namespaces
-		$storedash_match = ( false !== strpos( $request_uri, $rest_prefix . 'storedash/' ) );
-		$woodash_match   = ( false !== strpos( $request_uri, $rest_prefix . 'woodash/' ) );
+	/**
+	 * Refuse to carry a consumer-key identity into a non-Storedash route.
+	 *
+	 * Runs on 'rest_pre_dispatch' — after the REST server has the final route
+	 * string, before any handler or permission_callback. Only acts when this
+	 * handler is the one that authenticated the request, so cookie, WooCommerce
+	 * core key auth and the customer token bridge are untouched.
+	 *
+	 * @since 1.24.1
+	 *
+	 * @param mixed           $result  Dispatch short-circuit value (null = continue).
+	 * @param WP_REST_Server  $server  REST server (unused).
+	 * @param WP_REST_Request $request The request being dispatched.
+	 * @return mixed WP_Error 403 when the scope is violated, otherwise $result.
+	 */
+	public function guard_route_scope( $result, $server, $request ) {
+		if ( ! self::$authenticated_here || null !== $result ) {
+			return $result;
+		}
 
-		return $storedash_match || $woodash_match;
+		$route = is_object( $request ) && method_exists( $request, 'get_route' ) ? (string) $request->get_route() : '';
+		if ( StoreDash_REST_Route::in_namespaces( $route, self::ALLOWED_NAMESPACES ) ) {
+			return $result;
+		}
+
+		StoreDash_Helpers::log_message(
+			'Consumer-key authentication refused outside the storedash/ namespace: ' . $route,
+			'warning'
+		);
+
+		return new WP_Error(
+			'storedash_rest_forbidden',
+			__( 'WooCommerce API keys are only accepted on Storedash endpoints.', 'storedash' ),
+			array( 'status' => 403 )
+		);
 	}
 
 	/**

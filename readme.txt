@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.24.0
+Stable tag: 1.24.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,11 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.24.1 =
+* Security: WooCommerce API keys are now accepted only on Storedash endpoints. The plugin decided "is this a Storedash request?" from the whole request URL, query string included, so a key holder could reach any WordPress REST endpoint (for example create users or install plugins) by adding `?x=/wp-json/storedash/` to the URL. The route is now resolved the way WordPress resolves it, and a second check refuses key-authenticated requests that leave the `storedash/` and `woodash/` namespaces.
+* Security: storefront customer tokens are scoped the same way (Store API and the customer's own credit balance only).
+* Security: registering a storefront account no longer attaches past guest orders placed with the same (unverified) email address. Matches WooCommerce's own My Account registration; past orders stay private until the email is verified.
 
 = 1.24.0 =
 * New: gift cards. Tick "Gift card" on a simple or variable product and every unit sold becomes its own gift card code, worth the price paid. Codes are issued when the order is paid and emailed by Storedash to the recipient (or the buyer), on a chosen date if one was picked. Gift cards never expire.

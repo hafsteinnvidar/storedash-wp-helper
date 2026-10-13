@@ -4,7 +4,7 @@
  * Plugin URI: https://storedash.app
  * Update URI: https://storedash.app/wp-helper
  * Description: Helper plugin for Storedash to provide enhanced API endpoints and webhooks
- * Version: 1.24.0
+ * Version: 1.24.1
  * Author: Storedash
  * Author URI: https://storedash.app
  * Text Domain: storedash
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'STOREDASH_VERSION', '1.24.0' );
+define( 'STOREDASH_VERSION', '1.24.1' );
 define( 'STOREDASH_PATH', plugin_dir_path( __FILE__ ) );
 define( 'STOREDASH_URL', plugin_dir_url( __FILE__ ) );
 
@@ -110,6 +110,7 @@ if ( ! function_exists( 'storedash_init' ) ) {
 	function storedash_init() {
 		// Load dependencies from core directory
 		require_once STOREDASH_PATH . 'inc/core/class-storedash-helpers.php';
+		require_once STOREDASH_PATH . 'inc/core/class-storedash-rest-route.php';
 		require_once STOREDASH_PATH . 'inc/core/class-storedash-requirements.php';
 		require_once STOREDASH_PATH . 'inc/core/class-storedash-loader.php';
 		require_once STOREDASH_PATH . 'inc/core/class-storedash-bootstrap.php';
