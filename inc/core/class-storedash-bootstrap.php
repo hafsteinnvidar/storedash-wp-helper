@@ -244,6 +244,10 @@ class StoreDash_Bootstrap {
 		require_once STOREDASH_PATH . 'inc/services/fbt/class-fbt-cart.php';
 		require_once STOREDASH_PATH . 'inc/services/fbt/class-fbt-settings-controller.php';
 
+		// DK: read-only export of DKSync's settings for "Import from DKSync".
+		// Registers one route and nothing else.
+		require_once STOREDASH_PATH . 'inc/services/dk/class-dk-legacy-settings-controller.php';
+
 		// Marketing opt-in services (checkout checkbox + Elementor signup widget)
 		require_once STOREDASH_PATH . 'inc/services/optin/class-optin-handler.php';
 		// Block (Store API) checkout opt-in field — bridges into the handler above.
