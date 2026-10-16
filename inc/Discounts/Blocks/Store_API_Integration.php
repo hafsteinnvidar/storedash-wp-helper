@@ -458,6 +458,11 @@ class Store_API_Integration {
 			$data['price_discount']     = array(
 				'original_price'   => $applied['original_price'] ?? 0,
 				'discounted_price' => $applied['discounted_price'] ?? 0,
+				'kind'             => $applied['kind'] ?? 'price',
+				// "Cheapest in cart" BOGO: units of this line that are the
+				// discounted ones, and the % taken off each of them.
+				'free_units'       => isset( $applied['free_units'] ) ? (int) $applied['free_units'] : 0,
+				'discount_percent' => isset( $applied['discount_percent'] ) ? $applied['discount_percent'] : null,
 			);
 			$data['discount_rule_id']   = $applied['discount_id'] ?? null;
 			$data['discount_rule_name'] = $applied['discount_name'] ?? null;
@@ -516,7 +521,7 @@ class Store_API_Integration {
 				'readonly'    => true,
 			),
 			'price_discount'     => array(
-				'description' => __( 'Price-rule discount details (store-wide/product/category/tag/brand).', 'storedash' ),
+				'description' => __( 'Price-rule discount details (store-wide/product/category/tag/brand, or a "cheapest in cart" BOGO: kind bogo_cheapest with free_units + discount_percent).', 'storedash' ),
 				'type'        => array( 'object', 'null' ),
 				'context'     => array( 'view', 'edit' ),
 				'readonly'    => true,

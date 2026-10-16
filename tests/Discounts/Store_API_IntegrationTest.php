@@ -84,10 +84,39 @@ class Store_API_IntegrationTest extends TestCase {
 			array(
 				'original_price'   => 20.0,
 				'discounted_price' => 15.0,
+				'kind'             => 'price',
+				'free_units'       => 0,
+				'discount_percent' => null,
 			),
 			$data['price_discount']
 		);
 		$this->assertNull( $data['quantity_discount'] );
+		$this->assertFalse( $data['is_bogo_free_item'] );
+	}
+
+	public function test_cheapest_bogo_winner_surfaces_free_units() {
+		$integration = $this->make_integration();
+		$applied     = array_merge(
+			$this->applied( 'bogo_cheapest', 11, 20.0 ),
+			array(
+				'discounted_price' => 13.333333,
+				'free_units'       => 1,
+				'discount_percent' => 100.0,
+			)
+		);
+
+		$data = $integration->cart_item_data_callback(
+			array(
+				'quantity'                   => 3,
+				'storedash_discount_applied' => $applied,
+			)
+		);
+
+		$this->assertSame( 11, $data['discount_rule_id'] );
+		$this->assertSame( 20.0, $data['savings'] );
+		$this->assertSame( 'bogo_cheapest', $data['price_discount']['kind'] );
+		$this->assertSame( 1, $data['price_discount']['free_units'] );
+		$this->assertSame( 100.0, $data['price_discount']['discount_percent'] );
 		$this->assertFalse( $data['is_bogo_free_item'] );
 	}
 

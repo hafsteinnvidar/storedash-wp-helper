@@ -4,8 +4,9 @@
  *
  * One woocommerce_before_calculate_totals hook (priority 102). For every cart
  * line it asks Discount_Resolver for the ONE winning discount (all rule types
- * compete) and applies it: price/quantity rules via set_price(), BOGO via the
- * Bogo engine's free-item mechanics. Idempotent across the multiple firings of
+ * compete) and applies it: price/quantity rules and "cheapest in cart" BOGO
+ * via set_price(), same-product BOGO via the Bogo engine's free-item
+ * mechanics. Idempotent across the multiple firings of
  * before_calculate_totals: prices always derive from regular/sale price (which
  * set_price() never mutates), and lines are only restored when they carry our
  * own marker.
@@ -110,7 +111,7 @@ class Cart_Discount_Orchestrator {
 
 		$this->is_checking_sale = true;
 		try {
-			foreach ( $cart->get_cart() as $cart_item ) {
+			foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
 				if ( ! isset( $cart_item['data'] ) || $cart_item['data'] !== $product ) {
 					continue;
 				}
@@ -118,7 +119,7 @@ class Cart_Discount_Orchestrator {
 					return $on_sale;
 				}
 
-				$result = $this->resolver->resolve( $product, (int) $cart_item['quantity'], 'cart' );
+				$result = $this->resolver->resolve( $product, (int) $cart_item['quantity'], 'cart', (string) $cart_item_key );
 				return ( $result && 'bogo' !== $result->kind && null !== $result->unit_price ) ? true : $on_sale;
 			}
 		} finally {
@@ -156,7 +157,7 @@ class Cart_Discount_Orchestrator {
 				}
 
 				$product = $cart_item['data'];
-				$result  = $this->resolver->resolve( $product, (int) $cart_item['quantity'], 'cart' );
+				$result  = $this->resolver->resolve( $product, (int) $cart_item['quantity'], 'cart', (string) $cart_item_key );
 
 				if ( $result && 'bogo' === $result->kind ) {
 					$this->bogo_engine->apply_bogo_line( $cart, $cart_item_key, $cart_item, $result );
@@ -175,9 +176,22 @@ class Cart_Discount_Orchestrator {
 						'discount_name'    => $result->discount->name,
 						'original_price'   => $result->base_price,
 						'discounted_price' => $result->unit_price,
-						'savings'          => ( $result->base_price - $result->unit_price ) * (int) $cart_item['quantity'],
+						// "Cheapest in cart" BOGO averages its saving into the unit
+						// price, so recomputing from the float would drift by an
+						// ulp — carry the resolver's exact figure instead.
+						'savings'          => ( 'bogo_cheapest' === $result->kind && isset( $result->savings ) )
+							? (float) $result->savings
+							: ( $result->base_price - $result->unit_price ) * (int) $cart_item['quantity'],
 						'kind'             => $result->kind,
 						'tier'             => isset( $result->tier ) ? $result->tier : null,
+						// "Cheapest in cart" BOGO: how many of this line's units
+						// are the discounted ones (cart display + Store API).
+						'free_units'       => ( 'bogo_cheapest' === $result->kind && isset( $result->bogo['free_quantity'] ) )
+							? (int) $result->bogo['free_quantity']
+							: 0,
+						'discount_percent' => ( 'bogo_cheapest' === $result->kind && isset( $result->bogo['discount_percent'] ) )
+							? (float) $result->bogo['discount_percent']
+							: null,
 					);
 
 					$cart_item['storedash_discount_applied'] = $applied;

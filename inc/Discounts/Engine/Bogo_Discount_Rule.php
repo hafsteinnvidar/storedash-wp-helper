@@ -2,8 +2,13 @@
 /**
  * BOGO Discount Rule Engine
  *
- * Implements Buy X Get Y (BOGO) discount logic.
+ * Implements Buy X Get Y (BOGO) discount logic — the "same product" mode.
  * Based on YITH's proven pattern of adding duplicate cart items with zero price.
+ *
+ * The "cheapest in cart" mode (rule_config.mode = 'cheapest', 1.25.0) adds no
+ * lines: Discount_Resolver allocates the free units across the cart and the
+ * orchestrator prices the affected lines. This class only renders its price
+ * column (display_cheapest_line_price).
  *
  * @package StoreDash\Discounts\Engine
  * @since   1.0.0
@@ -78,6 +83,48 @@ class Bogo_Discount_Rule {
 
 		// Add "FREE" label to cart item name
 		add_filter( 'woocommerce_cart_item_name', array( $this, 'add_free_label_to_cart_item' ), 10, 3 );
+
+		// "Cheapest in cart" lines: show the real unit price + how many are free
+		// instead of the averaged set_price() value (classic cart/checkout).
+		add_filter( 'woocommerce_cart_item_price', array( $this, 'display_cheapest_line_price' ), 10, 3 );
+	}
+
+	/**
+	 * Price column for a line discounted by a "cheapest in cart" BOGO rule.
+	 *
+	 * The orchestrator averages the line's saving into the unit price so the
+	 * line total is exact; shown raw that reads as an odd unit price. Show the
+	 * price the shopper knows plus "1 free" / "1 × 50% off" instead.
+	 *
+	 * @since 1.25.0
+	 *
+	 * @param string $price         Price HTML.
+	 * @param array  $cart_item     Cart item data.
+	 * @param string $cart_item_key Cart item key.
+	 * @return string
+	 */
+	public function display_cheapest_line_price( $price, $cart_item, $cart_item_key ) {
+		$applied = isset( $cart_item['storedash_discount_applied'] ) ? $cart_item['storedash_discount_applied'] : null;
+		if ( ! is_array( $applied ) || 'bogo_cheapest' !== ( $applied['kind'] ?? '' ) ) {
+			return $price;
+		}
+
+		$free_units = isset( $applied['free_units'] ) ? (int) $applied['free_units'] : 0;
+		if ( $free_units <= 0 || empty( $applied['original_price'] ) || ! function_exists( 'wc_price' ) ) {
+			return $price;
+		}
+
+		$percent = isset( $applied['discount_percent'] ) ? (float) $applied['discount_percent'] : 100.0;
+		if ( $percent >= 100 ) {
+			/* translators: %d: number of free units on the cart line */
+			$label = sprintf( _n( '%d free', '%d free', $free_units, 'storedash' ), $free_units );
+		} else {
+			/* translators: 1: number of units, 2: percentage off */
+			$label = sprintf( __( '%1$d × %2$s%% off', 'storedash' ), $free_units, wc_format_decimal( $percent, 0 ) );
+		}
+
+		return wc_price( (float) $applied['original_price'] )
+			. sprintf( ' <span class="storedash-free-label" style="color: #4CAF50; font-weight: bold; margin-left: 6px;">%s</span>', esc_html( $label ) );
 	}
 
 	/**

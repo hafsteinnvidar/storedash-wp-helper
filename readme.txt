@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.24.1
+Stable tag: 1.25.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,13 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.25.0 =
+* New: "Buy X get Y" discounts can now pick the cheapest items in the cart ("3 for 2" across products). Set the rule's mode to "cheapest in cart" in Storedash: every qualifying item counts together, and for each full set the cheapest units are discounted (free at 100%). The shopper's own lines are priced down; no extra lines are added. Works with the whole store, chosen products, or whole categories / tags / brands.
+* New: "Buy X get Y" discounts can target whole categories, tags and brands (same as bulk discounts).
+* The cart and checkout show the real unit price plus "1 free" (or "1 × 50% off") on the discounted line; the Store API exposes `price_discount.kind = bogo_cheapest`, `free_units` and `discount_percent` for headless storefronts.
+* All existing rule settings apply to the new mode: quantity / cart-total requirements, "skip products already on sale", sale-vs-regular price basis, "don't combine with coupon codes", "override lower-priority discounts", priority, exclusions and schedule.
+* Existing "Buy X get Y" rules keep working exactly as before (extra units of the same product added free).
 
 = 1.24.1 =
 * Security: WooCommerce API keys are now accepted only on Storedash endpoints. The plugin decided "is this a Storedash request?" from the whole request URL, query string included, so a key holder could reach any WordPress REST endpoint (for example create users or install plugins) by adding `?x=/wp-json/storedash/` to the URL. The route is now resolved the way WordPress resolves it, and a second check refuses key-authenticated requests that leave the `storedash/` and `woodash/` namespaces.

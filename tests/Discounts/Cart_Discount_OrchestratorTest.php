@@ -23,8 +23,8 @@ final class Fake_Resolver {
 	/** @var array Captured resolve() calls. */
 	public $calls = array();
 
-	public function resolve( $product, $quantity = 1, $context = 'display' ) {
-		$this->calls[] = compact( 'quantity', 'context' );
+	public function resolve( $product, $quantity = 1, $context = 'display', $cart_item_key = null ) {
+		$this->calls[] = compact( 'quantity', 'context', 'cart_item_key' );
 		$id            = $product->get_id();
 		return isset( $this->results[ $id ] ) ? $this->results[ $id ] : null;
 	}
@@ -120,6 +120,35 @@ class Cart_Discount_OrchestratorTest extends TestCase {
 		$resolver->results = $results;
 		$bogo              = new Fake_Bogo_Engine();
 		return array( new Cart_Discount_Orchestrator( $resolver, $bogo ), $resolver, $bogo );
+	}
+
+	public function test_cheapest_bogo_winner_sets_averaged_price_and_free_units() {
+		$result = (object) array(
+			'discount'   => (object) array( 'id' => 4, 'name' => '3 fyrir 2' ),
+			'kind'       => 'bogo_cheapest',
+			'unit_price' => 2000.0 / 3,
+			'base_price' => 1000.0,
+			'savings'    => 1000.0,
+			'bogo'       => array( 'free_quantity' => 1, 'discount_percent' => 100.0 ),
+		);
+		list( $orchestrator, $resolver ) = $this->make( array( 101 => $result ) );
+		$cart                            = new \Fake_WC_Cart();
+		$cart->cart_contents             = array( 'key1' => $this->line( 101, 1000, 3 ) );
+
+		$orchestrator->apply_discounts_to_cart( $cart );
+
+		$applied = $cart->cart_contents['key1']['storedash_discount_applied'];
+		$this->assertSame( 'bogo_cheapest', $applied['kind'] );
+		$this->assertSame( 1, $applied['free_units'] );
+		$this->assertSame( 100.0, $applied['discount_percent'] );
+		$this->assertSame( 1000.0, $applied['savings'] );
+		$this->assertEqualsWithDelta( 2000.0 / 3, (float) $cart->cart_contents['key1']['data']->get_price(), 0.0000001 );
+		// The paid line is priced, not handed to the free-item engine, and no
+		// legacy quantity key is written.
+		$this->assertArrayNotHasKey( 'storedash_quantity_discount', $cart->cart_contents['key1'] );
+		$this->assertSame( array(), $cart->added );
+		// The line key reaches the resolver so per-line allocation works.
+		$this->assertSame( 'key1', $resolver->calls[0]['cart_item_key'] );
 	}
 
 	public function test_price_winner_sets_line_price_and_marker() {
@@ -317,7 +346,7 @@ class Cart_Discount_OrchestratorTest extends TestCase {
 
 		$this->assertTrue( $orchestrator->filter_cart_line_is_on_sale( false, $cart->cart_contents['key1']['data'] ) );
 		// Resolved in cart context with the line's own quantity (tier rules).
-		$this->assertSame( array( array( 'quantity' => 3, 'context' => 'cart' ) ), $resolver->calls );
+		$this->assertSame( array( array( 'quantity' => 3, 'context' => 'cart', 'cart_item_key' => 'key1' ) ), $resolver->calls );
 	}
 
 	public function test_quantity_tier_winner_counts_as_on_sale() {

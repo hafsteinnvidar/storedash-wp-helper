@@ -170,7 +170,7 @@ class Discount_MatcherTest extends TestCase {
 		);
 	}
 
-	public function test_bogo_rule_ignores_taxonomy_targets_in_rule_config() {
+	public function test_bogo_rule_honours_taxonomy_targets_in_rule_config() {
 		$discount = $this->discount(
 			array(
 				'rule_type'   => 'bogo',
@@ -179,7 +179,24 @@ class Discount_MatcherTest extends TestCase {
 			)
 		);
 
-		// Empty product targets on BOGO still means store-wide.
+		// Since 1.25.0 BOGO scopes by whole terms exactly like quantity rules.
+		$this->assertTrue(
+			$this->matcher->discount_applies_to_product( $discount, $this->product( 28, array( self::CAT_CHILD ) ) )
+		);
+		$this->assertFalse(
+			$this->matcher->discount_applies_to_product( $discount, $this->product( 29, array( self::CAT_OTHER ) ) )
+		);
+	}
+
+	public function test_bogo_rule_without_any_target_stays_store_wide() {
+		$discount = $this->discount(
+			array(
+				'rule_type'   => 'bogo',
+				'target_ids'  => '',
+				'rule_config' => json_encode( array( 'mode' => 'cheapest', 'buy_quantity' => 2, 'get_quantity' => 1 ) ),
+			)
+		);
+
 		$this->assertTrue(
 			$this->matcher->discount_applies_to_product( $discount, $this->product( 29, array( self::CAT_OTHER ) ) )
 		);

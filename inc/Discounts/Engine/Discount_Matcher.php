@@ -182,13 +182,11 @@ class Discount_Matcher {
 				// applies-to-product test (the display path never loads these),
 				// so it does not change display pricing.
 				//
-				// Quantity rules may also scope by whole taxonomy terms
+				// Both cart rule types may also scope by whole taxonomy terms
 				// (rule_config.target_category_ids / target_tag_ids /
 				// target_brand_ids); a product qualifies when it is a listed
-				// product OR sits in any listed term.
-				$taxonomy_targets = ( 'quantity' === $discount->rule_type )
-					? $this->quantity_taxonomy_targets( $discount )
-					: array();
+				// product OR sits in any listed term. (BOGO since 1.25.0.)
+				$taxonomy_targets = $this->config_taxonomy_targets( $discount );
 
 				if ( empty( $target_ids ) && empty( $taxonomy_targets ) ) {
 					return true;
@@ -241,15 +239,15 @@ class Discount_Matcher {
 	}
 
 	/**
-	 * Taxonomy terms a quantity rule targets, read from rule_config
-	 * (target_category_ids / target_tag_ids / target_brand_ids).
+	 * Taxonomy terms a cart rule (quantity, BOGO) targets, read from
+	 * rule_config (target_category_ids / target_tag_ids / target_brand_ids).
 	 *
-	 * @since 1.21.0
+	 * @since 1.21.0 (quantity), 1.25.0 (BOGO)
 	 *
 	 * @param object $discount Discount object.
 	 * @return array<string,int[]> Taxonomy => term IDs; only non-empty lists.
 	 */
-	protected function quantity_taxonomy_targets( $discount ) {
+	protected function config_taxonomy_targets( $discount ) {
 		$config = json_decode( $discount->rule_config ?? '', true );
 		if ( ! is_array( $config ) ) {
 			return array();

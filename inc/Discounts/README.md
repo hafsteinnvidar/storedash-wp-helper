@@ -119,9 +119,18 @@ Hooks into `woocommerce_get_price_html` and related filters to show strikethroug
 
 ### Cart_Discount_Orchestrator
 
-The single primary cart hook. For each cart line it resolves the one winner and applies it: price/quantity winners set the line price, BOGO winners drive free-item add/adjust/remove (delegated to `Bogo_Discount_Rule`). Idempotent — always recomputes from the pristine base price, never from an already-discounted price. (This supersedes the interim `Display_Discount_Cart_Rule` engine, which was removed when the resolver architecture landed.)
+The single primary cart hook. For each cart line it resolves the one winner and applies it: price/quantity winners and "cheapest in cart" BOGO winners (`kind = bogo_cheapest`) set the line price, same-product BOGO winners drive free-item add/adjust/remove (delegated to `Bogo_Discount_Rule`). Idempotent — always recomputes from the pristine base price, never from an already-discounted price. (This supersedes the interim `Display_Discount_Cart_Rule` engine, which was removed when the resolver architecture landed.)
 
 ### Bogo_Discount_Rule
+
+### Two BOGO modes (`rule_config.mode`, since 1.25.0)
+
+| Mode | Meaning | Mechanic |
+|------|---------|----------|
+| `same_product` (default; rows without `mode`) | Buy X of a product, get Y more of the **same** product at N% off. | `Bogo_Discount_Rule` adds a hidden free line per paid line. |
+| `cheapest` | "3 for 2" across products: every qualifying paid unit in the cart counts together; for each full set of `buy + get` units the cheapest `get` units get N% off. | `Discount_Resolver::allocate_cheapest()` builds the pool once per request (eligibility per line = targets/terms, exclusions, `disable_on_sale`, cart conditions, coupon gate, priority ceiling; lines a higher-priority non-BOGO rule would win are left out). Each line's share is applied by the orchestrator as an **averaged unit price that is deliberately not rounded** — WooCommerce multiplies by quantity before applying price precision, so 3 × 1000 kr with one free is exactly 2000 kr. Lines with no free unit return `null`, so another rule may win them. No lines are added. `storedash_discount_applied` carries `free_units` + `discount_percent`; the classic cart shows the real unit price + "1 free" (`display_cheapest_line_price`), the Store API `price_discount` exposes `kind`, `free_units`, `discount_percent`. |
+
+Both modes scope by product `target_ids` **and** `rule_config.target_category_ids` / `target_tag_ids` / `target_brand_ids` (all empty = store-wide), exactly like quantity rules.
 
 Free-item **mechanics** only (no longer a self-contained matching engine). Triggered by the orchestrator, it manages the free/discounted line: sets its price from the product's regular/sale price × `(1 − discount_percent/100)` (0 for a 100% BOGO), hides its quantity/remove controls, syncs its quantity with the parent, removes it with the parent, and adds the "FREE"/"N% OFF" label. The price is derived from the base price (not `get_price()`) so it is **idempotent** across the multiple `before_calculate_totals` firings — a partial (<100%) BOGO no longer compounds each firing (fixed 2026-07-03).
 

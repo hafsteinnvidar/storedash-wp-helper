@@ -47,7 +47,7 @@ class Test_Display_Resolver extends Discount_Resolver {
 
 	public function __construct() {}
 
-	public function resolve( $product, $quantity = 1, $context = 'display' ) {
+	public function resolve( $product, $quantity = 1, $context = 'display', $cart_item_key = null ) {
 		$this->asked[] = $product->get_id();
 		return $this->results[ $product->get_id() ] ?? null;
 	}

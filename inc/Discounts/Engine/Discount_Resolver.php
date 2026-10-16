@@ -14,6 +14,10 @@
  *  5. Price basis per apply_to_sale_price; final <= no-discount price, >= 0;
  *     a "discount" that doesn't lower the price does not win.
  *  6. Rounding via wc_get_price_decimals() so display == cart to the cent.
+ *  7. "Cheapest in cart" BOGO (rule_config.mode = 'cheapest', 1.25.0): every
+ *     qualifying paid unit in the cart counts together; the cheapest
+ *     floor(units / (buy + get)) × get units get the % off, and each line's
+ *     share is applied as an averaged unit price so line totals stay exact.
  *
  * @package StoreDash\Discounts\Engine
  * @since   3.2.0
@@ -64,11 +68,20 @@ class Discount_Resolver {
 	protected $priority_resolver;
 
 	/**
-	 * Per-request result cache, keyed "context:product_id:qty".
+	 * Per-request result cache, keyed "context:product_id:qty[:paid_qty:line]".
 	 *
 	 * @var array<string,object|null>
 	 */
 	protected $cache = array();
+
+	/**
+	 * Per-request "cheapest in cart" BOGO allocations, keyed by discount id:
+	 * { pool_units, free_units, lines: { cart_item_key => allocation } }.
+	 *
+	 * @since 1.25.0
+	 * @var array<int,object>
+	 */
+	protected $cheapest_allocations = array();
 
 	/**
 	 * Constructor with test-friendly injection (mirrors Discount_Priority_Resolver).
@@ -88,12 +101,15 @@ class Discount_Resolver {
 	/**
 	 * Resolve the ONE winning discount for a product.
 	 *
-	 * @param WC_Product $product  Product (or variation) object.
-	 * @param int        $quantity Cart-line quantity (1 on display surfaces).
-	 * @param string     $context  'display' (catalog) or 'cart'.
+	 * @param WC_Product  $product       Product (or variation) object.
+	 * @param int         $quantity      Cart-line quantity (1 on display surfaces).
+	 * @param string      $context       'display' (catalog) or 'cart'.
+	 * @param string|null $cart_item_key Cart line key (cart context). "Cheapest
+	 *                                   in cart" BOGO allocates per line, so
+	 *                                   callers that have the key pass it.
 	 * @return object|null Winner: {discount, kind, unit_price, base_price, savings, bogo} or null.
 	 */
-	public function resolve( $product, $quantity = 1, $context = 'display' ) {
+	public function resolve( $product, $quantity = 1, $context = 'display', $cart_item_key = null ) {
 		if ( ! $product instanceof WC_Product ) {
 			return null;
 		}
@@ -104,6 +120,9 @@ class Discount_Resolver {
 			// Combined-count quantity rules depend on the rest of the cart, not
 			// just this line — don't replay a winner across a cart change.
 			$cache_key .= ':' . $this->cart_paid_quantity( WC()->cart );
+			if ( null !== $cart_item_key ) {
+				$cache_key .= ':' . $cart_item_key;
+			}
 		}
 		if ( array_key_exists( $cache_key, $this->cache ) ) {
 			return $this->cache[ $cache_key ];
@@ -119,7 +138,7 @@ class Discount_Resolver {
 			if ( ! $this->is_eligible( $discount, $product, $context ) ) {
 				continue;
 			}
-			$application = $this->compute_application( $discount, $product, $quantity, $context );
+			$application = $this->compute_application( $discount, $product, $quantity, $context, $cart_item_key );
 			if ( null === $application ) {
 				continue;
 			}
@@ -227,7 +246,8 @@ class Discount_Resolver {
 	 * Clear the per-request cache (cart state changed, discounts mutated).
 	 */
 	public function clear_cache() {
-		$this->cache = array();
+		$this->cache                = array();
+		$this->cheapest_allocations = array();
 		$this->priority_resolver->clear_cache();
 		if ( method_exists( $this->matcher, 'clear_cache' ) ) {
 			$this->matcher->clear_cache();
@@ -457,13 +477,14 @@ class Discount_Resolver {
 	 * Compute what applying this discount would do (kind, price, savings).
 	 * Returns null when the rule yields no real price reduction.
 	 *
-	 * @param object     $discount Discount row.
-	 * @param WC_Product $product  Product object.
-	 * @param int        $quantity Line quantity.
-	 * @param string     $context  'display' or 'cart'.
+	 * @param object      $discount      Discount row.
+	 * @param WC_Product  $product       Product object.
+	 * @param int         $quantity      Line quantity.
+	 * @param string      $context       'display' or 'cart'.
+	 * @param string|null $cart_item_key Cart line key when known (cart context).
 	 * @return object|null
 	 */
-	protected function compute_application( $discount, $product, $quantity, $context = 'display' ) {
+	protected function compute_application( $discount, $product, $quantity, $context = 'display', $cart_item_key = null ) {
 		$regular = (float) $product->get_regular_price();
 		if ( $regular <= 0 ) {
 			return null;
@@ -473,6 +494,9 @@ class Discount_Resolver {
 
 		switch ( $discount->rule_type ) {
 			case 'bogo':
+				if ( 'cheapest' === $this->bogo_mode( $discount ) ) {
+					return $this->compute_bogo_cheapest( $discount, $product, $quantity, $current, $context, $cart_item_key );
+				}
 				return $this->compute_bogo( $discount, $quantity, $current );
 
 			case 'quantity':
@@ -643,6 +667,290 @@ class Discount_Resolver {
 				'free_quantity'    => $free,
 			),
 		);
+	}
+
+	/**
+	 * BOGO mechanic a rule uses.
+	 *
+	 * 'same_product' (default, rows synced before 1.25.0 carry no mode): buy X
+	 * of a product and X extra units of the SAME product are added free.
+	 * 'cheapest': every qualifying unit in the cart counts together and the
+	 * cheapest ones are discounted — "3 for 2" across products.
+	 *
+	 * @since 1.25.0
+	 *
+	 * @param object $discount Discount row.
+	 * @return string 'same_product' | 'cheapest'
+	 */
+	public function bogo_mode( $discount ) {
+		$config = json_decode( $discount->rule_config ?? '{}', true );
+		return ( is_array( $config ) && isset( $config['mode'] ) && 'cheapest' === $config['mode'] )
+			? 'cheapest'
+			: 'same_product';
+	}
+
+	/**
+	 * "Cheapest in cart" BOGO: this line's share of the cart-wide allocation.
+	 *
+	 * The allocation (allocate_cheapest) decides which units are free; here the
+	 * line's saving is spread over its quantity as an averaged unit price. The
+	 * unit price is deliberately NOT rounded: WooCommerce multiplies it by the
+	 * quantity before applying price precision (WC_Cart_Totals), so the LINE
+	 * total lands exactly on qty × price − savings (3 × 1000 kr with one free
+	 * = 2000 kr, never 2001). Lines without a free unit return null so another
+	 * rule may win them.
+	 *
+	 * @since 1.25.0
+	 *
+	 * @param object      $discount      Discount row.
+	 * @param WC_Product  $product       Product object.
+	 * @param int         $quantity      Line quantity.
+	 * @param float       $current       No-discount price.
+	 * @param string      $context       'display' or 'cart'.
+	 * @param string|null $cart_item_key Cart line key when known.
+	 * @return object|null
+	 */
+	protected function compute_bogo_cheapest( $discount, $product, $quantity, $current, $context, $cart_item_key = null ) {
+		if ( 'cart' !== $context || ! function_exists( 'WC' ) || ! WC()->cart ) {
+			return null;
+		}
+
+		$allocation = $this->allocate_cheapest( $discount );
+		if ( null === $cart_item_key ) {
+			$cart_item_key = $this->line_key_for_product( $product );
+		}
+		if ( null === $cart_item_key || empty( $allocation->lines[ $cart_item_key ] ) ) {
+			return null;
+		}
+
+		$line = $allocation->lines[ $cart_item_key ];
+		if ( $line['free_units'] <= 0 || $line['savings'] <= 0 ) {
+			return null;
+		}
+
+		$quantity   = max( 1, (int) $quantity );
+		$unit_price = ( ( $current * $quantity ) - $line['savings'] ) / $quantity;
+		$unit_price = max( 0.0, min( $unit_price, $current ) );
+		if ( $unit_price >= $current ) {
+			return null;
+		}
+
+		return (object) array(
+			'discount'   => $discount,
+			'kind'       => 'bogo_cheapest',
+			'unit_price' => $unit_price,
+			'base_price' => $current,
+			'savings'    => $line['savings'],
+			'bogo'       => array(
+				'buy_quantity'     => $allocation->buy_quantity,
+				'get_quantity'     => $allocation->get_quantity,
+				'discount_percent' => $allocation->discount_percent,
+				'free_quantity'    => $line['free_units'],
+				'pool_units'       => $allocation->pool_units,
+				'free_units_total' => $allocation->free_units,
+			),
+		);
+	}
+
+	/**
+	 * Allocate a "cheapest in cart" BOGO rule across the current cart.
+	 *
+	 * Pool = every paid unit on a line the rule is eligible for (targets,
+	 * exclusions, disable_on_sale, cart conditions, coupon gate, priority
+	 * ceiling), minus lines a higher-priority rule already claims. Free units =
+	 * floor(pool / (buy + get)) × get, handed out cheapest-first. Per unit the
+	 * price basis follows apply_to_sale_price and the customer never pays more
+	 * than the current price. Computed once per request (clear_cache resets).
+	 *
+	 * @since 1.25.0
+	 *
+	 * @param object $discount Discount row.
+	 * @return object {buy_quantity, get_quantity, discount_percent, pool_units, free_units, lines}
+	 */
+	public function allocate_cheapest( $discount ) {
+		$id = (int) $discount->id;
+		if ( isset( $this->cheapest_allocations[ $id ] ) ) {
+			return $this->cheapest_allocations[ $id ];
+		}
+
+		$config = json_decode( $discount->rule_config ?? '{}', true );
+		$config = is_array( $config ) ? $config : array();
+		$buy    = isset( $config['buy_quantity'] ) ? max( 1, (int) $config['buy_quantity'] ) : 1;
+		$get    = isset( $config['get_quantity'] ) ? max( 1, (int) $config['get_quantity'] ) : 1;
+		$pct    = isset( $config['discount'] ) ? min( 100.0, max( 0.0, (float) $config['discount'] ) ) : 100.0;
+
+		$allocation                        = (object) array(
+			'buy_quantity'     => $buy,
+			'get_quantity'     => $get,
+			'discount_percent' => $pct,
+			'pool_units'       => 0,
+			'free_units'       => 0,
+			'lines'            => array(),
+		);
+		$this->cheapest_allocations[ $id ] = $allocation;
+
+		if ( $pct <= 0 || ! function_exists( 'WC' ) || ! WC()->cart ) {
+			return $allocation;
+		}
+
+		$pool = array();
+		foreach ( WC()->cart->get_cart() as $cart_item_key => $cart_item ) {
+			if ( isset( $cart_item['storedash_is_free_item'] ) ) {
+				continue;
+			}
+			$line_product = isset( $cart_item['data'] ) ? $cart_item['data'] : null;
+			if ( ! $line_product instanceof WC_Product ) {
+				continue;
+			}
+			$line_quantity = isset( $cart_item['quantity'] ) ? (int) $cart_item['quantity'] : 0;
+			if ( $line_quantity <= 0 ) {
+				continue;
+			}
+			if ( ! $this->is_eligible( $discount, $line_product, 'cart' ) ) {
+				continue;
+			}
+			$ceiling = $this->priority_resolver->get_priority_ceiling( $line_product );
+			if ( $this->priority_resolver->is_suppressed( $discount, $ceiling ) ) {
+				continue;
+			}
+
+			$regular = (float) $line_product->get_regular_price();
+			if ( $regular <= 0 ) {
+				continue;
+			}
+			$sale    = $this->is_on_merchant_sale( $line_product ) ? (float) $line_product->get_sale_price() : 0.0;
+			$current = ( $sale > 0 ) ? $sale : $regular;
+
+			if ( $this->line_claimed_by_higher_priority( $discount, $line_product, $line_quantity, $ceiling ) ) {
+				continue;
+			}
+
+			$basis = ! empty( $discount->apply_to_sale_price ) ? $current : $regular;
+			$unit  = $this->round_price( min( $basis * ( 1 - $pct / 100 ), $current ) );
+			$unit  = max( 0.0, $unit );
+			if ( $unit >= $current ) {
+				continue; // Would not lower the price (e.g. sale already deeper).
+			}
+
+			$pool[] = array(
+				'key'         => $cart_item_key,
+				'quantity'    => $line_quantity,
+				'current'     => $current,
+				'unit_saving' => $current - $unit,
+			);
+		}
+
+		$pool_units = 0;
+		foreach ( $pool as $entry ) {
+			$pool_units += $entry['quantity'];
+		}
+		$allocation->pool_units = $pool_units;
+		$allocation->free_units = (int) floor( $pool_units / ( $buy + $get ) ) * $get;
+		if ( $allocation->free_units <= 0 ) {
+			return $allocation;
+		}
+
+		// Cheapest unit first; equal prices by line order so the result is stable
+		// across the multiple firings of before_calculate_totals.
+		usort(
+			$pool,
+			function ( $a, $b ) {
+				if ( abs( $a['current'] - $b['current'] ) > 0.000001 ) {
+					return ( $a['current'] < $b['current'] ) ? -1 : 1;
+				}
+				return strcmp( (string) $a['key'], (string) $b['key'] );
+			}
+		);
+
+		$remaining = $allocation->free_units;
+		foreach ( $pool as $entry ) {
+			if ( $remaining <= 0 ) {
+				break;
+			}
+			$units      = min( $remaining, $entry['quantity'] );
+			$remaining -= $units;
+
+			$allocation->lines[ $entry['key'] ] = array(
+				'free_units'  => $units,
+				'unit_saving' => $entry['unit_saving'],
+				'savings'     => $units * $entry['unit_saving'],
+				'current'     => $entry['current'],
+				'quantity'    => $entry['quantity'],
+			);
+		}
+
+		return $allocation;
+	}
+
+	/**
+	 * Whether a rule with a LOWER priority number (= higher priority) than the
+	 * cheapest-BOGO rule would win this line on its own. Such lines never enter
+	 * the BOGO pool: per-line resolution would hand them to that rule anyway,
+	 * and counting them would silently "spend" free units on lines the offer
+	 * can't touch.
+	 *
+	 * Only non-BOGO rules are considered (BOGO rules never claim a line
+	 * outright; their own pools are resolved independently).
+	 *
+	 * @since 1.25.0
+	 *
+	 * @param object     $discount Cheapest-BOGO rule.
+	 * @param WC_Product $product  Line product.
+	 * @param int        $quantity Line quantity.
+	 * @param int|null   $ceiling  Priority ceiling for the product.
+	 * @return bool
+	 */
+	protected function line_claimed_by_higher_priority( $discount, $product, $quantity, $ceiling ) {
+		$own_priority = ( isset( $discount->priority ) && null !== $discount->priority ) ? (int) $discount->priority : 10;
+
+		foreach ( $this->get_candidates( 'cart' ) as $other ) {
+			if ( (int) $other->id === (int) $discount->id || 'bogo' === $other->rule_type ) {
+				continue;
+			}
+			$other_priority = ( isset( $other->priority ) && null !== $other->priority ) ? (int) $other->priority : 10;
+			if ( $other_priority >= $own_priority ) {
+				continue;
+			}
+			if ( $this->priority_resolver->is_suppressed( $other, $ceiling ) ) {
+				continue;
+			}
+			if ( ! $this->is_eligible( $other, $product, 'cart' ) ) {
+				continue;
+			}
+			if ( null !== $this->compute_application( $other, $product, $quantity, 'cart' ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * First paid cart line carrying this product (callers without a line key).
+	 *
+	 * @since 1.25.0
+	 *
+	 * @param WC_Product $product Product object.
+	 * @return string|null
+	 */
+	protected function line_key_for_product( $product ) {
+		foreach ( WC()->cart->get_cart() as $cart_item_key => $cart_item ) {
+			if ( isset( $cart_item['storedash_is_free_item'] ) || ! isset( $cart_item['data'] ) ) {
+				continue;
+			}
+			if ( $cart_item['data'] === $product ) {
+				return (string) $cart_item_key;
+			}
+		}
+		foreach ( WC()->cart->get_cart() as $cart_item_key => $cart_item ) {
+			if ( isset( $cart_item['storedash_is_free_item'] ) || ! isset( $cart_item['data'] ) ) {
+				continue;
+			}
+			if ( $cart_item['data'] instanceof WC_Product && $cart_item['data']->get_id() === $product->get_id() ) {
+				return (string) $cart_item_key;
+			}
+		}
+		return null;
 	}
 
 	/**
