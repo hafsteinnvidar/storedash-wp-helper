@@ -100,7 +100,7 @@ class StoreDash_Bootstrap {
 	private function maybe_create_tables(): void {
 		// Use a version flag to avoid checking on every single request
 		$db_version      = get_option( 'storedash_db_schema_version', '0' );
-		$current_version = '1.10.0'; // Bumped: gift card tables (storedash_gift_cards / storedash_gift_card_ledger)
+		$current_version = '1.11.0'; // Bumped: cancel legacy discount Action Scheduler jobs (discount db 1.6.0)
 
 		if ( version_compare( $db_version, $current_version, '>=' ) ) {
 			return; // Already up to date

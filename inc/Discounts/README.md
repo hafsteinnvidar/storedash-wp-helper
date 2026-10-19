@@ -202,14 +202,11 @@ The former `wp_storedash_discount_products` tracking table was never written to 
 1. Dashboard server action writes discount to Supabase
 2. Server action calls `POST /discounts/sync` with mapped WooCommerce IDs
 3. `Discount_Sync_Manager` upserts into `wp_storedash_discounts`
-4. Action Scheduler hooks handle scheduled activation/deactivation
-5. Engines read from `wp_storedash_discounts` at runtime
+4. Engines read from `wp_storedash_discounts` at runtime
 
 ## Scheduling
 
-Uses WooCommerce Action Scheduler:
-- `storedash_activate_discount` — fires at `start_date`
-- `storedash_deactivate_discount` — fires at `end_date`
+No scheduler. `start_date` / `end_date` are enforced at read time: every active-discount query filters `start_date <= UTC_TIMESTAMP() AND end_date >= UTC_TIMESTAMP()`, and `Discount_Resolver::get_discount_signature()` hashes that date-filtered set, so cached variation prices roll over at the boundary on their own. `enabled` is written only by the dashboard (`/sync`, `/toggle`). The former Action Scheduler jobs (`storedash_activate_discount` / `storedash_deactivate_discount`) were removed because a queued activation re-enabled a discount the merchant had paused before `start_date`; discount db upgrade 1.6.0 cancels any still queued.
 
 ## Safe Failure Mode
 

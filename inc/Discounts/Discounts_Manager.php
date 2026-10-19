@@ -114,9 +114,9 @@ class Discounts_Manager {
 	public function init() {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 
-		// Register scheduled action handlers for discount activation/deactivation
-		add_action( 'storedash_activate_discount', array( $this, 'handle_activate_discount' ) );
-		add_action( 'storedash_deactivate_discount', array( $this, 'handle_deactivate_discount' ) );
+		// No Action Scheduler activation/deactivation handlers: the engines
+		// filter start_date / end_date at read time, and a scheduled flip used
+		// to re-enable a discount the merchant had paused before start_date.
 
 		// Initialize Store API integration for WooCommerce Blocks. WooCommerce
 		// fires woocommerce_blocks_loaded during its OWN plugins_loaded callback,
@@ -223,97 +223,5 @@ class Discounts_Manager {
 	 */
 	public function get_route_registry() {
 		return $this->route_registry;
-	}
-
-	/**
-	 * Handle scheduled discount activation.
-	 *
-	 * Called by Action Scheduler when a discount's start_date is reached.
-	 * Simply enables the discount - prices are calculated dynamically via hooks.
-	 *
-	 * @since 1.0.0
-	 * @since 3.0.0 Simplified - no batch processing, all discounts are dynamic.
-	 *
-	 * @param int $discount_id The discount ID passed by Action Scheduler.
-	 */
-	public function handle_activate_discount( $discount_id ) {
-		if ( empty( $discount_id ) ) {
-			\StoreDash_Helpers::debug_log( 'handle_activate_discount called without discount_id' );
-			return;
-		}
-
-		$discount_id = (int) $discount_id;
-
-		\StoreDash_Helpers::debug_log( 'Scheduled activation for discount', array( 'discount_id' => $discount_id ) );
-
-		// Get discount to verify it exists
-		$discount = $this->db_handler->get_discount( $discount_id );
-
-		if ( ! $discount ) {
-			\StoreDash_Helpers::debug_log( 'Discount not found during scheduled activation', array( 'discount_id' => $discount_id ) );
-			return;
-		}
-
-		// Enable the discount - prices are now calculated dynamically via hooks
-		$updated = $this->db_handler->update_discount( $discount_id, array( 'enabled' => 1 ) );
-
-		if ( ! $updated ) {
-			\StoreDash_Helpers::log_message( 'Failed to enable discount during scheduled activation', 'error', array( 'discount_id' => $discount_id ) );
-			return;
-		}
-
-		\StoreDash_Helpers::debug_log(
-			'Discount activated (dynamic pricing - no batch processing needed)',
-			array(
-				'discount_id' => $discount_id,
-				'type'        => $discount->rule_type,
-			)
-		);
-	}
-
-	/**
-	 * Handle scheduled discount deactivation.
-	 *
-	 * Called by Action Scheduler when a discount's end_date is reached.
-	 * Simply disables the discount - prices are calculated dynamically via hooks.
-	 *
-	 * @since 1.0.0
-	 * @since 3.0.0 Simplified - no batch processing, all discounts are dynamic.
-	 *
-	 * @param int $discount_id The discount ID passed by Action Scheduler.
-	 */
-	public function handle_deactivate_discount( $discount_id ) {
-		if ( empty( $discount_id ) ) {
-			\StoreDash_Helpers::debug_log( 'handle_deactivate_discount called without discount_id' );
-			return;
-		}
-
-		$discount_id = (int) $discount_id;
-
-		\StoreDash_Helpers::debug_log( 'Scheduled deactivation for discount', array( 'discount_id' => $discount_id ) );
-
-		// Get discount to verify it exists
-		$discount = $this->db_handler->get_discount( $discount_id );
-
-		if ( ! $discount ) {
-			\StoreDash_Helpers::debug_log( 'Discount not found during scheduled deactivation', array( 'discount_id' => $discount_id ) );
-			return;
-		}
-
-		// Disable the discount - prices are now calculated dynamically via hooks
-		$updated = $this->db_handler->update_discount( $discount_id, array( 'enabled' => 0 ) );
-
-		if ( ! $updated ) {
-			\StoreDash_Helpers::log_message( 'Failed to disable discount during scheduled deactivation', 'error', array( 'discount_id' => $discount_id ) );
-			return;
-		}
-
-		\StoreDash_Helpers::debug_log(
-			'Discount deactivated (dynamic pricing - no batch processing needed)',
-			array(
-				'discount_id' => $discount_id,
-				'type'        => $discount->rule_type,
-			)
-		);
 	}
 }

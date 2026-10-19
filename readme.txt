@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.25.0
+Stable tag: 1.26.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,11 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.26.0 =
+* New: native SEO. Storedash can now print your store's SEO head tags itself: page title, meta description, canonical link, robots rules, Open Graph and Twitter cards, product price and availability. Turn it on in Storedash under Settings > Integrations > Storedash SEO. It stays silent while Yoast, RankMath, SEOPress, AIOSEO or The SEO Framework is active, so nothing changes until you choose to switch.
+* New: SEO settings, status, bulk meta and migration endpoints for Storedash. The migration copies your existing Yoast / RankMath titles, descriptions and noindex flags into Storedash's own fields; the original plugin's data is left untouched.
+* Fixed: discounts with a start or end date are no longer flipped on or off by a scheduled task. Start and end dates are now applied at pricing time, so a discount you paused before its start date stays paused.
 
 = 1.25.0 =
 * New: "Buy X get Y" discounts can now pick the cheapest items in the cart ("3 for 2" across products). Set the rule's mode to "cheapest in cart" in Storedash: every qualifying item counts together, and for each full set the cheapest units are discounted (free at 100%). The shopper's own lines are priced down; no extra lines are added. Works with the whole store, chosen products, or whole categories / tags / brands.

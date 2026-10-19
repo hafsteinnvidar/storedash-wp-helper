@@ -11,7 +11,7 @@ class StoreDash_Activator {
 	 * in maybe_upgrade_discount_tables(), and the CREATE TABLE in
 	 * create_discount_tables() must include every column up to this version.
 	 */
-	private const LATEST_DISCOUNT_DB_VERSION = '1.5.0';
+	private const LATEST_DISCOUNT_DB_VERSION = '1.6.0';
 
 	/**
 	 * Safe logging helper — StoreDash_Helpers may not be loaded during
@@ -576,6 +576,11 @@ class StoreDash_Activator {
 
 		if ( version_compare( $current_version, '1.5.0', '<' ) ) {
 			self::upgrade_discount_tables_to_1_5();
+			update_option( 'storedash_discount_db_version', '1.5.0', false );
+		}
+
+		if ( version_compare( $current_version, '1.6.0', '<' ) ) {
+			self::upgrade_discount_tables_to_1_6();
 			update_option( 'storedash_discount_db_version', self::LATEST_DISCOUNT_DB_VERSION, false );
 		}
 	}
@@ -745,6 +750,27 @@ class StoreDash_Activator {
 			);
 			self::log( 'Added taxonomy exclusion columns to discounts table' );
 		}
+	}
+
+	/**
+	 * Upgrade discount tables to version 1.6.0
+	 *
+	 * Cancels the Action Scheduler activation/deactivation jobs the plugin used
+	 * to queue per discount. Their handlers are gone (a queued activation could
+	 * re-enable a discount the merchant paused before its start_date; the
+	 * engines already enforce start/end dates at read time), so leftover jobs
+	 * are hygiene only. Guarded like uninstall.php — WC_Queue may not exist
+	 * when this runs from register_activation_hook before plugins_loaded.
+	 */
+	private static function upgrade_discount_tables_to_1_6(): void {
+		if ( ! class_exists( 'WC_Queue' ) || ! function_exists( 'WC' ) ) {
+			return;
+		}
+
+		$queue = WC()->queue();
+		$queue->cancel_all( 'storedash_activate_discount' );
+		$queue->cancel_all( 'storedash_deactivate_discount' );
+		self::log( 'Cancelled pending discount activation/deactivation jobs' );
 	}
 
 	/**

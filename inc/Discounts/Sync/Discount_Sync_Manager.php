@@ -102,8 +102,9 @@ class Discount_Sync_Manager {
 			$message = 'Discount created successfully';
 		}
 
-		// Schedule start/end if dates provided
-		$this->maybe_schedule_discount( $wp_rule_id, $discount_data );
+		// No scheduling: start_date / end_date are enforced at read time by
+		// Discount_DB_Handler::get_active_discounts() (UTC_TIMESTAMP() window),
+		// so `enabled` is only ever written by the dashboard (sync / toggle).
 
 		\StoreDash_Helpers::debug_log(
 			'Discount synced (dynamic pricing - no batch processing)',
@@ -118,67 +119,5 @@ class Discount_Sync_Manager {
 			'wp_rule_id' => $wp_rule_id,
 			'message'    => $message,
 		);
-	}
-
-	/**
-	 * Schedule discount activation/deactivation
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param int   $wp_rule_id     WordPress discount ID.
-	 * @param array $discount_data  Discount data.
-	 */
-	protected function maybe_schedule_discount( $wp_rule_id, $discount_data ) {
-		if ( ! class_exists( 'WC_Queue' ) ) {
-			return;
-		}
-
-		$queue = WC()->queue();
-
-		// Cancel any existing scheduled actions for this discount
-		$queue->cancel_all( 'storedash_activate_discount', array( $wp_rule_id ) );
-		$queue->cancel_all( 'storedash_deactivate_discount', array( $wp_rule_id ) );
-
-		// Schedule activation
-		if ( ! empty( $discount_data['start_date'] ) ) {
-			$start_timestamp = strtotime( $discount_data['start_date'] );
-			if ( $start_timestamp > time() ) {
-				\StoreDash_Helpers::debug_log(
-					'Scheduling activation for discount',
-					array(
-						'discount_id' => $wp_rule_id,
-						'start_date'  => $discount_data['start_date'],
-						'timestamp'   => $start_timestamp,
-					)
-				);
-				$queue->schedule_single(
-					$start_timestamp,
-					'storedash_activate_discount',
-					array( $wp_rule_id ),
-					'storedash_discounts'
-				);
-			}
-		}
-
-		// Schedule deactivation
-		if ( ! empty( $discount_data['end_date'] ) ) {
-			$end_timestamp = strtotime( $discount_data['end_date'] );
-			if ( $end_timestamp > time() ) {
-				\StoreDash_Helpers::debug_log(
-					'Scheduling deactivation for discount',
-					array(
-						'discount_id' => $wp_rule_id,
-						'end_date'    => $discount_data['end_date'],
-						'timestamp'   => $end_timestamp,
-					)
-				);
-				$queue->schedule_single(
-					$end_timestamp,
-					'storedash_deactivate_discount',
-					array( $wp_rule_id ),
-					'storedash_discounts'
-				);
-			}
-		}
 	}
 }
