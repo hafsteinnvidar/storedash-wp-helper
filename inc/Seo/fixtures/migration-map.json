@@ -1,0 +1,97 @@
+{
+  "_comment": "Cross-language contract. shared = the 9 fields woo-dash src/features/products/utils/seo-meta.ts reads (YOAST_FIELD_KEY_MAP / RANK_MATH_FIELD_KEY_MAP) + their storedash (plan §4.9) target; a TS test can assert exact equality on `shared`. extra = read-only source keys the helper also maps (scores, primary category; never written to §4.9). yoast_extra / rankmath_extra = ogImage, migrated but not in seo-meta.ts. yoast_robots = YOAST_ROBOTS_KEYS. storedash = the full §4.9 key set (shared + ogImage + robots). Asserted by helper tests/Seo/Migration_MapTest.php; woo-dash keeps a copy + vitest.",
+  "shared": {
+    "fields": [
+      "focusKeyword",
+      "seoTitle",
+      "metaDescription",
+      "canonicalUrl",
+      "breadcrumbTitle",
+      "ogTitle",
+      "ogDescription",
+      "twitterTitle",
+      "twitterDescription"
+    ],
+    "yoast": {
+      "focusKeyword": "_yoast_wpseo_focuskw",
+      "seoTitle": "_yoast_wpseo_title",
+      "metaDescription": "_yoast_wpseo_metadesc",
+      "canonicalUrl": "_yoast_wpseo_canonical",
+      "breadcrumbTitle": "_yoast_wpseo_bctitle",
+      "ogTitle": "_yoast_wpseo_opengraph-title",
+      "ogDescription": "_yoast_wpseo_opengraph-description",
+      "twitterTitle": "_yoast_wpseo_twitter-title",
+      "twitterDescription": "_yoast_wpseo_twitter-description"
+    },
+    "rankmath": {
+      "focusKeyword": "rank_math_focus_keyword",
+      "seoTitle": "rank_math_title",
+      "metaDescription": "rank_math_description",
+      "canonicalUrl": "rank_math_canonical_url",
+      "breadcrumbTitle": "rank_math_breadcrumb_title",
+      "ogTitle": "rank_math_facebook_title",
+      "ogDescription": "rank_math_facebook_description",
+      "twitterTitle": "rank_math_twitter_title",
+      "twitterDescription": "rank_math_twitter_description"
+    },
+    "storedash": {
+      "focusKeyword": "_storedash_seo_focus_keyword",
+      "seoTitle": "_storedash_seo_title",
+      "metaDescription": "_storedash_seo_description",
+      "canonicalUrl": "_storedash_seo_canonical",
+      "breadcrumbTitle": "_storedash_seo_breadcrumb_title",
+      "ogTitle": "_storedash_seo_og_title",
+      "ogDescription": "_storedash_seo_og_description",
+      "twitterTitle": "_storedash_seo_twitter_title",
+      "twitterDescription": "_storedash_seo_twitter_description"
+    }
+  },
+  "extra": {
+    "fields": ["contentScore", "readabilityScore", "primaryCategory"],
+    "yoast": {
+      "contentScore": "_yoast_wpseo_content_score",
+      "readabilityScore": "_yoast_wpseo_readability_score",
+      "primaryCategory": "_yoast_wpseo_primary_product_cat"
+    },
+    "rankmath": {
+      "contentScore": "rank_math_seo_score",
+      "readabilityScore": "rank_math_readability_score",
+      "primaryCategory": "rank_math_primary_product_cat"
+    }
+  },
+  "yoast_robots": {
+    "noindex": "_yoast_wpseo_meta-robots-noindex",
+    "nofollow": "_yoast_wpseo_meta-robots-nofollow",
+    "adv": "_yoast_wpseo_meta-robots-adv",
+    "legacy": "_yoast_wpseo_meta-robots"
+  },
+  "yoast_extra": { "ogImage": "_yoast_wpseo_opengraph-image" },
+  "rankmath_robots": "rank_math_robots",
+  "rankmath_extra": { "ogImage": "rank_math_facebook_image" },
+  "storedash": {
+    "focusKeyword": "_storedash_seo_focus_keyword",
+    "seoTitle": "_storedash_seo_title",
+    "metaDescription": "_storedash_seo_description",
+    "canonicalUrl": "_storedash_seo_canonical",
+    "breadcrumbTitle": "_storedash_seo_breadcrumb_title",
+    "ogTitle": "_storedash_seo_og_title",
+    "ogDescription": "_storedash_seo_og_description",
+    "ogImage": "_storedash_seo_og_image",
+    "twitterTitle": "_storedash_seo_twitter_title",
+    "twitterDescription": "_storedash_seo_twitter_description",
+    "robots": "_storedash_seo_robots"
+  },
+  "robots_cases": [
+    { "source": "yoast", "meta": {}, "expected": null },
+    { "source": "yoast", "meta": { "_yoast_wpseo_meta-robots-noindex": "1" }, "expected": { "index": false, "follow": true, "imageindex": true, "archive": true, "snippet": true } },
+    { "source": "yoast", "meta": { "_yoast_wpseo_meta-robots-noindex": "2" }, "expected": { "index": true, "follow": true, "imageindex": true, "archive": true, "snippet": true } },
+    { "source": "yoast", "meta": { "_yoast_wpseo_meta-robots-noindex": "0", "_yoast_wpseo_meta-robots-nofollow": "1" }, "expected": { "index": true, "follow": false, "imageindex": true, "archive": true, "snippet": true } },
+    { "source": "yoast", "meta": { "_yoast_wpseo_meta-robots-adv": "noimageindex,noarchive,nosnippet" }, "expected": { "index": true, "follow": true, "imageindex": false, "archive": false, "snippet": false } },
+    { "source": "yoast", "meta": { "_yoast_wpseo_meta-robots": "noindex,nofollow" }, "expected": { "index": false, "follow": false, "imageindex": true, "archive": true, "snippet": true } },
+    { "source": "yoast", "meta": { "_yoast_wpseo_meta-robots-nofollow": "0", "_yoast_wpseo_meta-robots": "noindex" }, "expected": { "index": true, "follow": true, "imageindex": true, "archive": true, "snippet": true } },
+    { "source": "rankmath", "meta": {}, "expected": null },
+    { "source": "rankmath", "meta": { "rank_math_robots": ["index", "follow"] }, "expected": { "index": true, "follow": true, "imageindex": true, "archive": true, "snippet": true } },
+    { "source": "rankmath", "meta": { "rank_math_robots": ["noindex", "nofollow", "noimageindex"] }, "expected": { "index": false, "follow": false, "imageindex": false, "archive": true, "snippet": true } },
+    { "source": "rankmath", "meta": { "rank_math_robots": [" noindex", "noarchive", "nosnippet", "noodp"] }, "expected": { "index": false, "follow": true, "imageindex": true, "archive": false, "snippet": false } }
+  ]
+}

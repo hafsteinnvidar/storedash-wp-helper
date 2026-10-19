@@ -6,6 +6,7 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'StoreDash\\Seo\\' => array($baseDir . '/inc/Seo'),
     'StoreDash\\Products\\' => array($baseDir . '/inc/Products'),
     'StoreDash\\GiftCard\\' => array($baseDir . '/inc/GiftCard'),
     'StoreDash\\Discounts\\' => array($baseDir . '/inc/Discounts'),

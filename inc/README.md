@@ -24,12 +24,13 @@ inc/
   Products/        # PSR-4 module
   Carts/           # PSR-4 module
   Discounts/       # PSR-4 module
+  Seo/             # PSR-4 module (native SEO head tags + REST)
   live-chat.php    # Frontend live-chat feature (single file)
 ```
 
 ### Two file/class conventions coexist deliberately
 
-- **PSR-4 modules** — `Products/`, `Carts/`, `Discounts/`. PascalCase dir
+- **PSR-4 modules** — `Products/`, `Carts/`, `Discounts/`, `Seo/`. PascalCase dir
   names, class name matches file name, resolved by `StoreDash_Loader` (`inc/core/class-storedash-loader.php`).
   `phpcs.xml` excludes these dirs from WordPress file-naming rules so autoloading works on
   case-sensitive filesystems.
@@ -103,6 +104,10 @@ Sanity check: `GET /wp-json/storedash/v1/ping`, `GET /wp-json/storedash/v1/verif
 - **Discounts/** — `Discounts_Manager`, `Route_Registry`, `Controllers/` (Delete, Status, Sync, Toggle),
   `Engine/` (matcher, priority resolver, BOGO + quantity rules, dynamic price display),
   `Sync/` (DB handler + sync manager), `Blocks/` (Store API integration).
+- **Seo/** — `Seo_Manager`, `Settings`, `Route_Registry`, `Controllers/`, `Engine/` (conflict guard,
+  title template, meta reader/writer, migration map, head renderer). Prints SEO head tags only when
+  `storedash_seo_enabled` is on and no other SEO plugin is active. REST (`storedash/v1/seo/*`: status,
+  settings push, bulk-meta, Yoast/RankMath migrate) is always registered. See `inc/Seo/README.md`.
 
 ---
 

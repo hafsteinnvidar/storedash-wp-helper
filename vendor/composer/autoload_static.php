@@ -14,6 +14,7 @@ class ComposerStaticInitb99d1516db6e80927fd43658dfb5e85c
     public static $prefixLengthsPsr4 = array (
         'S' =>
         array (
+            'StoreDash\\Seo\\' => 14,
             'StoreDash\\Products\\' => 19,
             'StoreDash\\GiftCard\\' => 19,
             'StoreDash\\Discounts\\' => 20,
@@ -33,6 +34,10 @@ class ComposerStaticInitb99d1516db6e80927fd43658dfb5e85c
     );
 
     public static $prefixDirsPsr4 = array (
+        'StoreDash\\Seo\\' =>
+        array (
+            0 => __DIR__ . '/../..' . '/inc/Seo',
+        ),
         'StoreDash\\Products\\' =>
         array (
             0 => __DIR__ . '/../..' . '/inc/Products',

@@ -52,7 +52,7 @@ Boot order (`storedash.php` → `storedash_init` on `plugins_loaded` priority 20
    procedural/`class-*.php` file, then registers API + components on `init`.
 
 **Two file/class conventions coexist deliberately:**
-- **PSR-4 modules** — `inc/Products/`, `inc/Carts/`, `inc/Discounts/`, `inc/Orders/`
+- **PSR-4 modules** — `inc/Products/`, `inc/Carts/`, `inc/Discounts/`, `inc/Orders/`, `inc/Seo/`
   (PascalCase dirs, class-name-matches-filename, autoloaded). phpcs.xml explicitly excludes these
   dirs from WordPress file-naming rules so the autoloader works on case-sensitive filesystems.
 - **WordPress-style procedural includes** — everything else under `inc/` (`class-*.php`,

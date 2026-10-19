@@ -67,6 +67,13 @@ class StoreDash_API {
 	private $gift_card_controller;
 
 	/**
+	 * Native SEO module.
+	 *
+	 * @var StoreDash\Seo\Seo_Manager
+	 */
+	private $seo_controller;
+
+	/**
 	 * Get singleton instance
 	 *
 	 * @return StoreDash_API
@@ -187,6 +194,18 @@ class StoreDash_API {
 					$this->gift_card_controller->init();
 				} catch ( Exception $e ) {
 					$this->log_api_error( 'Failed to initialize Gift Card Manager: ' . $e->getMessage() );
+				}
+			}
+
+			// Native SEO (head tags). Always constructed so the conflict filter (and
+			// B3's routes) exist; front-end hooks register only when the
+			// `storedash_seo_enabled` option is on and no other SEO plugin is active.
+			if ( class_exists( 'StoreDash\Seo\Seo_Manager' ) ) {
+				try {
+					$this->seo_controller = new \StoreDash\Seo\Seo_Manager();
+					$this->seo_controller->init();
+				} catch ( Exception $e ) {
+					$this->log_api_error( 'Failed to initialize SEO Manager: ' . $e->getMessage() );
 				}
 			}
 
