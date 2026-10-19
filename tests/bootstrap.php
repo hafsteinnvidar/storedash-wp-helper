@@ -288,6 +288,41 @@ if ( ! function_exists( 'is_wp_error' ) ) {
 	}
 }
 
+// WP_REST_Response double shared by the REST controller suites (Seo catalog,
+// shipment tracking). Superset of the per-suite stubs: data + status + headers.
+if ( ! class_exists( 'WP_REST_Response' ) ) {
+	class WP_REST_Response {
+		/** @var mixed */
+		public $data;
+		/** @var int */
+		public $status;
+		/** @var array */
+		public $headers = array();
+
+		public function __construct( $data = null, $status = 200, $headers = array() ) {
+			$this->data    = $data;
+			$this->status  = (int) $status;
+			$this->headers = is_array( $headers ) ? $headers : array();
+		}
+
+		public function header( $key, $value, $replace = true ) {
+			$this->headers[ $key ] = $value;
+		}
+
+		public function get_headers() {
+			return $this->headers;
+		}
+
+		public function get_data() {
+			return $this->data;
+		}
+
+		public function get_status() {
+			return $this->status;
+		}
+	}
+}
+
 if ( ! function_exists( 'wp_json_encode' ) ) {
 	function wp_json_encode( $data, $options = 0, $depth = 512 ) {
 		return json_encode( $data, $options, $depth );

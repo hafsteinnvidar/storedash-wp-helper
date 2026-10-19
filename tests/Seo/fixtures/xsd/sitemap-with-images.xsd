@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Wrapper so xmllint validates a urlset carrying Google image entries:
+     sitemaps.org 0.9 (sitemap.xsd) + Google image extension 1.1
+     (sitemap-image.xsd). Both files are verbatim downloads
+     (https://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd,
+      https://www.google.com/schemas/sitemap-image/1.1/sitemap-image.xsd). -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <xsd:import namespace="http://www.sitemaps.org/schemas/sitemap/0.9" schemaLocation="sitemap.xsd"/>
+  <xsd:import namespace="http://www.google.com/schemas/sitemap-image/1.1" schemaLocation="sitemap-image.xsd"/>
+</xsd:schema>

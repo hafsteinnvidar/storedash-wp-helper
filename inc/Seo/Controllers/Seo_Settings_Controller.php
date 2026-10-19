@@ -17,6 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use StoreDash\Seo\Engine\Plugin_Conflict_Guard;
+use StoreDash\Seo\Engine\Sitemap_Generator;
 use StoreDash\Seo\Settings;
 
 /**
@@ -101,7 +102,7 @@ class Seo_Settings_Controller extends Abstract_Seo_Controller {
 				'enabled'           => Settings::is_enabled(),
 				'conflict'          => apply_filters( 'storedash_seo_conflict', null ), // Seo_Manager::CONFLICT_FILTER.
 				'version'           => defined( 'STOREDASH_VERSION' ) ? STOREDASH_VERSION : '',
-				'sitemap_url'       => null,
+				'sitemap_url'       => Sitemap_Generator::is_active() ? home_url( '/sitemap.xml' ) : null,
 				'detected_plugins'  => $this->guard->detected(),
 				'settings_hash'     => is_string( $hash ) && '' !== $hash ? $hash : null,
 				'wc_version'        => defined( 'WC_VERSION' ) ? WC_VERSION : null,

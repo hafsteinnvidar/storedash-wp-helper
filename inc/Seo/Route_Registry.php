@@ -5,7 +5,9 @@
  * Registered on every request — even when the module is off or another SEO
  * plugin is active — so Storedash can read status and migrate while Yoast /
  * RankMath is still installed. Every route requires `manage_woocommerce`
- * (consumer-key auth via StoreDash_Auth_Handler), like Discounts and Credit.
+ * (consumer-key auth via StoreDash_Auth_Handler), like Discounts and Credit —
+ * except `GET /seo/catalog.txt` (B5), a public plain-text catalog for AI
+ * agents that 404s unless `llms_txt_enabled` is on.
  *
  * @package StoreDash\Seo
  * @since   1.26.0
@@ -19,7 +21,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use StoreDash\Core\Base_Permissions;
 use StoreDash\Seo\Controllers\Seo_Bulk_Controller;
+use StoreDash\Seo\Controllers\Seo_Catalog_Controller;
 use StoreDash\Seo\Controllers\Seo_Migrate_Controller;
+use StoreDash\Seo\Controllers\Seo_Redirects_Controller;
 use StoreDash\Seo\Controllers\Seo_Settings_Controller;
 use StoreDash\Seo\Engine\Plugin_Conflict_Guard;
 use WP_REST_Server;
@@ -65,7 +69,7 @@ class Route_Registry {
 	/**
 	 * Controller factory.
 	 *
-	 * @param string $name settings|bulk|migrate.
+	 * @param string $name settings|bulk|migrate|redirects|catalog.
 	 * @return object|null
 	 */
 	protected function get_controller( string $name ) {
@@ -81,6 +85,12 @@ class Route_Registry {
 				break;
 			case 'migrate':
 				$this->controllers[ $name ] = new Seo_Migrate_Controller();
+				break;
+			case 'redirects':
+				$this->controllers[ $name ] = new Seo_Redirects_Controller();
+				break;
+			case 'catalog':
+				$this->controllers[ $name ] = new Seo_Catalog_Controller();
 				break;
 			default:
 				return null;
@@ -141,6 +151,28 @@ class Route_Registry {
 			)
 		);
 
+		// Public plain-text catalog linked from /llms.txt (B5). Public product
+		// data only; 404 unless the module + llms_txt_enabled are on.
+		register_rest_route(
+			$namespace,
+			'/seo/catalog\.txt',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => function ( $request ) {
+					return $this->get_controller( 'catalog' )->get_catalog( $request );
+				},
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'page' => array(
+						'type'    => 'integer',
+						'minimum' => 1,
+						'maximum' => Seo_Catalog_Controller::MAX_PAGE,
+						'default' => 1,
+					),
+				),
+			)
+		);
+
 		register_rest_route(
 			$namespace,
 			'/seo/migrate',
@@ -148,6 +180,39 @@ class Route_Registry {
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => function ( $request ) {
 					return $this->get_controller( 'migrate' )->migrate( $request );
+				},
+				'permission_callback' => $manage,
+			)
+		);
+
+		register_rest_route(
+			$namespace,
+			'/seo/redirects',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => function ( $request ) {
+						return $this->get_controller( 'redirects' )->get_redirects( $request );
+					},
+					'permission_callback' => $manage,
+				),
+				array(
+					'methods'             => 'PUT',
+					'callback'            => function ( $request ) {
+						return $this->get_controller( 'redirects' )->put_redirects( $request );
+					},
+					'permission_callback' => $manage,
+				),
+			)
+		);
+
+		register_rest_route(
+			$namespace,
+			'/seo/redirects/hits',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => function ( $request ) {
+					return $this->get_controller( 'redirects' )->get_hits( $request );
 				},
 				'permission_callback' => $manage,
 			)

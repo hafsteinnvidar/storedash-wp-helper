@@ -34,6 +34,32 @@ class Settings {
 	const ENABLED_OPTION = 'storedash_seo_enabled';
 
 	/**
+	 * Action fired by reset_cache() after a settings push, so caches derived
+	 * from settings (sitemap pages, B5's llms.txt) can bust themselves.
+	 */
+	const RESET_ACTION = 'storedash_seo_settings_reset';
+
+	/**
+	 * `ai_bots` slugs Storedash may block (plan §4.7 minus the search engines).
+	 * The robots.txt token per slug lives in Engine\Robots_Txt::ROBOTS_TOKENS.
+	 */
+	const AI_BOT_SLUGS = array(
+		'gptbot',
+		'oai-searchbot',
+		'chatgpt-user',
+		'claudebot',
+		'claude-user',
+		'perplexitybot',
+		'perplexity-user',
+		'google-extended',
+		'applebot',
+		'amazonbot',
+		'bytespider',
+		'ccbot',
+		'meta-externalagent',
+	);
+
+	/**
 	 * Per-request cache of the normalized settings.
 	 *
 	 * @var array|null
@@ -92,12 +118,86 @@ class Settings {
 			}
 		}
 
-		foreach ( array( 'schema_org', 'ai_bots' ) as $list ) {
-			if ( isset( $raw[ $list ] ) && is_array( $raw[ $list ] ) ) {
-				$out[ $list ] = $raw[ $list ];
-			}
+		if ( isset( $raw['schema_org'] ) && is_array( $raw['schema_org'] ) ) {
+			$out['schema_org'] = self::normalize_schema_org( $raw['schema_org'] );
+		}
+		if ( isset( $raw['ai_bots'] ) && is_array( $raw['ai_bots'] ) ) {
+			$out['ai_bots'] = self::normalize_ai_bots( $raw['ai_bots'] );
 		}
 
+		return $out;
+	}
+
+	/**
+	 * Inner shape of `schema_org` (B5 Organization piece). Pure.
+	 *
+	 * Input (from Storedash `seo_store_settings.schema_org`):
+	 * `{ name: string, logo: url, url?: url, description?: string, sameAs?: url[],
+	 *    telephone?: string, email?: string }`.
+	 * Unknown keys are dropped, wrong types fall back to '' / []. `logo`, `url`
+	 * and every `sameAs` entry must be absolute http(s) URLs (invalid ones are
+	 * dropped). The Organization piece renders only when `name` is non-empty.
+	 *
+	 * @param array $raw Raw object.
+	 * @return array Every key (name, logo, url, description, sameAs, telephone,
+	 *               email) when anything is set; `array()` (the default) when
+	 *               nothing valid was given.
+	 */
+	public static function normalize_schema_org( array $raw ): array {
+		$out = array(
+			'name'        => '',
+			'logo'        => '',
+			'url'         => '',
+			'description' => '',
+			'sameAs'      => array(),
+			'telephone'   => '',
+			'email'       => '',
+		);
+		foreach ( array( 'name', 'description', 'telephone', 'email' ) as $key ) {
+			if ( isset( $raw[ $key ] ) && is_scalar( $raw[ $key ] ) ) {
+				$out[ $key ] = trim( wp_strip_all_tags( (string) $raw[ $key ] ) );
+			}
+		}
+		foreach ( array( 'logo', 'url' ) as $key ) {
+			if ( isset( $raw[ $key ] ) && is_string( $raw[ $key ] ) ) {
+				$out[ $key ] = self::http_url( $raw[ $key ] );
+			}
+		}
+		if ( isset( $raw['sameAs'] ) && is_array( $raw['sameAs'] ) ) {
+			foreach ( $raw['sameAs'] as $url ) {
+				$url = is_string( $url ) ? self::http_url( $url ) : '';
+				if ( '' !== $url && ! in_array( $url, $out['sameAs'], true ) ) {
+					$out['sameAs'][] = $url;
+				}
+			}
+		}
+		foreach ( $out as $value ) {
+			if ( ! empty( $value ) ) {
+				return $out;
+			}
+		}
+		return array();
+	}
+
+	/**
+	 * Inner shape of `ai_bots` (B5 robots.txt blocks). Pure.
+	 *
+	 * Input: `{ "<slug>": bool }` with slugs from AI_BOT_SLUGS (the plan §4.7 bot
+	 * list minus `googlebot` / `bingbot` — search engines are never blocked from
+	 * here). `false` = emit a `Disallow: /` block for that bot's robots.txt
+	 * token; `true` or absent = allowed (nothing emitted). Unknown slugs and
+	 * non-boolean values are ignored.
+	 *
+	 * @param array $raw Raw object.
+	 * @return array<string,bool> Only known slugs with boolean values.
+	 */
+	public static function normalize_ai_bots( array $raw ): array {
+		$out = array();
+		foreach ( self::AI_BOT_SLUGS as $slug ) {
+			if ( array_key_exists( $slug, $raw ) && is_bool( $raw[ $slug ] ) ) {
+				$out[ $slug ] = $raw[ $slug ];
+			}
+		}
 		return $out;
 	}
 
@@ -128,6 +228,7 @@ class Settings {
 	 */
 	public static function reset_cache(): void {
 		self::$cache = null;
+		do_action( 'storedash_seo_settings_reset' ); // Literal so WPCS sees the prefix; keep equal to the RESET_ACTION constant above.
 	}
 
 	/**
