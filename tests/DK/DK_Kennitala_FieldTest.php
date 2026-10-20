@@ -217,6 +217,41 @@ class DK_Kennitala_FieldTest extends TestCase {
 		$this->assertSame( array(), $errors->get_error_codes() );
 	}
 
+	public function test_block_required_check_skipped_when_another_kennitala_field_exists(): void {
+		$field = $this->configure( 'required' );
+		$ref   = new ReflectionProperty( DK_Kennitala_Field::class, 'block_conflict' );
+		$ref->setValue( $field, 'shop/kennitala' );
+		$errors = new DK_Test_Errors();
+		$field->validate_block_address( $errors, array( 'country' => 'IS' ), 'billing' );
+		$this->assertSame( array(), $errors->get_error_codes(), 'headless checkout filling only the other field is not refused' );
+	}
+
+	public function test_other_kennitala_field_id(): void {
+		$this->assertSame(
+			'shop/kennitala',
+			DK_Kennitala_Field::other_kennitala_field_id(
+				array(
+					'storedash/kennitala' => array( 'label' => 'Kennitala' ),
+					'shop/kennitala'      => array( 'label' => 'Kennitala' ),
+				)
+			),
+			'id match; our own field is ignored'
+		);
+		$this->assertSame( 'shop/national-id', DK_Kennitala_Field::other_kennitala_field_id( array( 'shop/national-id' => array( 'label' => 'Kennitala kaupanda' ) ) ), 'label match' );
+		$this->assertSame( 'shop/ssn', DK_Kennitala_Field::other_kennitala_field_id( array( 'shop/ssn' => array() ) ) );
+		$this->assertSame( 'shop/billing-ssn', DK_Kennitala_Field::other_kennitala_field_id( array( 'shop/billing-ssn' => array() ) ) );
+		$this->assertNull(
+			DK_Kennitala_Field::other_kennitala_field_id(
+				array(
+					'storedash/kennitala'  => array( 'label' => 'Kennitala' ),
+					'shop/businessname'    => array( 'label' => 'Business name' ),
+					'shop/po-number'       => array( 'label' => 'PO number' ),
+				)
+			)
+		);
+		$this->assertNull( DK_Kennitala_Field::other_kennitala_field_id( array() ) );
+	}
+
 	public function test_block_bridge_copies_to_canonical_meta(): void {
 		$field = $this->configure( 'optional' );
 		$order = new WC_Order();

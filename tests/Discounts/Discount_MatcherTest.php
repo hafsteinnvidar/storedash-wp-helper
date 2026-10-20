@@ -30,7 +30,7 @@ class Discount_MatcherTest extends TestCase {
 	/** @var Test_Discount_Matcher */
 	protected $matcher;
 
-	// Category tree mirroring the Hreysti store that surfaced the bug:
+	// Category tree mirroring the live store that surfaced the bug:
 	// Nuddvörur (223) → Nuddboltar (255), Nuddbyssur (547), Nuddrúllur (224).
 	const CAT_PARENT = 223;
 	const CAT_CHILD  = 255;

@@ -17,7 +17,10 @@
  *     the order and the customer, whichever checkout produced it. The
  *     storedash-worker invoice builder reads that key.
  *   - Coexists with DKSync: when another plugin already adds a kennitala/SSN
- *     billing field, the classic field is not added a second time.
+ *     billing field, the classic field is not added a second time. Same on
+ *     block / Store API checkout: another kennitala Additional Checkout Field
+ *     (e.g. a headless storefront mu-plugin's `shop/kennitala`) means ours
+ *     is not registered and its required check never runs.
  *
  * @package StoreDash\Services\DK
  * @since   1.27.0
@@ -47,6 +50,17 @@ class DK_Kennitala_Field {
 	const CONFLICTING_KEYS = array( 'billing_dk_ssn', 'billing_ssn', 'billing_kennitala' );
 
 	/**
+	 * Id of another plugin's kennitala Additional Checkout Field (e.g. a
+	 * headless storefront's `shop/kennitala` mu-plugin), or null. When set,
+	 * the block field is not registered and its required check never runs —
+	 * otherwise a Store API checkout that only fills the other field would be
+	 * refused for Icelandic addresses.
+	 *
+	 * @var string|null
+	 */
+	private $block_conflict = null;
+
+	/**
 	 * Hook everything up — only when the mode is not off.
 	 */
 	public function __construct() {
@@ -63,8 +77,10 @@ class DK_Kennitala_Field {
 		add_filter( 'woocommerce_checkout_get_value', array( $this, 'prefill_classic' ), 10, 2 );
 		add_action( 'wp_footer', array( $this, 'print_classic_script' ), 30 );
 
-		// Block checkout (Additional Checkout Fields API, WC 8.9+).
-		add_action( 'woocommerce_init', array( $this, 'register_block_field' ) );
+		// Block checkout (Additional Checkout Fields API, WC 8.9+). Priority 20:
+		// after other plugins' default-priority registrations, so the conflict
+		// check in register_block_field() sees them.
+		add_action( 'woocommerce_init', array( $this, 'register_block_field' ), 20 );
 		add_action( 'woocommerce_blocks_validate_location_address_fields', array( $this, 'validate_block_address' ), 10, 3 );
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'bridge_block_to_order_meta' ), 15 );
 
@@ -217,6 +233,10 @@ class DK_Kennitala_Field {
 		if ( ! function_exists( 'woocommerce_register_additional_checkout_field' ) ) {
 			return;
 		}
+		$this->block_conflict = self::other_kennitala_field_id( self::registered_block_fields() );
+		if ( null !== $this->block_conflict ) {
+			return;
+		}
 		try {
 			woocommerce_register_additional_checkout_field(
 				array(
@@ -227,8 +247,10 @@ class DK_Kennitala_Field {
 					'type'              => 'text',
 					'required'          => false,
 					'attributes'        => array(
+						// WooCommerce allows only maxLength, readOnly, pattern, autocomplete,
+						// autocapitalize, title (+ aria-/data-); anything else is dropped
+						// with a _doing_it_wrong notice on every request.
 						'autocomplete' => 'off',
-						'inputMode'    => 'numeric',
 						'maxLength'    => '11',
 						'pattern'      => '[0-9]{6}-?[0-9]{4}',
 					),
@@ -259,6 +281,9 @@ class DK_Kennitala_Field {
 	 * @param string    $group  `billing` | `shipping`.
 	 */
 	public function validate_block_address( $errors, $fields, $group ) {
+		if ( null !== $this->block_conflict ) {
+			return; // Another plugin's field owns the kennitala; ours isn't registered.
+		}
 		if ( 'billing' !== $group || ! DK_Config::kennitala_required() || ! is_array( $fields ) ) {
 			return;
 		}
@@ -297,6 +322,57 @@ class DK_Kennitala_Field {
 		}
 		$order->update_meta_data( self::FIELD_KEY, $value );
 		$order->save();
+	}
+
+	/**
+	 * Additional Checkout Fields registered so far (id => definition).
+	 * `CheckoutFields::get_additional_fields()` is public in WooCommerce but
+	 * not part of the documented field API, so every step is guarded.
+	 *
+	 * @return array
+	 */
+	private static function registered_block_fields(): array {
+		$package = 'Automattic\WooCommerce\Blocks\Package';
+		$service = 'Automattic\WooCommerce\Blocks\Domain\Services\CheckoutFields';
+		if ( ! class_exists( $package ) || ! class_exists( $service ) ) {
+			return array();
+		}
+		try {
+			$checkout_fields = $package::container()->get( $service );
+			if ( ! is_object( $checkout_fields ) || ! method_exists( $checkout_fields, 'get_additional_fields' ) ) {
+				return array();
+			}
+			$fields = $checkout_fields->get_additional_fields();
+			return is_array( $fields ) ? $fields : array();
+		} catch ( \Throwable $e ) {
+			return array();
+		}
+	}
+
+	/**
+	 * First registered field, other than ours, that is a kennitala: id or
+	 * label says "kennitala", or the id has `ssn` as a whole token
+	 * (`ns/ssn`, `billing-ssn`; never `businessname`).
+	 *
+	 * @param array $fields id => definition, as `get_additional_fields()` returns.
+	 * @return string|null
+	 */
+	public static function other_kennitala_field_id( array $fields ): ?string {
+		foreach ( $fields as $id => $definition ) {
+			$id = (string) $id;
+			if ( self::BLOCK_FIELD_ID === $id ) {
+				continue;
+			}
+			$label = is_array( $definition ) ? (string) ( $definition['label'] ?? '' ) : '';
+			if (
+				false !== stripos( $id, 'kennitala' )
+				|| false !== stripos( $label, 'kennitala' )
+				|| 1 === preg_match( '/(^|[\/_-])ssn($|[_-])/i', $id )
+			) {
+				return $id;
+			}
+		}
+		return null;
 	}
 
 	// ── Admin ───────────────────────────────────────────────────────────

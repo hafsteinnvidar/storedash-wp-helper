@@ -9,7 +9,7 @@
  *      filter. This is the DEFAULT, and it is a filter rather than a template
  *      hook, which is why it survives Elementor Theme Builder, Woodmart, Divi
  *      and Bricks where `woocommerce_single_product_summary` frequently never
- *      runs at all. Verified rendering on hreysti.is (Woodmart + Elementor),
+ *      runs at all. Verified rendering on a live Woodmart + Elementor store,
  *      the store where summary-chain placement failed.
  *   2. Summary hook — a trigger button injected into
  *      `woocommerce_single_product_summary` at the merchant's chosen priority,
