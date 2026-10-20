@@ -164,7 +164,7 @@ class Seo_Settings_ControllerTest extends TestCase {
 		$out = $this->controller()->get_status( new Seo_Test_Request( array() ) );
 
 		$this->assertSame(
-			array( 'enabled', 'conflict', 'version', 'sitemap_url', 'detected_plugins', 'settings_hash', 'wc_version', 'wp_version', 'permalinks_pretty' ),
+			array( 'enabled', 'conflict', 'version', 'sitemap_url', 'detected_plugins', 'settings_hash', 'wc_version', 'wp_version', 'permalinks_pretty', 'robots_txt_physical' ),
 			array_keys( $out )
 		);
 		$this->assertFalse( $out['enabled'] );
@@ -176,5 +176,25 @@ class Seo_Settings_ControllerTest extends TestCase {
 		);
 		$this->assertFalse( $out['permalinks_pretty'] );
 		$this->assertSame( '6.8', $out['wp_version'] );
+		$this->assertIsBool( $out['robots_txt_physical'] );
+	}
+
+	public function test_settings_payload_carries_catalog_token_and_put_can_rotate_it() {
+		$get   = $this->controller()->get_settings( new Seo_Test_Request( array() ) );
+		$token = $get['catalog_token'];
+		$this->assertSame( 1, preg_match( '/^[0-9a-f]{32}$/', $token ) );
+		$this->assertSame( array( 'enabled', 'settings', 'hash', 'catalog_token' ), array_keys( $get ) );
+
+		$put = $this->controller()->put_settings( new Seo_Test_Request( $this->body() ) );
+		$this->assertSame( $token, $put['catalog_token'], 'a normal push keeps the token' );
+
+		$body                         = $this->body();
+		$body['rotate_catalog_token'] = 'yes';
+		$this->assertSame( $token, $this->controller()->put_settings( new Seo_Test_Request( $body ) )['catalog_token'], 'only literal true rotates' );
+
+		$body['rotate_catalog_token'] = true;
+		$rotated                      = $this->controller()->put_settings( new Seo_Test_Request( $body ) )['catalog_token'];
+		$this->assertNotSame( $token, $rotated );
+		$this->assertSame( 'abc', $GLOBALS['__seo_options'][ Seo_Settings_Controller::HASH_OPTION ], 'rotation is not a setting; hash unchanged' );
 	}
 }

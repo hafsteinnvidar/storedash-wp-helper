@@ -139,14 +139,31 @@ class Robots_TxtTest extends TestCase {
 		$this->assertSame( '> Best socks in town', $lines[2] );
 		$this->assertStringContainsString( "\n## Categories\n\n- [Cat (1)](https://shop.test/product-category/cat-1/): 1 products\n", $out );
 		$this->assertSame( 50, substr_count( $out, "\n- [Cat (" ), 'capped at 50' );
-		$this->assertStringEndsWith( "## Catalog\n\n- [Product catalog (plain text, 500 per page, ?page=N)](https://shop.test/wp-json/storedash/v1/seo/catalog.txt): one product per line — name | price currency | availability | URL\n", $out );
+		$this->assertStringEndsWith( "## Catalog\n\n- [Product catalog (plain text, 500 per page, &page=N)](https://shop.test/wp-json/storedash/v1/seo/catalog.txt): one product per line — name | price currency | availability | URL\n", $out );
 		$this->assertSame( 1, preg_match( '/^# .+\n\n> .+\n\n/', $out ), 'H1 then blockquote per llmstxt.org' );
 	}
 
 	public function test_llms_txt_minimal() {
-		$this->assertSame( "# Store\n\n", Robots_Txt::llms_txt( array() ) );
+		$this->assertSame( "# Store\n", Robots_Txt::llms_txt( array() ) );
 		$out = Robots_Txt::llms_txt( array( 'name' => 'Shop', 'categories' => array(), 'catalog_url' => '' ) );
-		$this->assertSame( "# Shop\n\n", $out );
+		$this->assertSame( "# Shop\n", $out );
 		$this->assertStringNotContainsString( '>', $out );
+	}
+
+	public function test_llms_txt_policies_section_after_the_catalog() {
+		$out = Robots_Txt::llms_txt(
+			array(
+				'name'        => 'Shop',
+				'catalog_url' => 'https://shop.test/wp-json/storedash/v1/seo/catalog.txt?token=abc',
+				'policies'    => array(
+					array( 'name' => 'Terms and conditions', 'url' => 'https://shop.test/terms/' ),
+					array( 'name' => 'Refunds [and] returns', 'url' => 'https://shop.test/returns/' ),
+					array( 'name' => '', 'url' => 'https://shop.test/x/' ),
+					array( 'name' => 'No URL' ),
+				),
+			)
+		);
+		$this->assertStringContainsString( "(https://shop.test/wp-json/storedash/v1/seo/catalog.txt?token=abc)", $out, 'catalog link carries the token' );
+		$this->assertStringEndsWith( "\n\n## Policies\n\n- [Terms and conditions](https://shop.test/terms/)\n- [Refunds (and) returns](https://shop.test/returns/)\n", $out );
 	}
 }

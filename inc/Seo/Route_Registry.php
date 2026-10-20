@@ -7,7 +7,7 @@
  * RankMath is still installed. Every route requires `manage_woocommerce`
  * (consumer-key auth via StoreDash_Auth_Handler), like Discounts and Credit —
  * except `GET /seo/catalog.txt` (B5), a public plain-text catalog for AI
- * agents that 404s unless `llms_txt_enabled` is on.
+ * agents that 404s unless `llms_txt_enabled` is on and `?token=` matches.
  *
  * @package StoreDash\Seo
  * @since   1.26.0
@@ -25,6 +25,7 @@ use StoreDash\Seo\Controllers\Seo_Catalog_Controller;
 use StoreDash\Seo\Controllers\Seo_Migrate_Controller;
 use StoreDash\Seo\Controllers\Seo_Redirects_Controller;
 use StoreDash\Seo\Controllers\Seo_Settings_Controller;
+use StoreDash\Seo\Engine\Bot_Crawl_Logger;
 use StoreDash\Seo\Engine\Plugin_Conflict_Guard;
 use WP_REST_Server;
 
@@ -163,13 +164,30 @@ class Route_Registry {
 				},
 				'permission_callback' => '__return_true',
 				'args'                => array(
-					'page' => array(
+					'page'  => array(
 						'type'    => 'integer',
 						'minimum' => 1,
 						'maximum' => Seo_Catalog_Controller::MAX_PAGE,
 						'default' => 1,
 					),
+					'token' => array(
+						'type'      => 'string',
+						'maxLength' => 64,
+					),
 				),
+			)
+		);
+
+		// B5 debug: pending crawl keys, last flush, failures, webhook configured.
+		register_rest_route(
+			$namespace,
+			'/seo/crawl-stats',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => function ( $request ) {
+					return rest_ensure_response( Bot_Crawl_Logger::stats() );
+				},
+				'permission_callback' => $manage,
 			)
 		);
 

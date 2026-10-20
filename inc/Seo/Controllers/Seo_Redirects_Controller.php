@@ -4,8 +4,9 @@
  *
  * Storedash pushes its `seo_redirects` rows here (B4b). PUT replaces the
  * merchant rows; auto rows (slug change / trash, see Redirect_Manager)
- * survive unless the body carries the same `source_path`. The `hash` is
- * opaque — same contract as `/seo/settings`.
+ * survive unless the body carries the same `source_path` or lists it in the
+ * optional `remove: [source_path]` key. The `hash` is opaque — same contract
+ * as `/seo/settings`.
  *
  * @package StoreDash\Seo\Controllers
  * @since   1.27.0
@@ -77,7 +78,26 @@ class Seo_Redirects_Controller extends Abstract_Seo_Controller {
 			return $this->error( 'storedash_seo_redirects_cap', 'at most ' . Redirect_Manager::MAX_ROWS . ' redirects are supported (got ' . count( $body['redirects'] ) . ')' );
 		}
 
-		$valid = Redirect_Manager::validate_rows( array_values( $body['redirects'] ), $this->manager->home() );
+		$valid  = Redirect_Manager::validate_rows( array_values( $body['redirects'] ), $this->manager->home() );
+		$remove = Redirect_Manager::validate_remove( array_key_exists( 'remove', $body ) ? $body['remove'] : null );
+		if ( $remove['errors'] ) {
+			return new WP_Error(
+				'storedash_seo_invalid_remove',
+				'remove must list source paths; nothing stored',
+				array(
+					'status' => 400,
+					'errors' => $remove['errors'],
+				)
+			);
+		}
+		foreach ( $remove['paths'] as $path ) {
+			if ( isset( $valid['rows'][ $path ] ) ) {
+				$valid['errors'][] = array(
+					'index'  => -1,
+					'reason' => 'source_path ' . $path . ' is both in redirects and in remove',
+				);
+			}
+		}
 		if ( $valid['errors'] ) {
 			return new WP_Error(
 				'storedash_seo_invalid_redirects',
@@ -89,7 +109,7 @@ class Seo_Redirects_Controller extends Abstract_Seo_Controller {
 			);
 		}
 
-		if ( ! $this->manager->replace_merchant_rows( $valid['rows'], trim( $body['hash'] ) ) ) {
+		if ( ! $this->manager->replace_merchant_rows( $valid['rows'], trim( $body['hash'] ), $remove['paths'] ) ) {
 			return $this->error(
 				'storedash_seo_redirects_cap',
 				'merchant rows plus automatic rows would exceed ' . Redirect_Manager::MAX_ROWS . ' redirects; nothing stored'

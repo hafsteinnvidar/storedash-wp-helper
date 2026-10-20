@@ -80,6 +80,19 @@ class Seo_Test_Sitemap extends Sitemap_Generator {
 	protected function output( string $xml ): void {
 		$this->sent = $xml;
 	}
+
+	/** @var int */
+	public $redirected = 0;
+	/** @var int[] */
+	public $noindex_pages = array();
+
+	protected function noindex_page_ids(): array {
+		return $this->noindex_pages;
+	}
+
+	protected function redirect_to_index(): void {
+		++$this->redirected;
+	}
 }
 
 /**
@@ -494,5 +507,78 @@ class Sitemap_GeneratorTest extends TestCase {
 		exec( escapeshellarg( $xmllint ) . ' --noout --schema ' . escapeshellarg( $schema ) . ' ' . escapeshellarg( $tmp ) . ' 2>&1', $out, $code );
 		unlink( $tmp );
 		$this->assertSame( 0, $code, 'xmllint: ' . implode( "\n", $out ) );
+	}
+
+	/* ---------------- review fixes 2026-10-19 ---------------- */
+
+	public function test_only_fully_hidden_products_are_hidden() {
+		$this->assertTrue( Sitemap_Generator::is_hidden_visibility( array( 'exclude-from-catalog', 'exclude-from-search' ) ), 'Hidden' );
+		$this->assertFalse( Sitemap_Generator::is_hidden_visibility( array( 'exclude-from-catalog' ) ), 'Search results only: public URL' );
+		$this->assertFalse( Sitemap_Generator::is_hidden_visibility( array( 'exclude-from-search' ) ), 'Shop only' );
+		$this->assertFalse( Sitemap_Generator::is_hidden_visibility( array( 'featured', 'outofstock' ) ) );
+	}
+
+	public function test_pages_sitemap_lists_the_home_page_first_once() {
+		$g     = $this->small();
+		$pages = $g->page_entries( 'pages', 1 );
+		$this->assertSame( array( 'https://shop.test/', 'https://shop.test/about/' ), array_column( $pages, 'loc' ), 'latest-posts front page added' );
+
+		$g->records[10]['loc'] = 'https://shop.test/';
+		$g->posts['page']      = array( 11, 10 );
+		$g->records[11]        = array( 'loc' => 'https://shop.test/contact/' );
+		$pages                 = $g->page_entries( 'pages', 1 );
+		$this->assertSame( array( 'https://shop.test/', 'https://shop.test/contact/' ), array_column( $pages, 'loc' ), 'static front page moved first, not duplicated' );
+		$this->assertSame( '2026-01-02T03:04:05Z', $pages[0]['lastmod'], 'keeps its own lastmod' );
+
+		$this->assertSame( array( 'https://shop.test/news/hello/' ), array_column( $g->page_entries( 'posts', 1 ), 'loc' ), 'posts untouched' );
+	}
+
+	/**
+	 * @dataProvider core_sitemap_cases
+	 */
+	public function test_is_core_sitemap_request( string $uri, string $home_path, bool $expected ) {
+		$this->assertSame( $expected, Sitemap_Generator::is_core_sitemap_request( $uri, $home_path ) );
+	}
+
+	public function core_sitemap_cases(): array {
+		return array(
+			array( '/wp-sitemap.xml', '/', true ),
+			array( '/wp-sitemap.xml?x=1', '', true ),
+			array( '/wp-sitemap-posts-product-1.xml', '/', true ),
+			array( '/wp-sitemap-index.xsl', '/', false ),
+			array( '/shop/wp-sitemap.xml', '/shop/', true ),
+			array( '/wp-sitemap.xml', '/shop', false ),
+			array( '/sitemap.xml', '/', false ),
+			array( '/product/wp-sitemap.xml', '/', false ),
+		);
+	}
+
+	public function test_core_sitemap_url_redirects_to_ours() {
+		$g                      = $this->small();
+		$_SERVER['REQUEST_URI'] = '/wp-sitemap.xml';
+		$g->maybe_render();
+		$this->assertSame( 1, $g->redirected );
+		$this->assertNull( $g->sent );
+
+		$_SERVER['REQUEST_URI'] = '/about/';
+		$g->maybe_render();
+		$this->assertSame( 1, $g->redirected, 'other URLs untouched' );
+		unset( $_SERVER['REQUEST_URI'] );
+	}
+
+	public function test_xml_escape_never_returns_empty_for_invalid_utf8() {
+		$out = Sitemap_Generator::xml( "https://shop.test/a\xC3(b" );
+		$this->assertNotSame( '', $out );
+		$this->assertStringStartsWith( 'https://shop.test/a', $out );
+	}
+
+	public function test_wc_utility_pages_are_left_out_of_the_pages_sitemap() {
+		$g                  = $this->small();
+		$g->posts['page']   = array( 10, 30, 31 );
+		$g->records[30]     = array( 'loc' => 'https://shop.test/cart/' );
+		$g->records[31]     = array( 'loc' => 'https://shop.test/checkout/' );
+		$g->noindex_pages   = array( 30, 31, 99 );
+		$this->assertSame( array( 'https://shop.test/', 'https://shop.test/about/' ), array_column( $g->page_entries( 'pages', 1 ), 'loc' ) );
+		$this->assertContains( 'prime:1', $g->log, 'excluded before the priming pass' );
 	}
 }

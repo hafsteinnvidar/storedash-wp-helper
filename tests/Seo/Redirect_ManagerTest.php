@@ -22,10 +22,11 @@ class Redirect_ManagerTest extends TestCase {
 		$GLOBALS['__seo_options']         = array();
 		$GLOBALS['__seo_option_autoload'] = array();
 		$GLOBALS['__seo_transients']      = array();
-		unset( $_SERVER['REQUEST_URI'], $_SERVER['REQUEST_METHOD'] );
+		unset( $_SERVER['REQUEST_URI'], $_SERVER['REQUEST_METHOD'], $_GET[ Redirect_Manager::BYPASS_ARG ] );
 	}
 
 	protected function tearDown(): void {
+		unset( $_GET[ Redirect_Manager::BYPASS_ARG ] );
 		$GLOBALS['__seo_options']         = array();
 		$GLOBALS['__seo_option_autoload'] = array();
 		$GLOBALS['__seo_transients']      = array();
@@ -416,5 +417,85 @@ class Redirect_ManagerTest extends TestCase {
 		$this->assertFalse( $m2->add_auto_redirect( 'https://shop.test/a/', '', 1, 'slug' ), 'empty target' );
 		$this->assertSame( array(), $m2->rows() );
 		$this->assertFalse( $m2->is_active() );
+	}
+
+	/* ---------------- review fixes 2026-10-19 ---------------- */
+
+	public function test_validate_rejects_home_page_and_protected_sources() {
+		$rows  = array(
+			array( 'source_path' => '/', 'target_url' => '/x', 'status_code' => 301 ),
+			array( 'source_path' => 'https://shop.test/', 'target_url' => '/x', 'status_code' => 301 ),
+			array( 'source_path' => '/wp-admin/edit.php', 'target_url' => '/x', 'status_code' => 301 ),
+			array( 'source_path' => '/wp-json/wc/v3', 'target_url' => '/x', 'status_code' => 301 ),
+			array( 'source_path' => '/wp-login.php', 'target_url' => '/x', 'status_code' => 301 ),
+			array( 'source_path' => '/index.php?rest_route=/wc/v3', 'target_url' => '/x', 'status_code' => 301 ),
+			array( 'source_path' => '/?p=123', 'target_url' => '/product/x/', 'status_code' => 301 ),
+			array( 'source_path' => '/wp-adminx', 'target_url' => '/x', 'status_code' => 301 ),
+		);
+		$valid = Redirect_Manager::validate_rows( $rows, 'https://shop.test' );
+		$this->assertSame( array( 0, 1, 2, 3, 4, 5 ), array_column( $valid['errors'], 'index' ) );
+		$this->assertSame( 'source_path must not be the home page', $valid['errors'][0]['reason'] );
+		$this->assertSame( 'source_path is a protected WordPress path', $valid['errors'][2]['reason'] );
+		$this->assertSame( array( '/?p=123', '/wp-adminx' ), array_keys( $valid['rows'] ), 'old ?p= links on the root stay allowed' );
+	}
+
+	public function test_validate_remove() {
+		$this->assertSame( array( 'paths' => array(), 'errors' => array() ), Redirect_Manager::validate_remove( null ) );
+		$ok = Redirect_Manager::validate_remove( array( '/product/a/', 'https://shop.test/product/a', 'product/b' ) );
+		$this->assertSame( array( '/product/a', '/product/b' ), $ok['paths'], 'normalised + de-duplicated' );
+		$this->assertSame( array(), $ok['errors'] );
+		$bad = Redirect_Manager::validate_remove( array( '/ok', 5, '', '   ' ) );
+		$this->assertSame( array( 1, 2, 3 ), array_column( $bad['errors'], 'index' ) );
+		$this->assertCount( 1, Redirect_Manager::validate_remove( 'nope' )['errors'] );
+		$this->assertCount( 1, Redirect_Manager::validate_remove( array_fill( 0, Redirect_Manager::MAX_ROWS + 1, '/a' ) )['errors'] );
+	}
+
+	public function test_replace_with_remove_drops_named_auto_rows_only() {
+		$m = $this->manager();
+		$m->add_auto_redirect( 'https://shop.test/product/a/', 'https://shop.test/product/b/', 1, 'slug' );
+		$m->add_auto_redirect( 'https://shop.test/product/c/', 'https://shop.test/product/d/', 2, 'slug' );
+		$this->assertTrue( $m->replace_merchant_rows( array( '/m' => array( 'target_url' => '/x', 'status_code' => 301 ) ), 'h', array( '/product/a', '/unknown' ) ) );
+		$this->assertSame( array( '/m', '/product/c' ), array_keys( $m->rows() ) );
+	}
+
+	public function test_editor_can_bypass_with_query_arg() {
+		$m = $this->manager();
+		$this->seed( $m, array( '/old' => array( 'target_url' => '/new/', 'status_code' => 301 ) ) );
+
+		$_GET[ Redirect_Manager::BYPASS_ARG ] = '1';
+		$this->request( $m, '/old?' . Redirect_Manager::BYPASS_ARG . '=1' );
+		$this->assertCount( 1, $m->responses, 'visitor: the arg does nothing' );
+
+		$m->can_bypass = true;
+		$this->request( $m, '/old?' . Redirect_Manager::BYPASS_ARG . '=1' );
+		$this->assertCount( 1, $m->responses, 'editor: no redirect' );
+		$this->assertSame( array( '/old' => 1 ), Redirect_Manager::drain_hits()['hits'], 'bypass is not a hit' );
+	}
+
+	public function test_publishing_a_post_at_an_auto_source_drops_that_auto_row() {
+		$m = $this->manager();
+		$m->types[10]         = 'product';
+		$m->statuses[10]      = 'publish';
+		$m->permalinks[10]    = 'https://shop.test/product/shoe/';
+		$m->trash_targets[10] = 'https://shop.test/product-category/shoes/';
+		$m->on_trash_post( 10, 'publish' );
+		$this->seed( $m, array( '/product/merchant' => array( 'target_url' => '/x', 'status_code' => 301 ) ) );
+		$this->assertArrayHasKey( '/product/shoe', $m->rows() );
+
+		// A new product (ID 11) is published with the freed slug `shoe`.
+		$m->permalinks[11] = 'https://shop.test/product/shoe/';
+		$draft             = (object) array( 'post_type' => 'product', 'post_status' => 'draft' );
+		$m->on_post_saved( 11, $draft );
+		$this->assertArrayHasKey( '/product/shoe', $m->rows(), 'drafts do not own a public URL' );
+
+		$m->on_post_saved( 11, (object) array( 'post_type' => 'product', 'post_status' => 'publish' ) );
+		$this->assertArrayNotHasKey( '/product/shoe', $m->rows(), 'the live product is no longer hijacked' );
+
+		$m->permalinks[12] = 'https://shop.test/product/merchant/';
+		$m->on_post_saved( 12, (object) array( 'post_type' => 'product', 'post_status' => 'publish' ) );
+		$this->assertArrayHasKey( '/product/merchant', $m->rows(), 'merchant rows are Storedash-owned' );
+
+		$m->on_post_saved( 13, (object) array( 'post_type' => 'attachment', 'post_status' => 'publish' ) );
+		$this->assertCount( 1, $m->rows() );
 	}
 }

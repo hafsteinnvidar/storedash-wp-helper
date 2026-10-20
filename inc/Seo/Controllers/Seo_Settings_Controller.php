@@ -4,7 +4,9 @@
  *
  * Storedash pushes `seo_store_settings` here. The `hash` is opaque: woo-dash
  * computes it (`push_hash`) and compares it with GET to decide whether a push
- * is needed. This plugin only stores and echoes it.
+ * is needed. This plugin only stores and echoes it. Responses also carry
+ * `catalog_token` (B5 public catalog); a PUT with `rotate_catalog_token: true`
+ * replaces it (not part of the hash, not a setting).
  *
  * @package StoreDash\Seo\Controllers
  * @since   1.26.0
@@ -84,6 +86,10 @@ class Seo_Settings_Controller extends Abstract_Seo_Controller {
 		update_option( Settings::ENABLED_OPTION, $valid['enabled'] ? '1' : '0', true );
 		update_option( self::HASH_OPTION, $valid['hash'], true );
 		Settings::reset_cache();
+		$body = $this->body( $request );
+		if ( isset( $body['rotate_catalog_token'] ) && true === $body['rotate_catalog_token'] ) {
+			Seo_Catalog_Controller::rotate_token();
+		}
 
 		return $this->success( $this->settings_payload() );
 	}
@@ -99,30 +105,33 @@ class Seo_Settings_Controller extends Abstract_Seo_Controller {
 
 		return $this->success(
 			array(
-				'enabled'           => Settings::is_enabled(),
-				'conflict'          => apply_filters( 'storedash_seo_conflict', null ), // Seo_Manager::CONFLICT_FILTER.
-				'version'           => defined( 'STOREDASH_VERSION' ) ? STOREDASH_VERSION : '',
-				'sitemap_url'       => Sitemap_Generator::is_active() ? home_url( '/sitemap.xml' ) : null,
-				'detected_plugins'  => $this->guard->detected(),
-				'settings_hash'     => is_string( $hash ) && '' !== $hash ? $hash : null,
-				'wc_version'        => defined( 'WC_VERSION' ) ? WC_VERSION : null,
-				'wp_version'        => get_bloginfo( 'version' ),
-				'permalinks_pretty' => '' !== (string) get_option( 'permalink_structure', '' ),
+				'enabled'             => Settings::is_enabled(),
+				'conflict'            => apply_filters( 'storedash_seo_conflict', null ), // Seo_Manager::CONFLICT_FILTER.
+				'version'             => defined( 'STOREDASH_VERSION' ) ? STOREDASH_VERSION : '',
+				'sitemap_url'         => Sitemap_Generator::is_active() ? home_url( '/sitemap.xml' ) : null,
+				'detected_plugins'    => $this->guard->detected(),
+				'settings_hash'       => is_string( $hash ) && '' !== $hash ? $hash : null,
+				'wc_version'          => defined( 'WC_VERSION' ) ? WC_VERSION : null,
+				'wp_version'          => get_bloginfo( 'version' ),
+				'permalinks_pretty'   => '' !== (string) get_option( 'permalink_structure', '' ),
+				// A physical robots.txt wins over WP's virtual one, so ai_bots blocks never show.
+				'robots_txt_physical' => defined( 'ABSPATH' ) && file_exists( ABSPATH . 'robots.txt' ),
 			)
 		);
 	}
 
 	/**
-	 * `{ enabled, settings, hash }` as stored.
+	 * `{ enabled, settings, hash, catalog_token }` as stored.
 	 *
 	 * @return array
 	 */
 	protected function settings_payload(): array {
 		$hash = get_option( self::HASH_OPTION, '' );
 		return array(
-			'enabled'  => Settings::is_enabled(),
-			'settings' => Settings::get(),
-			'hash'     => is_string( $hash ) && '' !== $hash ? $hash : null,
+			'enabled'       => Settings::is_enabled(),
+			'settings'      => Settings::get(),
+			'hash'          => is_string( $hash ) && '' !== $hash ? $hash : null,
+			'catalog_token' => Seo_Catalog_Controller::token(),
 		);
 	}
 

@@ -25,8 +25,14 @@ class Bot_Crawl_LoggerTest extends TestCase {
 	private $store_deletes = 0;
 	/** @var array */
 	private $sent = array();
+	/** @var bool Sender result. */
+	private $send_ok = true;
 
 	protected function setUp(): void {
+		$this->send_ok               = true;
+		$GLOBALS['__seo_transients'] = array();
+		$GLOBALS['__seo_is_404']     = false;
+		unset( $GLOBALS['__seo_options'][ Bot_Crawl_Logger::STATS_OPTION ], $_SERVER['HTTP_USER_AGENT'], $_SERVER['REQUEST_URI'] );
 		$this->store_value   = false;
 		$this->store_gets    = 0;
 		$this->store_sets    = 0;
@@ -54,7 +60,7 @@ class Bot_Crawl_LoggerTest extends TestCase {
 		};
 		$sender = function ( $to, $body, $headers ) use ( $self ) {
 			$self->sent[] = compact( 'to', 'body', 'headers' );
-			return true;
+			return $self->send_ok;
 		};
 		return new Bot_Crawl_Logger(
 			$store,
@@ -123,7 +129,7 @@ class Bot_Crawl_LoggerTest extends TestCase {
 			array( '/product/x/#frag', '/product/x/' ),
 			array( '', '/' ),
 			array( 'product/x', '/product/x' ),
-			array( '/' . str_repeat( 'a', 2500 ), '/' . str_repeat( 'a', 1999 ) ),
+			array( '/' . str_repeat( 'a', 2500 ), '/' . str_repeat( 'a', Bot_Crawl_Logger::MAX_PATH - 1 ) ),
 		);
 	}
 
@@ -202,7 +208,7 @@ class Bot_Crawl_LoggerTest extends TestCase {
 		$this->assertSame( array( 2000, 2000, 500 ), array_map( 'count', array_column( $payloads, 'crawls' ) ) );
 		$this->assertSame( array( array( 'source_path' => '/old/', 'hits' => 2 ) ), $payloads[0]['redirect_hits'] );
 		$this->assertSame( array(), $payloads[1]['redirect_hits'] );
-		$this->assertSame( array( 'action', 'store_id', 'store_url', 'timestamp', 'crawls', 'redirect_hits' ), array_keys( $payloads[2] ) );
+		$this->assertSame( array( 'action', 'store_id', 'store_url', 'timestamp', 'plugin_version', 'crawls', 'redirect_hits' ), array_keys( $payloads[2] ) );
 		$this->assertSame( 'seo.crawl_batch', $payloads[2]['action'] );
 		$this->assertSame( '1105', $payloads[2]['store_id'] );
 
@@ -252,6 +258,7 @@ class Bot_Crawl_LoggerTest extends TestCase {
 				'store_id'      => '1105',
 				'store_url'     => 'https://shop.test',
 				'timestamp'     => '2026-10-19 12:00:00',
+				'plugin_version' => defined( 'STOREDASH_VERSION' ) ? STOREDASH_VERSION : '',
 				'crawls'        => array(
 					array( 'date' => '2026-10-19', 'bot' => 'claudebot', 'path' => '/', 'product_id' => null, 'hits' => 1 ),
 					array( 'date' => '2026-10-19', 'bot' => 'gptbot', 'path' => '/product/x/', 'product_id' => 123, 'hits' => 4 ),
@@ -341,5 +348,134 @@ class Bot_Crawl_LoggerTest extends TestCase {
 		$this->store_value                                   = array( '2026-10-19|gptbot|/' => array( 1, 0 ) );
 		$this->logger()->flush();
 		$this->assertArrayNotHasKey( 'X-WooDash-Signature', $this->sent[0]['headers'] );
+	}
+
+	/* ---------------- review fixes 2026-10-19 ---------------- */
+
+	public function test_build_payloads_keeps_every_body_under_the_256kb_cap() {
+		$hits = array();
+		for ( $i = 0; $i < 3000; $i++ ) {
+			$hits[ Bot_Crawl_Logger::key( '2026-10-19', 'gptbot', '/' . str_pad( (string) $i, Bot_Crawl_Logger::MAX_PATH - 1, 'x' ) ) ] = array( 3, $i );
+		}
+		$redirects = array( array( 'source_path' => '/old', 'hits' => 2 ) );
+		$payloads  = Bot_Crawl_Logger::build_payloads( $hits, $redirects, '1105', 'https://shop.test', '2026-10-19 12:00:00', '1.27.0' );
+
+		$this->assertGreaterThan( 2, count( $payloads ), '3,000 × 500-char paths cannot fit in two 256 KB bodies' );
+		$total = 0;
+		foreach ( $payloads as $i => $payload ) {
+			$this->assertLessThanOrEqual( Bot_Crawl_Logger::MAX_BODY_BYTES, strlen( (string) wp_json_encode( $payload ) ), 'payload ' . $i );
+			$this->assertLessThanOrEqual( Bot_Crawl_Logger::CHUNK, count( $payload['crawls'] ) );
+			$this->assertSame( 0 === $i ? $redirects : array(), $payload['redirect_hits'] );
+			$this->assertSame( '1.27.0', $payload['plugin_version'] );
+			$total += count( $payload['crawls'] );
+		}
+		$this->assertSame( 3000, $total, 'no row lost or duplicated' );
+	}
+
+	public function test_flush_is_locked_and_releases_the_lock() {
+		$this->store_value = array( '2026-10-19|gptbot|/x/' => array( 1, 0 ) );
+		set_transient( Bot_Crawl_Logger::LOCK_TRANSIENT, 1 );
+		$logger = $this->logger();
+		$this->assertSame( 0, $logger->flush(), 'another flush holds the lock' );
+		$this->assertSame( array(), $this->sent );
+		$this->assertSame( 0, $this->store_gets );
+
+		delete_transient( Bot_Crawl_Logger::LOCK_TRANSIENT );
+		$this->assertSame( 1, $logger->flush() );
+		$this->assertFalse( get_transient( Bot_Crawl_Logger::LOCK_TRANSIENT ), 'lock released' );
+		$this->assertNotFalse( get_transient( Bot_Crawl_Logger::LAST_FLUSH_TRANSIENT ), 'flush start recorded' );
+		$stats = Bot_Crawl_Logger::stats_option();
+		$this->assertNotNull( $stats['last_flush_at'] );
+		$this->assertSame( 0, $stats['consecutive_failures'] );
+	}
+
+	public function test_failed_dispatch_merges_rows_back_until_three_failures() {
+		$this->send_ok = false;
+		$rows          = array( '2026-10-19|gptbot|/x/' => array( 4, 12 ) );
+		$logger        = $this->logger();
+
+		for ( $attempt = 1; $attempt <= 2; $attempt++ ) {
+			$this->store_value = $rows;
+			$this->assertSame( 0, $logger->flush() );
+			$this->assertSame( $rows, $this->store_value, 'attempt ' . $attempt . ': counts kept for the next flush' );
+			$this->assertSame( $attempt, Bot_Crawl_Logger::stats_option()['consecutive_failures'] );
+		}
+		$this->assertSame( 0, $logger->flush() );
+		$this->assertFalse( $this->store_value, 'third consecutive failure drops the rows' );
+
+		$this->send_ok     = true;
+		$this->store_value = $rows;
+		$this->assertSame( 1, $logger->flush() );
+		$this->assertSame( 0, Bot_Crawl_Logger::stats_option()['consecutive_failures'], 'success resets the counter' );
+	}
+
+	public function test_merge_rows_adds_to_existing_counts_and_keeps_product_ids() {
+		$hits = array( '2026-10-19|gptbot|/x/' => array( 2, 0 ) );
+		$out  = Bot_Crawl_Logger::merge_rows(
+			$hits,
+			array(
+				array( 'date' => '2026-10-19', 'bot' => 'gptbot', 'path' => '/x/', 'product_id' => 7, 'hits' => 3 ),
+				array( 'date' => '2026-10-18', 'bot' => 'ccbot', 'path' => '/', 'product_id' => null, 'hits' => 1 ),
+				'junk',
+			)
+		);
+		$this->assertSame( array( 5, 7 ), $out['2026-10-19|gptbot|/x/'] );
+		$this->assertSame( array( 1, 0 ), $out['2026-10-18|ccbot|/'] );
+		$this->assertCount( 2, $out );
+	}
+
+	public function test_opportunistic_flush_is_scheduled_once_per_window() {
+		$logger = $this->logger();
+		$this->assertTrue( $logger->maybe_flush_on_shutdown(), 'no flush yet → schedule one on shutdown' );
+		$this->assertFalse( $logger->maybe_flush_on_shutdown(), 'window marker set' );
+
+		$GLOBALS['__seo_transients'] = array();
+		set_transient( Bot_Crawl_Logger::LOCK_TRANSIENT, 1 );
+		$this->assertFalse( $logger->maybe_flush_on_shutdown(), 'running flush → no second one' );
+	}
+
+	public function test_404_bot_hits_count_only_when_a_redirect_or_llms_claims_them() {
+		$_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (compatible; GPTBot/1.0; +https://openai.com/gptbot)';
+		$_SERVER['REQUEST_URI']     = '/random-' . 'garbage/?x=1';
+		$GLOBALS['__seo_is_404']    = true;
+		$logger                     = $this->logger();
+
+		$logger->handle_request();
+		$this->assertSame( 0, $this->store_sets, 'spoofable UA + 404 path: nothing stored yet' );
+
+		$logger->record_pending();
+		$this->assertSame( 1, $this->store_sets, 'redirect matched / llms.txt served → counted' );
+		$this->assertSame( array( gmdate( 'Y-m-d' ) . '|gptbot|/random-garbage/' ), array_keys( $this->store_value ) );
+
+		$logger->record_pending();
+		$this->assertSame( 1, $this->store_sets, 'pending is consumed once' );
+
+		$GLOBALS['__seo_is_404'] = false;
+		$_SERVER['REQUEST_URI']  = "/it\\'s/";
+		$logger->handle_request();
+		$this->assertSame( 2, $this->store_sets, 'non-404 counted immediately' );
+		$this->assertArrayHasKey( gmdate( 'Y-m-d' ) . '|gptbot|' . wp_unslash( "/it\\'s/" ), $this->store_value, 'REQUEST_URI goes through wp_unslash()' );
+	}
+
+	public function test_stats_shape() {
+		$this->assertSame(
+			array( 'pending_keys', 'last_flush_at', 'consecutive_failures', 'webhook_url_configured', 'next_scheduled_at' ),
+			array_keys( Bot_Crawl_Logger::stats( '' ) )
+		);
+		set_transient( Bot_Crawl_Logger::TRANSIENT, array( 'a|b|/c' => array( 1, 0 ), 'a|b|/d' => array( 1, 0 ) ) );
+		$stats = Bot_Crawl_Logger::stats( 'https://hook.example' );
+		$this->assertSame( 2, $stats['pending_keys'] );
+		$this->assertTrue( $stats['webhook_url_configured'] );
+		$this->assertNull( $stats['last_flush_at'] );
+	}
+
+	public function test_delivered_requires_2xx_when_blocking() {
+		$this->assertTrue( Bot_Crawl_Logger::delivered( array(), true, 200 ) );
+		$this->assertTrue( Bot_Crawl_Logger::delivered( array(), true, 204 ) );
+		$this->assertFalse( Bot_Crawl_Logger::delivered( array(), true, 401 ), 'signature rejected → keep the rows' );
+		$this->assertFalse( Bot_Crawl_Logger::delivered( array(), true, 500 ) );
+		$this->assertFalse( Bot_Crawl_Logger::delivered( array(), true, 0 ) );
+		$this->assertTrue( Bot_Crawl_Logger::delivered( array(), false, 0 ), 'non-blocking: dispatched is all we know' );
+		$this->assertFalse( Bot_Crawl_Logger::delivered( new WP_Error( 'http_request_failed', 'x' ), false, 0 ) );
 	}
 }

@@ -7,9 +7,11 @@
  *   `false`, plus `Sitemap: <home>/sitemap.xml` when B2's sitemap is active.
  * - `/llms.txt` (llmstxt.org format): `# <store>` / `> <description>` /
  *   `## Categories` (top-level product_cat with products, ≤ 50) / `## Catalog`
- *   linking `GET /storedash/v1/seo/catalog.txt`. Served from `template_redirect`
- *   by path match (no rewrite rules → nothing to flush, no collision with B2),
- *   cached 12 h in a transient that a settings PUT busts.
+ *   linking `GET /storedash/v1/seo/catalog.txt?token=…` / `## Policies`
+ *   (terms, returns, privacy pages when published). Served from
+ *   `template_redirect` by path match (no rewrite rules → nothing to flush, no
+ *   collision with B2), cached 12 h in a transient that a settings PUT and a
+ *   catalog token rotation bust.
  *
  * @package StoreDash\Seo
  * @since   1.27.0
@@ -207,6 +209,7 @@ class Robots_Txt {
 		if ( ! self::is_llms_request( $uri, (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH ) ) ) {
 			return;
 		}
+		do_action( 'storedash_seo_llms_served' ); // Bot_Crawl_Logger::LLMS_ACTION — counts bot fetches of this (WP-404) URL.
 		$body = get_transient( self::LLMS_TRANSIENT );
 		if ( ! is_string( $body ) || '' === $body ) {
 			$body = self::llms_txt( $this->llms_data() );
@@ -257,9 +260,21 @@ class Robots_Txt {
 
 		if ( ! empty( $data['catalog_url'] ) ) {
 			$out .= "## Catalog\n\n";
-			$out .= '- [Product catalog (plain text, 500 per page, ?page=N)](' . trim( (string) $data['catalog_url'] ) . '): one product per line — name | price currency | availability | URL' . "\n";
+			$out .= '- [Product catalog (plain text, 500 per page, &page=N)](' . trim( (string) $data['catalog_url'] ) . '): one product per line — name | price currency | availability | URL' . "\n\n";
 		}
-		return $out;
+
+		$policies = array();
+		foreach ( isset( $data['policies'] ) && is_array( $data['policies'] ) ? $data['policies'] : array() as $policy ) {
+			$label = self::line( isset( $policy['name'] ) ? (string) $policy['name'] : '' );
+			$url   = isset( $policy['url'] ) ? trim( (string) $policy['url'] ) : '';
+			if ( '' !== $label && '' !== $url ) {
+				$policies[] = '- [' . str_replace( array( '[', ']' ), array( '(', ')' ), $label ) . '](' . $url . ')';
+			}
+		}
+		if ( $policies ) {
+			$out .= "## Policies\n\n" . implode( "\n", $policies ) . "\n";
+		}
+		return rtrim( $out, "\n" ) . "\n";
 	}
 
 	/**
@@ -305,8 +320,32 @@ class Robots_Txt {
 			'description' => $desc,
 			'home_url'    => home_url( '/' ),
 			'categories'  => $categories,
-			'catalog_url' => rest_url( 'storedash/v1/seo/catalog.txt' ),
+			'catalog_url' => \StoreDash\Seo\Controllers\Seo_Catalog_Controller::base_url(),
+			'policies'    => self::policy_pages(),
 		);
+	}
+
+	/**
+	 * Published WC terms / returns pages and the WP privacy page.
+	 *
+	 * @return array [ { name, url } ]
+	 */
+	private static function policy_pages(): array {
+		$pages = array(
+			'Terms and conditions' => (int) get_option( 'woocommerce_terms_page_id', 0 ),
+			'Refunds and returns'  => (int) get_option( 'woocommerce_refund_returns_page_id', 0 ),
+			'Privacy policy'       => (int) get_option( 'wp_page_for_privacy_policy', 0 ),
+		);
+		$out   = array();
+		foreach ( $pages as $label => $page_id ) {
+			if ( $page_id > 0 && 'publish' === get_post_status( $page_id ) ) {
+				$out[] = array(
+					'name' => $label,
+					'url'  => (string) get_permalink( $page_id ),
+				);
+			}
+		}
+		return $out;
 	}
 
 	/**

@@ -289,7 +289,11 @@ class Schema_Output {
 		}
 		$decimals = wc_get_price_decimals();
 		$images   = array();
-		if ( '' !== (string) $base['image'] ) {
+		// The product's own image first; B1's `image` may be an OG-only override.
+		$main = (int) $product->get_image_id() > 0 ? wp_get_attachment_image_url( (int) $product->get_image_id(), 'full' ) : '';
+		if ( $main ) {
+			$images[] = (string) $main;
+		} elseif ( '' !== (string) $base['image'] ) {
 			$images[] = (string) $base['image'];
 		}
 		foreach ( (array) $product->get_gallery_image_ids() as $attachment_id ) {
@@ -309,7 +313,7 @@ class Schema_Output {
 		$out = array(
 			'id'           => $id,
 			'url'          => (string) $base['url'],
-			'name'         => (string) $base['name'],
+			'name'         => wp_specialchars_decode( (string) $base['name'], ENT_QUOTES ), // Titles saved without unfiltered_html carry `&amp;`.
 			'description'  => $desc,
 			'images'       => $images,
 			'sku'          => (string) $product->get_sku(),
@@ -397,7 +401,10 @@ class Schema_Output {
 	 * @return array
 	 */
 	private function variations( array $ids, int $decimals ): array {
-		$out = array();
+		$out   = array();
+		$terms = array();
+		// One query for every variation's post row + meta instead of one per variation (plan §6.5).
+		_prime_post_caches( array_map( 'intval', $ids ), false, true );
 		foreach ( $ids as $vid ) {
 			$variation = wc_get_product( (int) $vid );
 			if ( ! $variation || '' === (string) $variation->get_price() ) {
@@ -410,8 +417,12 @@ class Schema_Output {
 					continue;
 				}
 				if ( 0 === strpos( (string) $key, 'pa_' ) && taxonomy_exists( (string) $key ) ) {
-					$term  = get_term_by( 'slug', $value, (string) $key );
-					$value = ( $term && ! is_wp_error( $term ) ) ? (string) $term->name : $value;
+					$memo = (string) $key . '|' . $value;
+					if ( ! isset( $terms[ $memo ] ) ) {
+						$term           = get_term_by( 'slug', $value, (string) $key );
+						$terms[ $memo ] = ( $term && ! is_wp_error( $term ) ) ? wp_specialchars_decode( (string) $term->name, ENT_QUOTES ) : $value;
+					}
+					$value = $terms[ $memo ];
 				}
 				$attributes[ (string) $key ] = $value;
 			}

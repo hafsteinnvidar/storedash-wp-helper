@@ -4,14 +4,20 @@
  * linked from /llms.txt (plan §5 B5).
  *
  * One product per line: `name | price currency | availability | permalink`.
- * Published, catalog-visible, non-variation products ordered by ID; 500 per
- * page (`?page=N`, ≤ 10,000), `X-Total-Count` + `Link: <…?page=N+1>; rel="next"`
- * headers. 404 unless the module and `llms_txt_enabled` are on. Pages are
- * cached 1 h in transients keyed by a catalog version that any product
- * create / update / delete / trash bumps (one bump per request).
+ * Published, catalog-visible, password-free, non-variation products ordered
+ * by ID; 500 per page (`?page=N`, ≤ 10,000), `X-Total-Count` +
+ * `Link: <…?token=…&page=N+1>; rel="next"` headers. 404 unless the module and
+ * `llms_txt_enabled` are on AND `?token=` equals option
+ * `storedash_seo_catalog_token` (constant-time compare; generated on first
+ * use, exposed as `catalog_token` in `GET /seo/settings`, rotated by
+ * `PUT /seo/settings` with `rotate_catalog_token: true`). A page past the last
+ * one is 404 and never cached. Pages are cached 1 h in transients keyed by a
+ * catalog version that any product create / update / delete / trash (and a
+ * token rotation) bumps.
  *
- * Public on purpose (`permission_callback => __return_true`): the data is the
- * public storefront; nothing beyond public product fields is exposed.
+ * No WC auth on purpose (`permission_callback => __return_true`): the data is
+ * the public storefront, linked from the public /llms.txt; the token only
+ * keeps the endpoint from being enumerated / hammered without that link.
  *
  * @package StoreDash\Seo
  * @since   1.27.0
@@ -58,6 +64,11 @@ class Seo_Catalog_Controller {
 	const VERSION_OPTION = 'storedash_seo_catalog_version';
 
 	/**
+	 * Option holding the access token (not autoloaded).
+	 */
+	const TOKEN_OPTION = 'storedash_seo_catalog_token';
+
+	/**
 	 * WC stock status → catalog word.
 	 */
 	const AVAILABILITY = array(
@@ -98,15 +109,20 @@ class Seo_Catalog_Controller {
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function get_catalog( $request ) {
-		if ( ! self::is_available() ) {
+		$has_params = is_object( $request ) && method_exists( $request, 'get_param' );
+		$token      = $has_params ? $request->get_param( 'token' ) : null;
+		if ( ! self::is_available() || ! self::token_matches( $token, self::token() ) ) {
 			return new \WP_Error( 'storedash_seo_catalog_disabled', 'Catalog is not enabled.', array( 'status' => 404 ) );
 		}
-		$page = self::page_number( is_object( $request ) && method_exists( $request, 'get_param' ) ? $request->get_param( 'page' ) : 1 );
+		$page = self::page_number( $has_params ? $request->get_param( 'page' ) : 1 );
 		if ( null === $page ) {
 			return new \WP_Error( 'storedash_seo_catalog_bad_page', 'page must be an integer between 1 and ' . self::MAX_PAGE . '.', array( 'status' => 400 ) );
 		}
 
 		$result = $this->page( $page, self::base_url() );
+		if ( null === $result ) {
+			return new \WP_Error( 'storedash_seo_catalog_bad_page', 'page is past the last page.', array( 'status' => 404 ) );
+		}
 
 		$response = new \WP_REST_Response( $result['body'], 200 );
 		foreach ( $result['headers'] as $name => $value ) {
@@ -119,23 +135,89 @@ class Seo_Catalog_Controller {
 	/**
 	 * One page (cached): body + headers.
 	 *
+	 * Pages past the last one return null and are never cached (a public
+	 * route must not let anyone mint 10,000 transients); the product total is
+	 * cached per catalog version so that check costs no query.
+	 *
 	 * @param int    $page     Page number (validated).
-	 * @param string $base_url Route URL for the Link header.
-	 * @return array { body, headers }
+	 * @param string $base_url Route URL (with token) for the Link header.
+	 * @return array|null { body, headers }, null past the last page.
 	 */
-	public function page( int $page, string $base_url ): array {
-		$key    = self::TRANSIENT_PREFIX . self::version() . '_p' . $page;
-		$cached = call_user_func( $this->cache, 'get', $key );
+	public function page( int $page, string $base_url ) {
+		$prefix    = self::TRANSIENT_PREFIX . self::version();
+		$key       = $prefix . '_p' . $page;
+		$total_key = $prefix . '_total';
+		$cached    = call_user_func( $this->cache, 'get', $key );
 		if ( is_array( $cached ) && isset( $cached['body'], $cached['headers'] ) ) {
 			return $cached;
 		}
-		$data   = call_user_func( $this->fetcher, $page, self::PER_PAGE );
-		$rows   = isset( $data['rows'] ) && is_array( $data['rows'] ) ? $data['rows'] : array();
-		$total  = isset( $data['total'] ) ? (int) $data['total'] : count( $rows );
+		if ( $page > 1 ) {
+			$known = call_user_func( $this->cache, 'get', $total_key );
+			if ( is_numeric( $known ) && $page > self::last_page( (int) $known ) ) {
+				return null;
+			}
+		}
+		$data  = call_user_func( $this->fetcher, $page, self::PER_PAGE );
+		$rows  = isset( $data['rows'] ) && is_array( $data['rows'] ) ? $data['rows'] : array();
+		$total = isset( $data['total'] ) ? (int) $data['total'] : count( $rows );
+		call_user_func( $this->cache, 'set', $total_key, $total );
+		if ( $page > self::last_page( $total ) ) {
+			return null;
+		}
 		$result = self::build( $rows, $page, self::PER_PAGE, $total, $base_url );
 		call_user_func( $this->cache, 'set', $key, $result );
 		return $result;
 	}
+
+	/**
+	 * Last page number for a product total (page 1 always exists).
+	 *
+	 * @param int $total Products.
+	 * @return int
+	 */
+	public static function last_page( int $total ): int {
+		return max( 1, min( self::MAX_PAGE, (int) ceil( max( 0, $total ) / self::PER_PAGE ) ) );
+	}
+
+	/**
+	 * Access token (generated + stored on first use).
+	 *
+	 * @return string
+	 */
+	public static function token(): string {
+		$token = get_option( self::TOKEN_OPTION, '' );
+		if ( is_string( $token ) && strlen( $token ) >= 16 ) {
+			return $token;
+		}
+		$token = bin2hex( random_bytes( 16 ) );
+		update_option( self::TOKEN_OPTION, $token, false );
+		return $token;
+	}
+
+	/**
+	 * New token; old links (and cached pages carrying them) stop working.
+	 *
+	 * @return string
+	 */
+	public static function rotate_token(): string {
+		$token = bin2hex( random_bytes( 16 ) );
+		update_option( self::TOKEN_OPTION, $token, false );
+		update_option( self::VERSION_OPTION, time() . 'r', false );
+		\StoreDash\Seo\Engine\Robots_Txt::bust_cache(); // llms.txt links the catalog with the token.
+		return $token;
+	}
+
+	/**
+	 * Constant-time token check.
+	 *
+	 * @param mixed  $given    `?token=` value.
+	 * @param string $expected Stored token.
+	 * @return bool
+	 */
+	public static function token_matches( $given, string $expected ): bool {
+		return is_string( $given ) && '' !== $expected && hash_equals( $expected, $given );
+	}
+
 
 	/**
 	 * Pure: body + headers for a page.
@@ -295,12 +377,13 @@ class Seo_Catalog_Controller {
 	}
 
 	/**
-	 * Route URL.
+	 * Public route URL with the token (what /llms.txt links).
 	 *
 	 * @return string
 	 */
 	public static function base_url(): string {
-		return rest_url( 'storedash/v1/seo/catalog.txt' );
+		$url = rest_url( 'storedash/v1/seo/catalog.txt' ); // `?rest_route=…` on plain permalinks.
+		return $url . ( false === strpos( $url, '?' ) ? '?' : '&' ) . 'token=' . rawurlencode( self::token() );
 	}
 
 	/* ------------------------------------------------------------------ */
@@ -333,6 +416,9 @@ class Seo_Catalog_Controller {
 		$currency = get_woocommerce_currency();
 		$products = is_object( $result ) && isset( $result->products ) ? $result->products : array();
 		foreach ( $products as $product ) {
+			if ( '' !== (string) $product->get_post_password() ) {
+				continue; // Password-protected: not public storefront data.
+			}
 			$price  = (string) $product->get_price();
 			$rows[] = array(
 				'name'         => wp_specialchars_decode( (string) $product->get_name(), ENT_QUOTES ),

@@ -94,6 +94,17 @@ class Redirect_Manager {
 	);
 
 	/**
+	 * Query arg that skips redirects for a logged-in editor (debugging).
+	 */
+	const BYPASS_ARG = 'storedash_no_redirect';
+
+	/**
+	 * Action fired right before a matched redirect is sent (the bot crawl
+	 * logger counts redirected crawls through it). Args: source path, status.
+	 */
+	const MATCHED_ACTION = 'storedash_seo_redirect_matched';
+
+	/**
 	 * Primary category meta (plan §4.9; not written by anything yet).
 	 */
 	const PRIMARY_CATEGORY_META = '_storedash_seo_primary_category';
@@ -128,6 +139,7 @@ class Redirect_Manager {
 	public function register_hooks(): void {
 		add_action( 'template_redirect', array( $this, 'handle_request' ), 1 );
 		add_action( 'post_updated', array( $this, 'on_post_updated' ), 10, 3 );
+		add_action( 'save_post', array( $this, 'on_post_saved' ), 20, 2 );
 		add_action( 'wp_trash_post', array( $this, 'on_trash_post' ), 10, 2 );
 		add_action( 'untrashed_post', array( $this, 'on_untrash_post' ), 10, 1 );
 	}
@@ -233,6 +245,15 @@ class Redirect_Manager {
 				$errors[] = self::row_error( $index, 'source_path is not a path' );
 				continue;
 			}
+			if ( '/' === $path ) {
+				$errors[] = self::row_error( $index, 'source_path must not be the home page' );
+				continue;
+			}
+			$q_pos = strpos( $path, '?' );
+			if ( self::is_protected( false === $q_pos ? $path : substr( $path, 0, $q_pos ), false === $q_pos ? '' : substr( $path, $q_pos + 1 ), array() ) ) {
+				$errors[] = self::row_error( $index, 'source_path is a protected WordPress path' );
+				continue;
+			}
 
 			$status = isset( $row['status_code'] ) ? $row['status_code'] : null;
 			if ( is_string( $status ) && ctype_digit( $status ) ) {
@@ -289,6 +310,41 @@ class Redirect_Manager {
 
 		return array(
 			'rows'   => $out,
+			'errors' => $errors,
+		);
+	}
+
+	/**
+	 * Validate + normalise a PUT body's `remove` list. Pure.
+	 *
+	 * @param mixed $remove Raw `remove` value (absent = null).
+	 * @return array `{ paths: string[], errors: [ { index, reason } ] }`.
+	 */
+	public static function validate_remove( $remove ): array {
+		$paths  = array();
+		$errors = array();
+		if ( null === $remove ) {
+			return array(
+				'paths'  => $paths,
+				'errors' => $errors,
+			);
+		}
+		if ( ! is_array( $remove ) || count( $remove ) > self::MAX_ROWS ) {
+			return array(
+				'paths'  => array(),
+				'errors' => array( self::row_error( -1, 'remove must be an array of at most ' . self::MAX_ROWS . ' source paths' ) ),
+			);
+		}
+		foreach ( array_values( $remove ) as $index => $source ) {
+			$path = is_string( $source ) && strlen( $source ) <= self::MAX_LENGTH ? self::normalize_path( $source ) : '';
+			if ( '' === $path ) {
+				$errors[] = self::row_error( $index, 'remove entries must be source paths' );
+				continue;
+			}
+			$paths[ $path ] = $path;
+		}
+		return array(
+			'paths'  => array_values( $paths ),
 			'errors' => $errors,
 		);
 	}
@@ -471,6 +527,9 @@ class Redirect_Manager {
 		if ( null === $row ) {
 			return;
 		}
+		if ( isset( $_GET[ self::BYPASS_ARG ] ) && $this->user_can_bypass() ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only debug switch, capability-gated.
+			return;
+		}
 
 		$full  = self::normalize_path( $uri );
 		$q     = strpos( $full, '?' );
@@ -481,7 +540,18 @@ class Redirect_Manager {
 		}
 
 		$this->count_hit( (string) $row['source_path'] );
+		do_action( 'storedash_seo_redirect_matched', (string) $row['source_path'], (int) $row['status_code'] ); // = MATCHED_ACTION.
 		$this->respond( (int) $row['status_code'], self::absolute_target( (string) $row['target_url'], $this->home() ) );
+	}
+
+	/**
+	 * May the current user skip redirects with `?storedash_no_redirect`?
+	 * Overridable for tests.
+	 *
+	 * @return bool
+	 */
+	protected function user_can_bypass(): bool {
+		return is_user_logged_in() && current_user_can( 'edit_posts' );
 	}
 
 	/**
@@ -607,14 +677,19 @@ class Redirect_Manager {
 	 * unless the body carries the same source path. Returns false (nothing
 	 * stored) when the merged table would exceed MAX_ROWS.
 	 *
-	 * @param array  $merchant Validated rows (`path => { target_url, status_code, id? }`).
-	 * @param string $hash     Opaque hash to store.
+	 * `$remove` lists normalised source paths whose auto rows are dropped too
+	 * (B4b imports auto rows into Storedash, then deletes them here).
+	 *
+	 * @param array    $merchant Validated rows (`path => { target_url, status_code, id? }`).
+	 * @param string   $hash     Opaque hash to store.
+	 * @param string[] $remove   Normalised source paths of auto rows to delete.
 	 * @return bool
 	 */
-	public function replace_merchant_rows( array $merchant, string $hash ): bool {
-		$kept = array();
+	public function replace_merchant_rows( array $merchant, string $hash, array $remove = array() ): bool {
+		$remove = array_fill_keys( $remove, true );
+		$kept   = array();
 		foreach ( $this->rows() as $path => $row ) {
-			if ( is_array( $row ) && ! empty( $row['auto'] ) && ! isset( $merchant[ $path ] ) ) {
+			if ( is_array( $row ) && ! empty( $row['auto'] ) && ! isset( $merchant[ $path ] ) && ! isset( $remove[ (string) $path ] ) ) {
 				$kept[ $path ] = $row;
 			}
 		}
@@ -681,6 +756,34 @@ class Redirect_Manager {
 			return;
 		}
 		$this->add_auto_redirect( $this->permalink( $post_before ), $this->permalink( $post_after ), (int) $post_id, 'slug' );
+	}
+
+	/**
+	 * `save_post` (priority 20): a published product / page / post owns its
+	 * URL, so an auto row whose source is that URL is dropped (e.g. the
+	 * trash redirect of an old product whose slug a new product now uses —
+	 * the matcher runs before WP resolves the request and would hijack it).
+	 * Merchant rows are left alone (Storedash owns them).
+	 *
+	 * @param int      $post_id Post ID.
+	 * @param \WP_Post $post    Post.
+	 */
+	public function on_post_saved( $post_id, $post = null ): void {
+		if ( ! is_object( $post ) || ! isset( $post->post_type, $post->post_status ) ) {
+			return;
+		}
+		if ( 'publish' !== $post->post_status || ! in_array( (string) $post->post_type, self::POST_TYPES, true ) || ! $this->is_active() ) {
+			return;
+		}
+		$path = self::normalize_path( $this->permalink( (int) $post_id ) );
+		if ( '' === $path || '/' === $path ) {
+			return;
+		}
+		$rows = $this->rows();
+		if ( isset( $rows[ $path ] ) && is_array( $rows[ $path ] ) && ! empty( $rows[ $path ]['auto'] ) ) {
+			unset( $rows[ $path ] );
+			$this->save_rows( $rows );
+		}
 	}
 
 	/**

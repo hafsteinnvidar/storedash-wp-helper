@@ -105,9 +105,16 @@ class Sitemap_Generator {
 	const TAXONOMIES = array( 'product_cat', 'product_tag', 'product_brand' );
 
 	/**
-	 * WC catalog-visibility term that hides a product from the catalog.
+	 * WC catalog-visibility terms. A product is "hidden" (no public listing
+	 * anywhere) only when it carries both; "search results only" products
+	 * have just `exclude-from-catalog` and stay in the sitemap.
 	 */
 	const HIDDEN_TERM = 'exclude-from-catalog';
+
+	/**
+	 * Second WC visibility term (see HIDDEN_TERM).
+	 */
+	const HIDDEN_SEARCH_TERM = 'exclude-from-search';
 
 	/**
 	 * Whether register_hooks() ran on this request (read by the status route
@@ -251,6 +258,10 @@ class Sitemap_Generator {
 	public function maybe_render(): void {
 		$type = (string) get_query_var( self::QUERY_VAR, '' );
 		if ( '' === $type ) {
+			$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- matched against a fixed pattern only.
+			if ( self::is_core_sitemap_request( $uri, (string) wp_parse_url( $this->home( '/' ), PHP_URL_PATH ) ) ) {
+				$this->redirect_to_index();
+			}
 			return;
 		}
 		$page = (int) get_query_var( self::PAGE_VAR, 1 );
@@ -267,6 +278,36 @@ class Sitemap_Generator {
 		}
 
 		$this->output( $xml );
+	}
+
+	/**
+	 * Is this a request for WP core's sitemap (`/wp-sitemap.xml`,
+	 * `/wp-sitemap-posts-post-1.xml`, …) relative to the home path? Core's
+	 * sitemap is off while ours is on, so those URLs 301 to `/sitemap.xml`.
+	 *
+	 * @param string $request_uri REQUEST_URI.
+	 * @param string $home_path   Path of home_url() ('' / '/' = root).
+	 * @return bool
+	 */
+	public static function is_core_sitemap_request( string $request_uri, string $home_path ): bool {
+		$path = strtok( $request_uri, '?#' );
+		$path = false === $path ? '' : $path;
+		$home = rtrim( $home_path, '/' );
+		if ( '' !== $home ) {
+			if ( 0 !== strpos( $path, $home . '/' ) ) {
+				return false;
+			}
+			$path = substr( $path, strlen( $home ) );
+		}
+		return 1 === preg_match( '#^/wp-sitemap(-[a-z0-9_-]+)?\.xml$#i', $path );
+	}
+
+	/**
+	 * 301 to the index and stop. Overridable for tests.
+	 */
+	protected function redirect_to_index(): void {
+		wp_safe_redirect( $this->index_url(), 301, 'StoreDash' );
+		exit;
 	}
 
 	/**
@@ -382,15 +423,45 @@ class Sitemap_Generator {
 		$offset = ( $page - 1 ) * self::PER_PAGE;
 
 		if ( isset( self::POST_TYPES[ $type ] ) ) {
-			$ids         = $this->fetch_post_ids( self::POST_TYPES[ $type ], $offset, self::PER_PAGE );
-			$records     = $ids ? $this->post_records( array_map( 'intval', $ids ) ) : array();
+			$ids = array_map( 'intval', $this->fetch_post_ids( self::POST_TYPES[ $type ], $offset, self::PER_PAGE ) );
+			if ( 'pages' === $type ) {
+				// WC's cart / checkout / my-account are noindex (wc_page_noindex); listing them is a GSC error.
+				$ids = array_values( array_diff( $ids, $this->noindex_page_ids() ) );
+			}
+			$records     = $ids ? $this->post_records( $ids ) : array();
 			$with_images = 'products' === $type;
 		} else {
 			$records     = $this->term_records( $type, $offset, self::PER_PAGE );
 			$with_images = false;
 		}
 
-		return self::filter_records( $records, $with_images );
+		$entries = self::filter_records( $records, $with_images );
+		if ( 'pages' === $type && 1 === $page ) {
+			$entries = self::with_home_first( $entries, $this->home( '/' ) );
+		}
+		return $entries;
+	}
+
+	/**
+	 * Pure: the home URL as the first entry (moved there when a static front
+	 * page already listed it, added when the front page shows latest posts).
+	 *
+	 * @param array[] $entries Entries.
+	 * @param string  $home    home_url( '/' ).
+	 * @return array[]
+	 */
+	public static function with_home_first( array $entries, string $home ): array {
+		$home_entry = array( 'loc' => $home );
+		$rest       = array();
+		foreach ( $entries as $entry ) {
+			if ( isset( $entry['loc'] ) && untrailingslashit( (string) $entry['loc'] ) === untrailingslashit( $home ) ) {
+				$home_entry = $entry;
+				continue;
+			}
+			$rest[] = $entry;
+		}
+		array_unshift( $rest, $home_entry );
+		return $rest;
 	}
 
 	/**
@@ -542,7 +613,8 @@ class Sitemap_Generator {
 	 */
 	public static function xml( string $value ): string {
 		$value = (string) preg_replace( '/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $value );
-		return htmlspecialchars( $value, ENT_QUOTES | ENT_XML1, 'UTF-8' );
+		// ENT_SUBSTITUTE: invalid UTF-8 becomes U+FFFD instead of an empty string.
+		return htmlspecialchars( $value, ENT_QUOTES | ENT_XML1 | ENT_SUBSTITUTE, 'UTF-8' );
 	}
 
 	/* ------------------------------------------------------------------ */
@@ -669,6 +741,26 @@ class Sitemap_Generator {
 	 */
 	protected function home( string $path = '' ): string {
 		return (string) home_url( $path );
+	}
+
+	/**
+	 * Page IDs that never belong in a sitemap: WooCommerce cart, checkout and
+	 * my-account (WC prints noindex on them).
+	 *
+	 * @return int[]
+	 */
+	protected function noindex_page_ids(): array {
+		if ( ! function_exists( 'wc_get_page_id' ) ) {
+			return array();
+		}
+		$ids = array();
+		foreach ( array( 'cart', 'checkout', 'myaccount' ) as $page ) {
+			$id = (int) wc_get_page_id( $page );
+			if ( $id > 0 ) {
+				$ids[] = $id;
+			}
+		}
+		return $ids;
 	}
 
 	/**
@@ -809,15 +901,19 @@ class Sitemap_Generator {
 	 */
 	protected function is_hidden_product( $post ): bool {
 		$terms = get_the_terms( $post, 'product_visibility' );
-		if ( ! is_array( $terms ) ) {
-			return false;
-		}
-		foreach ( $terms as $term ) {
-			if ( isset( $term->slug ) && self::HIDDEN_TERM === $term->slug ) {
-				return true;
-			}
-		}
-		return false;
+		return self::is_hidden_visibility( is_array( $terms ) ? wp_list_pluck( $terms, 'slug' ) : array() );
+	}
+
+	/**
+	 * Pure: WC visibility "hidden" = both exclude terms. "Search results
+	 * only" (`exclude-from-catalog` alone) and "Shop only"
+	 * (`exclude-from-search` alone) products still have public URLs.
+	 *
+	 * @param string[] $slugs `product_visibility` term slugs.
+	 * @return bool
+	 */
+	public static function is_hidden_visibility( array $slugs ): bool {
+		return in_array( self::HIDDEN_TERM, $slugs, true ) && in_array( self::HIDDEN_SEARCH_TERM, $slugs, true );
 	}
 
 	/**

@@ -1,0 +1,95 @@
+{
+  "_comment": "Cross-language contract (plan §4.7). slug = seo_bot_crawls.bot and the ai_bots settings key. ua = case-insensitive User-Agent token Bot_Crawl_Logger::BOTS matches (google-extended never appears in a UA; robots.txt-only). robots_token = the User-agent line Robots_Txt emits when ai_bots[slug] === false (applebot blocks Applebot-Extended, Apple's AI-training token; plain Applebot is Siri/Spotlight search). blockable = slug is in Settings::AI_BOT_SLUGS (search engines never are). kind = ai_training | ai_search | ai_user | search, for woo-dash presets (e.g. block training = set every blockable ai_training slug to false). Asserted by helper tests/Seo/Ai_Bots_FixtureTest.php; woo-dash keeps a byte-identical copy.",
+  "bots": {
+    "gptbot": {
+      "ua": "GPTBot",
+      "robots_token": "GPTBot",
+      "kind": "ai_training",
+      "blockable": true
+    },
+    "oai-searchbot": {
+      "ua": "OAI-SearchBot",
+      "robots_token": "OAI-SearchBot",
+      "kind": "ai_search",
+      "blockable": true
+    },
+    "chatgpt-user": {
+      "ua": "ChatGPT-User",
+      "robots_token": "ChatGPT-User",
+      "kind": "ai_user",
+      "blockable": true
+    },
+    "claudebot": {
+      "ua": "ClaudeBot",
+      "robots_token": "ClaudeBot",
+      "kind": "ai_training",
+      "blockable": true
+    },
+    "claude-user": {
+      "ua": "Claude-User",
+      "robots_token": "Claude-User",
+      "kind": "ai_user",
+      "blockable": true
+    },
+    "perplexitybot": {
+      "ua": "PerplexityBot",
+      "robots_token": "PerplexityBot",
+      "kind": "ai_search",
+      "blockable": true
+    },
+    "perplexity-user": {
+      "ua": "Perplexity-User",
+      "robots_token": "Perplexity-User",
+      "kind": "ai_user",
+      "blockable": true
+    },
+    "google-extended": {
+      "ua": "Google-Extended",
+      "robots_token": "Google-Extended",
+      "kind": "ai_training",
+      "blockable": true
+    },
+    "googlebot": {
+      "ua": "Googlebot",
+      "robots_token": null,
+      "kind": "search",
+      "blockable": false
+    },
+    "bingbot": {
+      "ua": "bingbot",
+      "robots_token": null,
+      "kind": "search",
+      "blockable": false
+    },
+    "applebot": {
+      "ua": "Applebot",
+      "robots_token": "Applebot-Extended",
+      "kind": "search",
+      "blockable": true
+    },
+    "amazonbot": {
+      "ua": "Amazonbot",
+      "robots_token": "Amazonbot",
+      "kind": "ai_search",
+      "blockable": true
+    },
+    "bytespider": {
+      "ua": "Bytespider",
+      "robots_token": "Bytespider",
+      "kind": "ai_training",
+      "blockable": true
+    },
+    "ccbot": {
+      "ua": "CCBot",
+      "robots_token": "CCBot",
+      "kind": "ai_training",
+      "blockable": true
+    },
+    "meta-externalagent": {
+      "ua": "meta-externalagent",
+      "robots_token": "meta-externalagent",
+      "kind": "ai_training",
+      "blockable": true
+    }
+  }
+}

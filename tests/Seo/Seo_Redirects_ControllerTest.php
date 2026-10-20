@@ -195,4 +195,34 @@ class Seo_Redirects_ControllerTest extends TestCase {
 		$again = $this->controller()->get_hits( new Seo_Test_Request( array() ) );
 		$this->assertInstanceOf( stdClass::class, $again['hits'] );
 	}
+
+	/* ---------------- review fixes 2026-10-19 ---------------- */
+
+	public function test_put_remove_deletes_auto_rows() {
+		$this->manager->add_auto_redirect( 'https://shop.test/product/a/', 'https://shop.test/product/b/', 1, 'slug' );
+		$this->manager->add_auto_redirect( 'https://shop.test/product/c/', 'https://shop.test/product/d/', 2, 'slug' );
+
+		$out = $this->put( array( 'redirects' => $this->rows(), 'remove' => array( '/product/a/', '/never-existed' ), 'hash' => 'h1' ) );
+		$this->assertSame( array( '/old', '/gone', '/rel', '/product/c' ), array_column( $out['redirects'], 'source_path' ) );
+
+		$out = $this->put( array( 'redirects' => array(), 'remove' => array( 'https://shop.test/product/c' ), 'hash' => 'h2' ) );
+		$this->assertSame( 0, $out['count'] );
+		$this->assertSame( '0', $GLOBALS['__seo_options'][ Redirect_Manager::ACTIVE_OPTION ] );
+	}
+
+	public function test_put_invalid_remove_is_400_and_stores_nothing() {
+		$this->manager->add_auto_redirect( 'https://shop.test/product/a/', 'https://shop.test/product/b/', 1, 'slug' );
+		$before = $GLOBALS['__seo_options'];
+
+		$out = $this->put( array( 'redirects' => array(), 'remove' => array( 42 ), 'hash' => 'h' ) );
+		$this->assertInstanceOf( WP_Error::class, $out );
+		$this->assertSame( 'storedash_seo_invalid_remove', $out->get_error_code() );
+		$this->assertSame( 400, $out->get_error_data()['status'] );
+
+		$out = $this->put( array( 'redirects' => $this->rows(), 'remove' => array( '/old/' ), 'hash' => 'h' ) );
+		$this->assertInstanceOf( WP_Error::class, $out );
+		$this->assertSame( 'storedash_seo_invalid_redirects', $out->get_error_code() );
+		$this->assertStringContainsString( 'both in redirects and in remove', $out->get_error_data()['errors'][0]['reason'] );
+		$this->assertSame( $before, $GLOBALS['__seo_options'], 'nothing stored' );
+	}
 }

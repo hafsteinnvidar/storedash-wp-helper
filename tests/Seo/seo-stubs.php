@@ -261,6 +261,15 @@ if ( ! function_exists( 'current_time' ) ) {
 	}
 }
 
+// Review fixes (2026-10-19): 404 flag for the bot logger, redirect bypass.
+$GLOBALS['__seo_is_404'] = false;
+
+if ( ! function_exists( 'is_404' ) ) {
+	function is_404() {
+		return ! empty( $GLOBALS['__seo_is_404'] );
+	}
+}
+
 $storedash_seo_root = __DIR__ . '/../../inc/Seo/';
 require_once $storedash_seo_root . 'Settings.php';
 require_once $storedash_seo_root . 'Engine/Title_Template.php';
@@ -341,9 +350,15 @@ class Seo_Test_Redirects extends \StoreDash\Seo\Engine\Redirect_Manager {
 	public $wc_paths = array( '/cart', '/checkout', '/my-account' );
 	/** @var array[] */
 	public $responses = array();
+	/** @var bool user_can_bypass() result. */
+	public $can_bypass = false;
 
 	public function __construct() {
 		parent::__construct( 'https://shop.test' );
+	}
+
+	protected function user_can_bypass(): bool {
+		return $this->can_bypass;
 	}
 
 	protected function permalink( $post ): string {

@@ -16,6 +16,8 @@ require_once __DIR__ . '/seo-stubs.php';
  */
 class Seo_Catalog_ControllerTest extends TestCase {
 
+	const TOKEN = '0123456789abcdef0123456789abcdef';
+
 	/** @var array */
 	private $fetches = array();
 	/** @var array */
@@ -25,8 +27,9 @@ class Seo_Catalog_ControllerTest extends TestCase {
 		$this->fetches             = array();
 		$this->cache               = array();
 		$GLOBALS['__seo_options'] = array(
-			Settings::ENABLED_OPTION => '1',
-			Settings::OPTION         => array( 'llms_txt_enabled' => true ),
+			Settings::ENABLED_OPTION                   => '1',
+			Settings::OPTION                           => array( 'llms_txt_enabled' => true ),
+			Seo_Catalog_Controller::TOKEN_OPTION       => self::TOKEN,
 		);
 		Settings::reset_cache();
 	}
@@ -63,14 +66,20 @@ class Seo_Catalog_ControllerTest extends TestCase {
 		);
 	}
 
-	private function request( $page ) {
-		return new class( $page ) {
+	private function request( $page, $token = self::TOKEN ) {
+		return new class( $page, $token ) {
 			/** @var mixed */
 			private $page;
-			public function __construct( $page ) {
-				$this->page = $page;
+			/** @var mixed */
+			private $token;
+			public function __construct( $page, $token ) {
+				$this->page  = $page;
+				$this->token = $token;
 			}
 			public function get_param( $name ) {
+				if ( 'token' === $name ) {
+					return $this->token;
+				}
 				return 'page' === $name ? $this->page : null;
 			}
 		};
@@ -156,7 +165,7 @@ class Seo_Catalog_ControllerTest extends TestCase {
 		$headers = $out->get_headers();
 		$this->assertSame( 'text/plain; charset=UTF-8', $headers['Content-Type'] );
 		$this->assertSame( '1200', $headers['X-Total-Count'] );
-		$this->assertSame( '<https://shop.test/wp-json/storedash/v1/seo/catalog.txt?page=3>; rel="next"', $headers['Link'] );
+		$this->assertSame( '<https://shop.test/wp-json/storedash/v1/seo/catalog.txt?token=' . self::TOKEN . '&page=3>; rel="next"', $headers['Link'] );
 		$lines = explode( "\n", rtrim( $out->get_data(), "\n" ) );
 		$this->assertCount( 500, $lines );
 		$this->assertSame( 'Product 500 | 10.00 ISK | in_stock | https://shop.test/product/p500/', $lines[0] );
@@ -172,7 +181,7 @@ class Seo_Catalog_ControllerTest extends TestCase {
 		$controller->page( 1, 'https://shop.test/wp-json/storedash/v1/seo/catalog.txt' );
 		$controller->page( 1, 'https://shop.test/wp-json/storedash/v1/seo/catalog.txt' );
 		$this->assertSame( array( 1 ), $this->fetches, 'second call served from cache' );
-		$this->assertSame( array( Seo_Catalog_Controller::TRANSIENT_PREFIX . '0_p1' ), array_keys( $this->cache ) );
+		$this->assertSame( array( Seo_Catalog_Controller::TRANSIENT_PREFIX . '0_total', Seo_Catalog_Controller::TRANSIENT_PREFIX . '0_p1' ), array_keys( $this->cache ) );
 
 		Seo_Catalog_Controller::bump_version();
 		$version = Seo_Catalog_Controller::version();
@@ -194,5 +203,57 @@ class Seo_Catalog_ControllerTest extends TestCase {
 		$echoed = ob_get_clean();
 		$this->assertTrue( $served );
 		$this->assertSame( "A | 1 ISK | in_stock | https://shop.test/a/\n", $echoed );
+	}
+
+	/* ---------------- review fixes 2026-10-19 ---------------- */
+
+	public function test_404_without_the_right_token() {
+		foreach ( array( null, '', 'wrong', strtoupper( self::TOKEN ), array( self::TOKEN ) ) as $token ) {
+			$out = $this->controller()->get_catalog( $this->request( 1, $token ) );
+			$this->assertInstanceOf( WP_Error::class, $out );
+			$this->assertSame( 404, $out->get_error_data()['status'] );
+		}
+		$this->assertSame( array(), $this->fetches, 'nothing fetched without the token' );
+	}
+
+	public function test_page_past_the_end_is_404_and_never_cached() {
+		$controller = $this->controller( 1200 ); // 3 pages.
+		$out        = $controller->get_catalog( $this->request( 9000 ) );
+		$this->assertInstanceOf( WP_Error::class, $out );
+		$this->assertSame( 404, $out->get_error_data()['status'] );
+		$this->assertArrayNotHasKey( Seo_Catalog_Controller::TRANSIENT_PREFIX . '0_p9000', $this->cache );
+		$this->assertSame( 1200, $this->cache[ Seo_Catalog_Controller::TRANSIENT_PREFIX . '0_total' ] );
+
+		$this->fetches = array();
+		$this->assertSame( 404, $controller->get_catalog( $this->request( 4 ) )->get_error_data()['status'] );
+		$this->assertSame( array(), $this->fetches, 'known total → no query for out-of-range pages' );
+		$this->assertInstanceOf( WP_REST_Response::class, $controller->get_catalog( $this->request( 3 ) ) );
+
+		$empty = $this->controller( 0 )->page( 1, 'x' );
+		$this->assertSame( '', $empty['body'], 'page 1 always exists' );
+	}
+
+	public function test_token_is_generated_once_and_rotation_busts_pages() {
+		unset( $GLOBALS['__seo_options'][ Seo_Catalog_Controller::TOKEN_OPTION ] );
+		$token = Seo_Catalog_Controller::token();
+		$this->assertSame( 1, preg_match( '/^[0-9a-f]{32}$/', $token ) );
+		$this->assertSame( $token, Seo_Catalog_Controller::token(), 'stored, not regenerated' );
+		$this->assertSame( 'https://shop.test/wp-json/storedash/v1/seo/catalog.txt?token=' . $token, Seo_Catalog_Controller::base_url() );
+
+		$version = Seo_Catalog_Controller::version();
+		$rotated = Seo_Catalog_Controller::rotate_token();
+		$this->assertNotSame( $token, $rotated );
+		$this->assertSame( $rotated, Seo_Catalog_Controller::token() );
+		$this->assertNotSame( $version, Seo_Catalog_Controller::version(), 'cached pages carry the old token in Link → new version' );
+		$this->assertFalse( Seo_Catalog_Controller::token_matches( $token, $rotated ) );
+		$this->assertTrue( Seo_Catalog_Controller::token_matches( $rotated, $rotated ) );
+		$this->assertFalse( Seo_Catalog_Controller::token_matches( '', '' ), 'empty stored token never matches' );
+	}
+
+	public function test_last_page() {
+		$this->assertSame( 1, Seo_Catalog_Controller::last_page( 0 ) );
+		$this->assertSame( 1, Seo_Catalog_Controller::last_page( 500 ) );
+		$this->assertSame( 2, Seo_Catalog_Controller::last_page( 501 ) );
+		$this->assertSame( Seo_Catalog_Controller::MAX_PAGE, Seo_Catalog_Controller::last_page( PHP_INT_MAX ) );
 	}
 }
