@@ -119,9 +119,9 @@ class Bot_Crawl_Logger {
 	const URL_OPTION = 'storedash_seo_webhook_url';
 
 	/**
-	 * No default Hookdeck source exists yet → '' = do not send.
+	 * Hookdeck source `woo-seo-crawl` → storedash-sync `/webhooks/seo-crawl`.
 	 */
-	const DEFAULT_URL = '';
+	const DEFAULT_URL = 'https://webhooks.storedash.io/3fzku2m9uahetd';
 
 	/**
 	 * Webhook action name.

@@ -247,6 +247,12 @@ class StoreDash_Bootstrap {
 		// DK: read-only export of DKSync's settings for "Import from DKSync".
 		// Registers one route and nothing else.
 		require_once STOREDASH_PATH . 'inc/services/dk/class-dk-legacy-settings-controller.php';
+		// DK native (plan §4.8): checkout config pushed from the dashboard +
+		// the kennitala field it switches on. No hooks while the mode is off.
+		require_once STOREDASH_PATH . 'inc/services/dk/class-dk-config.php';
+		require_once STOREDASH_PATH . 'inc/services/dk/class-dk-kennitala.php';
+		require_once STOREDASH_PATH . 'inc/services/dk/class-dk-kennitala-field.php';
+		require_once STOREDASH_PATH . 'inc/services/dk/class-dk-config-controller.php';
 
 		// Marketing opt-in services (checkout checkbox + Elementor signup widget)
 		require_once STOREDASH_PATH . 'inc/services/optin/class-optin-handler.php';

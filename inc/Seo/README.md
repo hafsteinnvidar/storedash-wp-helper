@@ -53,7 +53,7 @@ Same keys on `postmeta` (products, pages, posts) and `termmeta` (categories, tag
 | `storedash_seo_redirects_active` | Autoloaded `'1'`/`'0'`: the table has rows (B2). |
 | `storedash_seo_redirects_hash` | Opaque hash of the last redirects push (B2). |
 | `storedash_schema_override` | B5. Truthy = emit our Product graph while **Yoast** is active (see JSON-LD modes). Default unset/off. No UI yet; Storedash sets it later. |
-| `storedash_seo_webhook_url` | B5. URL the hourly bot-crawl flush POSTs to. **No default** (`Bot_Crawl_Logger::DEFAULT_URL = ''`): unset or empty = nothing is sent, counts stay in the transient. Same "unset → default, `''` → disabled" contract as `storedash_credit_webhook_url` once a default exists. |
+| `storedash_seo_webhook_url` | B5. URL the hourly bot-crawl flush POSTs to. Default `Bot_Crawl_Logger::DEFAULT_URL` = `https://webhooks.storedash.io/3fzku2m9uahetd` (Hookdeck source `woo-seo-crawl`). Unset → default, `''` → disabled (counts stay in the transient) — same contract as `storedash_credit_webhook_url`. |
 | `storedash_seo_catalog_version` | B5, internal. Bumped on product writes (and token rotation) to invalidate `catalog.txt` page caches. |
 | `storedash_seo_catalog_token` | B5. Not autoloaded. 32-hex token `catalog.txt` requires (`?token=`); generated on first use, returned as `catalog_token` by `GET/PUT /seo/settings`, replaced by `PUT /seo/settings` with `rotate_catalog_token: true`. |
 | `storedash_seo_crawl_stats` | B5. Not autoloaded. `{ last_flush_at, consecutive_failures }` for `GET /seo/crawl-stats`. |
@@ -118,7 +118,7 @@ Performance: the only extra queries on a product page are the reviews (one `get_
 
 **Hourly flush** — `wp_cron` event `storedash_seo_hourly_flush` (`hourly`), handler registered on every request; scheduled while `storedash_seo_enabled` is on, unscheduled when it is off (self-heal in `Seo_Manager::init()`) and in `StoreDash_Deactivator`. **Opportunistic flush** for stores whose cron never runs: after a counted bot hit, when transient `storedash_seo_last_flush` (set at every flush start, 2 h) is absent and no flush is running, `flush()` is queued on `shutdown`. Transient `storedash_seo_flush_lock` (5 min) keeps cron and the opportunistic flush from overlapping. `Bot_Crawl_Logger::flush()`:
 
-1. URL = `StoreDash_Helpers::resolve_webhook_url( 'storedash_seo_webhook_url', '' )` (store must be connected: `woodash_store_id` + `woodash_webhook_secret`). **Empty → return, nothing sent, transient kept** (WP_DEBUG log).
+1. URL = `StoreDash_Helpers::resolve_webhook_url( 'storedash_seo_webhook_url', DEFAULT_URL )` (store must be connected: `woodash_store_id` + `woodash_webhook_secret`). **Empty → return, nothing sent, transient kept** (WP_DEBUG log).
 2. Read + delete the transient; drain B2's redirect hits when `\StoreDash\Seo\Engine\Redirect_Manager::drain_hits(): array` exists (absent → `[]`, never fails). B2 returns `{ hits: { '/old': 2 }, since }`; `Bot_Crawl_Logger::normalize_redirect_hits()` turns that (or a `[ { source_path, hits } ]` list) into the payload rows.
 3. Skip when both lists are empty. Otherwise one POST per chunk — ≤ 2,000 crawl rows **and** ≤ 256 KB of JSON body (`MAX_BODY_BYTES`, plan §6.6), redirect hits ride on the first — `wp_remote_post`, `sslverify` on. In cron / WP-CLI (the hourly event) the POST is **blocking** (timeout 5) and only a 2xx counts as delivered; the opportunistic flush (a visitor's `shutdown`) stays non-blocking (timeout 10), where only connection errors are seen. (A non-blocking flush was observed on wp-env reporting success while the receiver got nothing.)
 4. Stats (`storedash_seo_crawl_stats`): `last_flush_at` = now; `consecutive_failures` +1 when any chunk was not delivered, else 0. Rows of failed chunks are merged back into the transient (never lost on one failure) until 3 consecutive failures, then dropped. Redirect hits of a failed first chunk are not merged back.
@@ -134,7 +134,7 @@ Headers: `Content-Type: application/json`, `X-WooDash-Signature: <hex hash_hmac(
 
 **Debug:** `GET /storedash/v1/seo/crawl-stats` (`manage_woocommerce`) → `{ pending_keys, last_flush_at: iso|null, consecutive_failures, webhook_url_configured: bool, next_scheduled_at: iso|null }`.
 
-**Receiver is not built.** Either a woo-dash route (`/api/seo/bot-crawls`, B4b) or a storedash-sync handler must verify the signature with the store's `woodash_webhook_secret`, cap the body (≤ 256 KB per plan §6.6 — the helper never sends more), upsert `seo_bot_crawls`, and add `seo_redirects.hits`. Until a Hookdeck source exists and `storedash_seo_webhook_url` (or a `DEFAULT_URL`) is set, no data leaves the store.
+**Receiver:** storedash-sync `internal/webhooks/seo_bot_crawl.go` (`POST /webhooks/seo-crawl`), reached via Hookdeck connection `woo-seo-crawl` (source `https://webhooks.storedash.io/3fzku2m9uahetd`). It verifies the signature with the store's `woodash_webhook_secret`, caps the body at 256 KB, and upserts `seo_bot_crawls` (summing on `store_id,date,bot,url`). `redirect_hits` are accepted but ignored for now.
 
 ## robots.txt, /llms.txt, catalog.txt (B5)
 

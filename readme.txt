@@ -143,6 +143,9 @@ Your use of these services is subject to the Storedash Terms of Service
 
 == Changelog ==
 
+= 1.27.0 =
+* New: kennitala field at checkout for DK Plus. Switch it on in Storedash under Settings > DK Plus > Checkout, choose optional or required and where it sits among the billing fields. Shown for Icelandic addresses only, checked for a valid check digit, saved on the order so Storedash can put it on the DK invoice. Works with both the classic and the block checkout. Nothing changes until you save the setting in Storedash.
+
 = 1.26.0 =
 * New: native SEO. Storedash can now print your store's SEO head tags itself: page title, meta description, canonical link, robots rules, Open Graph and Twitter cards, product price and availability. Turn it on in Storedash under Settings > Integrations > Storedash SEO. It stays silent while Yoast, RankMath, SEOPress, AIOSEO or The SEO Framework is active, so nothing changes until you choose to switch.
 * New: SEO settings, status, bulk meta and migration endpoints for Storedash. The migration copies your existing Yoast / RankMath titles, descriptions and noindex flags into Storedash's own fields; the original plugin's data is left untouched.
