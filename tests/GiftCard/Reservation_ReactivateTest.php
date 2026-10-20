@@ -20,62 +20,7 @@ require_once __DIR__ . '/../../inc/Credit/Ledger.php';
 require_once __DIR__ . '/../../inc/Credit/Engine/Eligibility.php';
 require_once __DIR__ . '/../../inc/Credit/Engine/Spend_Handler.php';
 
-if ( ! class_exists( 'WC_Order' ) ) {
-	/**
-	 * Minimal WC_Order double for the reservation flow.
-	 */
-	class WC_Order { // phpcs:ignore
-		public $id       = 0;
-		public $status   = 'processing';
-		public $fees     = array();
-		public $goods    = 0.0;
-		public $total    = 0.0;
-		public $notes    = array();
-		public $meta     = array();
-		public $statuses = array();
-
-		public function get_id() {
-			return $this->id;
-		}
-		public function get_items( $type ) {
-			return 'fee' === $type ? $this->fees : array();
-		}
-		public function remove_item( $item_id ) {
-			unset( $this->fees[ $item_id ] );
-		}
-		public function calculate_totals( $and_taxes = true ) {
-			$this->total = $this->goods;
-			foreach ( $this->fees as $fee ) {
-				$this->total += $fee->get_total();
-			}
-			return $this->total;
-		}
-		public function get_total() {
-			return $this->total;
-		}
-		public function get_status() {
-			return $this->status;
-		}
-		public function update_status( $status, $note = '' ) {
-			$this->statuses[] = $status;
-			$this->status     = $status;
-			$this->notes[]    = $note;
-		}
-		public function add_order_note( $note ) {
-			$this->notes[] = $note;
-		}
-		public function update_meta_data( $key, $value ) {
-			$this->meta[ $key ] = $value;
-		}
-		public function get_meta( $key, $single = true ) {
-			return $this->meta[ $key ] ?? '';
-		}
-		public function get_currency() {
-			return 'ISK';
-		}
-		public function save() {}
-	}
-}
+// WC_Order double: shared, in tests/bootstrap.php.
 
 /**
  * Fee line double.

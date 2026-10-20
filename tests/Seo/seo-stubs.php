@@ -33,42 +33,8 @@ if ( ! function_exists( 'apply_filters' ) ) {
 	}
 }
 
-// Option store for the settings controller suites.
-$GLOBALS['__seo_options'] = array();
-
-if ( ! function_exists( 'get_option' ) ) {
-	function get_option( $name, $default = false ) {
-		return array_key_exists( $name, $GLOBALS['__seo_options'] ) ? $GLOBALS['__seo_options'][ $name ] : $default;
-	}
-}
-
-if ( ! function_exists( 'update_option' ) ) {
-	function update_option( $name, $value, $autoload = null ) {
-		$GLOBALS['__seo_options'][ $name ] = $value;
-		if ( null !== $autoload ) {
-			$GLOBALS['__seo_option_autoload'][ $name ] = $autoload;
-		}
-		return true;
-	}
-}
-
-if ( ! function_exists( 'add_option' ) ) {
-	function add_option( $name, $value = '', $deprecated = '', $autoload = 'yes' ) {
-		if ( array_key_exists( $name, $GLOBALS['__seo_options'] ) ) {
-			return false;
-		}
-		$GLOBALS['__seo_options'][ $name ]         = $value;
-		$GLOBALS['__seo_option_autoload'][ $name ] = $autoload;
-		return true;
-	}
-}
-
-if ( ! function_exists( 'delete_option' ) ) {
-	function delete_option( $name ) {
-		unset( $GLOBALS['__seo_options'][ $name ], $GLOBALS['__seo_option_autoload'][ $name ] );
-		return true;
-	}
-}
+// Option store + get/update/add/delete_option + current_time: shared, in
+// tests/bootstrap.php (`$GLOBALS['__seo_options']`).
 
 // Transient store (B2 sitemap cache + redirect hits).
 $GLOBALS['__seo_transients']     = array();
@@ -93,8 +59,6 @@ if ( ! function_exists( 'wp_clear_scheduled_hook' ) ) {
 		return $had;
 	}
 }
-$GLOBALS['__seo_option_autoload'] = array();
-
 if ( ! function_exists( 'get_transient' ) ) {
 	function get_transient( $key ) {
 		return array_key_exists( $key, $GLOBALS['__seo_transients'] ) ? $GLOBALS['__seo_transients'][ $key ] : false;
@@ -252,12 +216,6 @@ if ( ! function_exists( 'rest_url' ) ) {
 if ( ! function_exists( 'get_site_url' ) ) {
 	function get_site_url() {
 		return 'https://shop.test';
-	}
-}
-
-if ( ! function_exists( 'current_time' ) ) {
-	function current_time( $type = 'mysql', $gmt = 0 ) {
-		return '2026-10-19 12:00:00';
 	}
 }
 

@@ -69,9 +69,9 @@ class DK_ConfigTest extends TestCase {
 		$first = DK_Config::update( array( 'kennitala_mode' => 'optional' ) );
 		$this->assertSame( 'optional', $first['kennitala_mode'] );
 		$this->assertSame( 'top', $first['kennitala_position'] );
-		$this->assertSame( '2026-10-20 10:00:00', $first['updated_at'] );
+		$this->assertSame( '2026-10-19 12:00:00', $first['updated_at'] );
 		$this->assertSame( 32, strlen( $first['config_hash'] ) );
-		$this->assertSame( $first, DK_Test_WP::$options[ DK_Config::OPTION ] );
+		$this->assertSame( $first, $GLOBALS['__seo_options'][ DK_Config::OPTION ] );
 
 		$second = DK_Config::update( array( 'kennitala_position' => 'bottom' ) );
 		$this->assertSame( 'optional', $second['kennitala_mode'], 'untouched key survives' );
@@ -103,7 +103,7 @@ class DK_ConfigTest extends TestCase {
 	}
 
 	public function test_corrupt_option_falls_back_to_defaults(): void {
-		DK_Test_WP::$options[ DK_Config::OPTION ] = 'garbage';
+		$GLOBALS['__seo_options'][ DK_Config::OPTION ] = 'garbage';
 		$this->assertSame( 'off', DK_Config::get()['kennitala_mode'] );
 	}
 }

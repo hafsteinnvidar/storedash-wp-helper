@@ -32,11 +32,6 @@ if ( ! function_exists( 'esc_url_raw' ) ) {
 		return $url;
 	}
 }
-if ( ! function_exists( 'wc_get_order' ) ) {
-	function wc_get_order( $order_id ) {
-		return Shipment_Tracking_Test_State::$order;
-	}
-}
 if ( ! class_exists( 'WP_Error' ) ) {
 	class WP_Error {
 		public $code;
@@ -143,6 +138,7 @@ class Shipment_Tracking_ControllerTest extends TestCase {
 		parent::setUp();
 		Shipment_Tracking_Test_State::$st_calls = array();
 		Shipment_Tracking_Test_State::$order    = new Fake_Tracking_Order();
+		$GLOBALS['__test_wc_order']             = Shipment_Tracking_Test_State::$order; // shared wc_get_order() (bootstrap)
 		$this->controller                       = new StoreDash_API_Shipment_Tracking();
 	}
 
@@ -220,6 +216,7 @@ class Shipment_Tracking_ControllerTest extends TestCase {
 				),
 			)
 		);
+		$GLOBALS['__test_wc_order'] = Shipment_Tracking_Test_State::$order;
 
 		$response = $this->controller->add_tracking(
 			$this->request(

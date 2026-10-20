@@ -334,3 +334,123 @@ if ( ! function_exists( 'wp_strip_all_tags' ) ) {
 		return trim( strip_tags( (string) $text ) );
 	}
 }
+
+// Single option store + clock shared by every suite (SEO, DK, …). Each suite
+// used to stub get_option()/update_option() over its own storage; whichever
+// file loaded first won and the other suite read the wrong store in a full
+// run. Tests set/reset `$GLOBALS['__seo_options']` directly.
+$GLOBALS['__seo_options']         = array();
+$GLOBALS['__seo_option_autoload'] = array();
+
+if ( ! function_exists( 'get_option' ) ) {
+	function get_option( $name, $default = false ) {
+		return array_key_exists( $name, $GLOBALS['__seo_options'] ) ? $GLOBALS['__seo_options'][ $name ] : $default;
+	}
+}
+
+if ( ! function_exists( 'update_option' ) ) {
+	function update_option( $name, $value, $autoload = null ) {
+		$GLOBALS['__seo_options'][ $name ] = $value;
+		if ( null !== $autoload ) {
+			$GLOBALS['__seo_option_autoload'][ $name ] = $autoload;
+		}
+		return true;
+	}
+}
+
+if ( ! function_exists( 'add_option' ) ) {
+	function add_option( $name, $value = '', $deprecated = '', $autoload = 'yes' ) {
+		if ( array_key_exists( $name, $GLOBALS['__seo_options'] ) ) {
+			return false;
+		}
+		$GLOBALS['__seo_options'][ $name ]         = $value;
+		$GLOBALS['__seo_option_autoload'][ $name ] = $autoload;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'delete_option' ) ) {
+	function delete_option( $name ) {
+		unset( $GLOBALS['__seo_options'][ $name ], $GLOBALS['__seo_option_autoload'][ $name ] );
+		return true;
+	}
+}
+
+if ( ! function_exists( 'current_time' ) ) {
+	function current_time( $type = 'mysql', $gmt = 0 ) {
+		return '2026-10-19 12:00:00';
+	}
+}
+
+// Single WC_Order double + wc_get_order(), the union of what the DK, GiftCard
+// and ShipmentTracking suites use (each used to define its own; the first
+// loaded won). wc_get_order() passes objects through and resolves ids to
+// `$GLOBALS['__test_wc_order']`.
+$GLOBALS['__test_wc_order'] = null;
+
+if ( ! function_exists( 'wc_get_order' ) ) {
+	function wc_get_order( $order ) {
+		return is_object( $order ) ? $order : ( $GLOBALS['__test_wc_order'] ?? false );
+	}
+}
+
+if ( ! class_exists( 'WC_Order' ) ) {
+	class WC_Order { // phpcs:ignore
+		public $id              = 0;
+		public $status          = 'processing';
+		public $fees            = array();
+		public $goods           = 0.0;
+		public $total           = 0.0;
+		public $notes           = array();
+		public $meta            = array();
+		public $statuses        = array();
+		public $billing_country = 'IS';
+		public $saves           = 0;
+
+		public function get_id() {
+			return $this->id;
+		}
+		public function get_items( $type ) {
+			return 'fee' === $type ? $this->fees : array();
+		}
+		public function remove_item( $item_id ) {
+			unset( $this->fees[ $item_id ] );
+		}
+		public function calculate_totals( $and_taxes = true ) {
+			$this->total = $this->goods;
+			foreach ( $this->fees as $fee ) {
+				$this->total += $fee->get_total();
+			}
+			return $this->total;
+		}
+		public function get_total() {
+			return $this->total;
+		}
+		public function get_status() {
+			return $this->status;
+		}
+		public function update_status( $status, $note = '' ) {
+			$this->statuses[] = $status;
+			$this->status     = $status;
+			$this->notes[]    = $note;
+		}
+		public function add_order_note( $note ) {
+			$this->notes[] = $note;
+		}
+		public function update_meta_data( $key, $value ) {
+			$this->meta[ $key ] = $value;
+		}
+		public function get_meta( $key, $single = true ) {
+			return $this->meta[ $key ] ?? '';
+		}
+		public function get_billing_country() {
+			return $this->billing_country;
+		}
+		public function get_currency() {
+			return 'ISK';
+		}
+		public function save() {
+			++$this->saves;
+		}
+	}
+}
