@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.26.0
+Stable tag: 1.27.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -145,6 +145,9 @@ Your use of these services is subject to the Storedash Terms of Service
 
 = 1.27.0 =
 * New: kennitala field at checkout for DK Plus. Switch it on in Storedash under Settings > DK Plus > Checkout, choose optional or required and where it sits among the billing fields. Shown for Icelandic addresses only, checked for a valid check digit, saved on the order so Storedash can put it on the DK invoice. Works with both the classic and the block checkout. Nothing changes until you save the setting in Storedash.
+* The kennitala field steps aside when another plugin (for example a headless storefront) already adds its own kennitala field to the block checkout, so checkout never asks for it twice or refuses an order that has it.
+* New for Storedash SEO (only while it is switched on in Storedash): an XML sitemap at /sitemap.xml, redirects you manage from Storedash (including ones copied from Yoast or RankMath), product structured data for Google, robots.txt rules to block or allow AI crawlers, and an optional /llms.txt that describes your store to AI assistants.
+* New: with Storedash SEO on, visits from search and AI crawlers are counted and sent to Storedash once an hour, so you can see which bots read your store.
 
 = 1.26.0 =
 * New: native SEO. Storedash can now print your store's SEO head tags itself: page title, meta description, canonical link, robots rules, Open Graph and Twitter cards, product price and availability. Turn it on in Storedash under Settings > Integrations > Storedash SEO. It stays silent while Yoast, RankMath, SEOPress, AIOSEO or The SEO Framework is active, so nothing changes until you choose to switch.
