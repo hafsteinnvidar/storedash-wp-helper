@@ -365,7 +365,11 @@ class Store_API_IntegrationTest extends TestCase {
 			'priority_resolver' => $priority,
 			'resolver'          => $resolver,
 		) as $prop => $value ) {
-			$ref->getProperty( $prop )->setValue( $integration, $value );
+			$property = $ref->getProperty( $prop );
+			if ( PHP_VERSION_ID < 80100 ) {
+				$property->setAccessible( true );
+			}
+			$property->setValue( $integration, $value );
 		}
 		return $integration;
 	}

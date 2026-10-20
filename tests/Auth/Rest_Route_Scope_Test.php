@@ -165,6 +165,9 @@ class Rest_Route_Scope_Test extends TestCase {
 	/** The "authenticated here" flag is static; clear it between tests. */
 	private function reset_handler_flag(): void {
 		$prop = new ReflectionProperty( StoreDash_Auth_Handler::class, 'authenticated_here' );
+		if ( PHP_VERSION_ID < 80100 ) {
+			$prop->setAccessible( true );
+		}
 		$prop->setValue( null, false );
 	}
 

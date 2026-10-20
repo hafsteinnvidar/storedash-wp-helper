@@ -27,6 +27,9 @@ class DK_Kennitala_FieldTest extends TestCase {
 	protected function setUp(): void {
 		DK_Test_WP::reset();
 		$ref = new ReflectionProperty( DK_Config::class, 'cache' );
+		if ( PHP_VERSION_ID < 80100 ) {
+			$ref->setAccessible( true );
+		}
 		$ref->setValue( null, null );
 		// The file self-instantiates once; load it lazily so the first load
 		// happens with a known (off) config and registers nothing.
@@ -220,6 +223,9 @@ class DK_Kennitala_FieldTest extends TestCase {
 	public function test_block_required_check_skipped_when_another_kennitala_field_exists(): void {
 		$field = $this->configure( 'required' );
 		$ref   = new ReflectionProperty( DK_Kennitala_Field::class, 'block_conflict' );
+		if ( PHP_VERSION_ID < 80100 ) {
+			$ref->setAccessible( true );
+		}
 		$ref->setValue( $field, 'shop/kennitala' );
 		$errors = new DK_Test_Errors();
 		$field->validate_block_address( $errors, array( 'country' => 'IS' ), 'billing' );

@@ -19,6 +19,9 @@ class DK_ConfigTest extends TestCase {
 		DK_Test_WP::reset();
 		// Drop the per-request cache between tests.
 		$ref = new ReflectionProperty( DK_Config::class, 'cache' );
+		if ( PHP_VERSION_ID < 80100 ) {
+			$ref->setAccessible( true );
+		}
 		$ref->setValue( null, null );
 	}
 
