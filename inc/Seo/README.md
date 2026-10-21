@@ -134,7 +134,7 @@ Headers: `Content-Type: application/json`, `X-WooDash-Signature: <hex hash_hmac(
 
 **Debug:** `GET /storedash/v1/seo/crawl-stats` (`manage_woocommerce`) → `{ pending_keys, last_flush_at: iso|null, consecutive_failures, webhook_url_configured: bool, next_scheduled_at: iso|null }`.
 
-**Receiver:** storedash-sync `internal/webhooks/seo_bot_crawl.go` (`POST /webhooks/seo-crawl`), reached via Hookdeck connection `woo-seo-crawl` (source `https://webhooks.storedash.io/3fzku2m9uahetd`). It verifies the signature with the store's `woodash_webhook_secret`, caps the body at 256 KB, and upserts `seo_bot_crawls` (summing on `store_id,date,bot,url`). `redirect_hits` are accepted but ignored for now.
+**Receiver:** storedash-sync `internal/webhooks/seo_bot_crawl.go` (`POST /webhooks/seo-crawl`), reached via Hookdeck connection `woo-seo-crawl` (source `https://webhooks.storedash.io/3fzku2m9uahetd`). It verifies the signature with the store's `woodash_webhook_secret`, caps the body at 256 KB, and upserts `seo_bot_crawls` (summing on `store_id,date,bot,url`). `redirect_hits` are added to `seo_redirects.hits` (exact `source_path` match) in the same transaction.
 
 ## robots.txt, /llms.txt, catalog.txt (B5)
 
