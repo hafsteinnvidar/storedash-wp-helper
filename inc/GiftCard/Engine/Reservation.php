@@ -13,6 +13,10 @@
  *   (`spend:{order}:{card}:{n}` / `release:{order}:{card}:{n}`).
  * - Cancelled / failed → `release` rows restore exactly what the order still
  *   holds. Failed/cancelled → paid again → re-spend (best effort, never blocks).
+ * - Admin Recalculate shrank a card fee line (`storedash_payment_fees_adjusted`
+ *   from `Credit\Payment_Fee_Pass`) → re-sync, so the order holds the new amount.
+ * - Unpaid order permanently deleted → release. Trash does NOT release: an
+ *   untrashed order keeps its card fee lines, so the money must stay held.
  *
  * @package StoreDash\GiftCard\Engine
  * @since   1.24.0
@@ -48,6 +52,19 @@ class Reservation {
 	protected $ledger;
 
 	/**
+	 * Statuses whose card money is held but not yet paid for (deleting such an
+	 * order releases it).
+	 */
+	const UNPAID_STATUSES = array( 'pending', 'on-hold', 'checkout-draft' );
+
+	/**
+	 * Re-entrancy guard for on_fees_adjusted (sync may recalculate totals).
+	 *
+	 * @var bool
+	 */
+	protected $adjusting = false;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Card_Ledger|null $ledger Card store.
@@ -63,6 +80,11 @@ class Reservation {
 		add_action( 'woocommerce_checkout_order_processed', array( $this, 'on_classic_order_processed' ), 10, 3 );
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'on_store_api_order_processed' ), 10, 1 );
 		add_action( 'woocommerce_order_status_changed', array( $this, 'on_status_changed' ), 10, 4 );
+		add_action( 'storedash_payment_fees_adjusted', array( $this, 'on_fees_adjusted' ), 10, 1 );
+		// Permanent delete only: HPOS + CPT data stores, and wp_delete_post() on a
+		// CPT order (Posts screen). Before WC_Post_Data removes the items (10).
+		add_action( 'woocommerce_before_delete_order', array( $this, 'on_before_delete_order' ), 5, 2 );
+		add_action( 'before_delete_post', array( $this, 'on_before_delete_post' ), 5, 1 );
 	}
 
 	/**
@@ -170,6 +192,91 @@ class Reservation {
 				// Never block the transition; the note tells the merchant.
 				\StoreDash_Helpers::log_message( 'Gift card re-reserve failed after payment retry: ' . $e->getMessage(), 'error', array( 'order_id' => $order->get_id() ) );
 			}
+		}
+	}
+
+	/**
+	 * A gift card fee line was shrunk by an order recalculation: re-sync when the
+	 * order already holds card money (release + re-spend, fresh `:n` keys).
+	 *
+	 * @param object $order WC_Order (refunds are ignored).
+	 */
+	public function on_fees_adjusted( $order ): void {
+		if ( $this->adjusting || ! $order instanceof \WC_Order || $order instanceof \WC_Order_Refund ) {
+			return;
+		}
+		$held = false;
+		foreach ( $this->ledger->order_summary( $order->get_id() ) as $totals ) {
+			if ( $totals['outstanding'] > Money::EPSILON ) {
+				$held = true;
+				break;
+			}
+		}
+		if ( ! $held ) {
+			return; // Checkout has not spent yet — it will spend the new amounts.
+		}
+
+		$this->adjusting = true;
+		try {
+			$this->sync( $order, false, false );
+		} catch ( \Throwable $e ) {
+			\StoreDash_Helpers::log_message( 'Gift card re-sync after recalculation failed: ' . $e->getMessage(), 'error', array( 'order_id' => $order->get_id() ) );
+		} finally {
+			$this->adjusting = false;
+		}
+	}
+
+	/**
+	 * HPOS / CPT data store permanent delete.
+	 *
+	 * @param int         $order_id Order id.
+	 * @param object|null $order    Order.
+	 */
+	public function on_before_delete_order( $order_id, $order = null ): void {
+		if ( ! $order instanceof \WC_Order ) {
+			$order = wc_get_order( $order_id );
+		}
+		$this->release_deleted( $order );
+	}
+
+	/**
+	 * `wp_delete_post()` on a CPT order.
+	 *
+	 * @param int $post_id Post id.
+	 */
+	public function on_before_delete_post( $post_id ): void {
+		if ( ! function_exists( 'get_post_type' ) || 'shop_order' !== get_post_type( $post_id ) ) {
+			return;
+		}
+		$this->release_deleted( wc_get_order( $post_id ) );
+	}
+
+	/**
+	 * Release what an unpaid order holds before it is deleted for good. A trashed
+	 * order is judged by its status before trash. Both delete hooks can fire for
+	 * one order; the second finds nothing held.
+	 *
+	 * @param mixed $order Order.
+	 */
+	protected function release_deleted( $order ): void {
+		if ( ! $order instanceof \WC_Order || $order instanceof \WC_Order_Refund ) {
+			return;
+		}
+		$status = (string) $order->get_status();
+		if ( 'trash' === $status ) {
+			$status = (string) $order->get_meta( '_wp_trash_meta_status', true );
+			if ( '' === $status && function_exists( 'get_post_meta' ) ) {
+				$status = (string) get_post_meta( $order->get_id(), '_wp_trash_meta_status', true );
+			}
+			$status = 0 === strpos( $status, 'wc-' ) ? substr( $status, 3 ) : $status;
+		}
+		if ( ! in_array( $status, self::UNPAID_STATUSES, true ) ) {
+			return;
+		}
+		try {
+			$this->release_all( $order );
+		} catch ( \Throwable $e ) {
+			\StoreDash_Helpers::log_message( 'Gift card release on order delete failed: ' . $e->getMessage(), 'error', array( 'order_id' => $order->get_id() ) );
 		}
 	}
 

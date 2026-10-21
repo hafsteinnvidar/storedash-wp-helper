@@ -345,7 +345,13 @@ class Gift_Card_LogicTest extends TestCase {
 
 		$spent = Gift_Card_Webhook::payload( 'spent', $card, array( 'id' => 1 ), $delivery, '1043', 'https://skinroom.is', '2026-10-05 16:00:00' );
 		$this->assertNull( $spent['delivery'], 'never leak a code on other events' );
-		$this->assertStringNotContainsString( 'K9QZ-', wp_json_encode( $spent ) );
+		// The raw code, formatted or not (code_last4 'K9QZ' is in the card by design).
+		foreach ( array( 'spent', 'adjusted', 'refunded', 'released' ) as $event ) {
+			$json = wp_json_encode( Gift_Card_Webhook::payload( $event, $card, array( 'id' => 1 ), $delivery, '1043', 'https://skinroom.is', '2026-10-05 16:00:00' ) );
+			foreach ( array( 'ABCD-EFGH', 'ABCDEFGH', 'abcdefgh' ) as $needle ) {
+				$this->assertStringNotContainsString( $needle, $json, "{$event} leaks {$needle}" );
+			}
+		}
 
 		$send = Gift_Card_Webhook::payload( 'send', $card, null, array_merge( $delivery, array( 'reason' => 'resend' ) ), '1043', 'u', 't' );
 		$this->assertSame( 'resend', $send['delivery']['reason'] );

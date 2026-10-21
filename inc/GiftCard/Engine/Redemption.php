@@ -217,10 +217,9 @@ class Redemption {
 		$removed = false;
 
 		foreach ( $applied as $card_id ) {
-			$match = false;
-			if ( is_numeric( $ref ) && (int) $ref === $card_id ) {
-				$match = true;
-			} elseif ( is_string( $ref ) && 4 === strlen( Code::normalize( $ref ) ) ) {
+			// Id and last4 are checked independently: an all-digit last4 ('2345') is also numeric.
+			$match = is_numeric( $ref ) && (int) $ref === $card_id;
+			if ( ! $match && is_string( $ref ) && 4 === strlen( Code::normalize( $ref ) ) ) {
 				$card  = $this->ledger->get_card( $card_id );
 				$match = $card && Code::normalize( $ref ) === (string) $card->code_last4;
 			}

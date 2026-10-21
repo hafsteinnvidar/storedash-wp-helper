@@ -35,7 +35,8 @@ class Gift_Card_Action_Controller extends Abstract_Gift_Card_Controller {
 	public function issue( WP_REST_Request $request ) {
 		$data = $this->body( $request );
 
-		$amount = isset( $data['amount'] ) && is_numeric( $data['amount'] ) ? round( (float) $data['amount'], 4 ) : 0.0;
+		// Store precision: a finer fraction would be floored away at checkout and never be spendable.
+		$amount = isset( $data['amount'] ) && is_numeric( $data['amount'] ) ? round( (float) $data['amount'], wc_get_price_decimals() ) : 0.0;
 		if ( $amount <= 0 ) {
 			return $this->error( 'storedash_gift_card_invalid_amount', 'amount must be greater than zero' );
 		}
@@ -84,12 +85,22 @@ class Gift_Card_Action_Controller extends Abstract_Gift_Card_Controller {
 			return $this->error( $result->get_error_code(), $result->get_error_message(), 500 );
 		}
 
+		$response = array( 'card' => $this->format_card( $result['card'] ) );
+
+		// Additive flags (created only — a replay dispatches nothing): the card
+		// exists either way, so 200, but tell the dashboard when Storedash was
+		// not notified (not connected / webhook URL empty / dispatch failed).
 		if ( ! empty( $result['created'] ) ) {
-			$delivery = null !== $email ? Issuer::delivery( $result['card'], $result['code'], 'issued' ) : null;
-			Gift_Card_Webhook::send( 'issued', $result['card'], $result['row'], $delivery );
+			$delivery   = null !== $email ? Issuer::delivery( $result['card'], $result['code'], 'issued' ) : null;
+			$dispatched = Gift_Card_Webhook::dispatch( 'issued', $result['card'], $result['row'], $delivery );
+
+			$response['dispatched'] = ! is_wp_error( $dispatched );
+			if ( is_wp_error( $dispatched ) ) {
+				$response['dispatch_error'] = $dispatched->get_error_message();
+			}
 		}
 
-		return rest_ensure_response( array( 'card' => $this->format_card( $result['card'] ) ) );
+		return rest_ensure_response( $response );
 	}
 
 	/**
@@ -105,7 +116,7 @@ class Gift_Card_Action_Controller extends Abstract_Gift_Card_Controller {
 		}
 		$data = $this->body( $request );
 
-		$amount = isset( $data['amount'] ) && is_numeric( $data['amount'] ) ? round( (float) $data['amount'], 4 ) : 0.0;
+		$amount = isset( $data['amount'] ) && is_numeric( $data['amount'] ) ? round( (float) $data['amount'], wc_get_price_decimals() ) : 0.0;
 		if ( 0.0 === $amount ) {
 			return $this->error( 'storedash_gift_card_invalid_amount', 'amount must be a non-zero number' );
 		}

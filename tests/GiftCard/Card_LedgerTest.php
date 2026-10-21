@@ -35,12 +35,25 @@ class Memory_Card_Ledger extends Card_Ledger {
 	public $rollbacks = 0;
 	/** @var string|null Idem key whose insert should fail once (simulated race). */
 	public $fail_idem = null;
+	/**
+	 * Runs once right before the next transaction opens: a concurrent request that
+	 * commits after the idempotency pre-check, so the insert then conflicts with a
+	 * real winning row (and survives our rollback).
+	 *
+	 * @var callable|null
+	 */
+	public $race = null;
 
 	protected function now(): string {
 		return '2026-10-05 12:00:00';
 	}
 
 	protected function db_begin(): void {
+		if ( null !== $this->race ) {
+			$race       = $this->race;
+			$this->race = null;
+			$race();
+		}
 		$this->snapshot = array( $this->clone_all( $this->cards ), $this->clone_all( $this->rows ), $this->next_card, $this->next_row );
 	}
 
@@ -293,6 +306,101 @@ class Gift_Card_LedgerTest extends TestCase {
 		$this->assertSame( 8000.0, $summary[ $card->id ]['released'] );
 		$this->assertSame( 8000.0, $summary[ $card->id ]['outstanding'] );
 		$this->assertSame( 2, $summary[ $card->id ]['spends'] );
+	}
+
+	public function test_refund_rows_reduce_outstanding_never_below_zero() {
+		$card = $this->issue( 10000, 'issue:manual:a' )['card'];
+		$this->ledger->spend_order( 9, array( $card->id => 8000 ) );
+
+		$refund = $this->ledger->move( (int) $card->id, 3000, Card_Ledger::TYPE_REFUND, 'refund:r1:' . $card->id, array( 'order_id' => 9 ) );
+		$this->assertTrue( $refund['created'] );
+		$this->assertSame( 5000.0, (float) $refund['card']->balance );
+
+		$summary = $this->ledger->order_summary( 9 );
+		$this->assertSame( 8000.0, $summary[ $card->id ]['spent'] );
+		$this->assertSame( 0.0, $summary[ $card->id ]['released'] );
+		$this->assertSame( 3000.0, $summary[ $card->id ]['refunded'] );
+		$this->assertSame( 5000.0, $summary[ $card->id ]['outstanding'], 'spent - released - refunded' );
+
+		// Release + refund together exceed what was spent: outstanding floors at 0.
+		$this->ledger->move( (int) $card->id, 4000, Card_Ledger::TYPE_RELEASE, 'release:9:' . $card->id . ':1', array( 'order_id' => 9 ) );
+		$this->ledger->move( (int) $card->id, 2000, Card_Ledger::TYPE_REFUND, 'refund:r2:' . $card->id, array( 'order_id' => 9 ) );
+		$summary = $this->ledger->order_summary( 9 );
+		$this->assertSame( 4000.0, $summary[ $card->id ]['released'] );
+		$this->assertSame( 5000.0, $summary[ $card->id ]['refunded'] );
+		$this->assertSame( 0.0, $summary[ $card->id ]['outstanding'] );
+	}
+
+	public function test_second_card_conflict_rolls_back_the_first_card() {
+		$a = $this->issue( 10000, 'issue:manual:a' )['card'];
+		$b = $this->issue( 3000, 'issue:manual:b' )['card'];
+
+		$this->ledger->fail_idem = 'spend:77:' . $b->id . ':1';
+		$result                  = $this->ledger->spend_order( 77, array( $a->id => 8000, $b->id => 3000 ) );
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'storedash_gift_card_conflict', $result->get_error_code() );
+		$this->assertSame( 10000.0, (float) $this->ledger->get_card( $a->id )->balance, 'card A write undone' );
+		$this->assertSame( 3000.0, (float) $this->ledger->get_card( $b->id )->balance );
+		$this->assertCount( 2, $this->ledger->rows, 'only the two issue rows' );
+		$this->assertNull( $this->ledger->find_by_idem( 'spend:77:' . $a->id . ':1' ) );
+	}
+
+	public function test_move_insert_failure_without_a_winner_is_a_db_error() {
+		$card                    = $this->issue( 1000, 'issue:manual:a' )['card'];
+		$this->ledger->fail_idem = 'adjust:k';
+		$result                  = $this->ledger->move( (int) $card->id, 250, Card_Ledger::TYPE_ADJUST, 'adjust:k', array( 'note' => 'x' ) );
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'storedash_gift_card_db', $result->get_error_code() );
+		$this->assertSame( 1000.0, (float) $this->ledger->get_card( $card->id )->balance );
+		$this->assertCount( 1, $this->ledger->rows );
+	}
+
+	public function test_move_replays_the_winner_after_an_idem_conflict() {
+		$card               = $this->issue( 1000, 'issue:manual:a' )['card'];
+		$winner             = null;
+		$ledger             = $this->ledger;
+		$this->ledger->race = static function () use ( $ledger, $card, &$winner ) {
+			$winner = $ledger->move( (int) $card->id, 250, Card_Ledger::TYPE_ADJUST, 'adjust:r', array( 'note' => 'first' ) );
+		};
+
+		$result = $this->ledger->move( (int) $card->id, 250, Card_Ledger::TYPE_ADJUST, 'adjust:r', array( 'note' => 'second' ) );
+		$this->assertTrue( $winner['created'] );
+		$this->assertFalse( $result['created'] );
+		$this->assertSame( (int) $winner['row']->id, (int) $result['row']->id );
+		$this->assertSame( 1250.0, (float) $result['card']->balance, 'applied once' );
+		$this->assertCount( 2, $this->ledger->rows );
+	}
+
+	public function test_manual_issue_replays_the_winner_after_an_idem_conflict() {
+		$winner             = null;
+		$ledger             = $this->ledger;
+		$this->ledger->race = static function () use ( $ledger, &$winner ) {
+			$winner = $ledger->issue( array( 'initial_amount' => 5000, 'currency' => 'ISK' ), 'issue:manual:r' );
+		};
+
+		$result = $this->issue( 5000, 'issue:manual:r' );
+		$this->assertTrue( $winner['created'] );
+		$this->assertFalse( $result['created'] );
+		$this->assertSame( '', $result['code'], 'loser never returns a code' );
+		$this->assertSame( (int) $winner['card']->id, (int) $result['card']->id );
+		$this->assertCount( 1, $this->ledger->cards, 'loser card rolled back' );
+		$this->assertCount( 1, $this->ledger->rows );
+	}
+
+	public function test_purchase_issue_replays_the_winner_after_a_card_conflict() {
+		$winner             = null;
+		$ledger             = $this->ledger;
+		$item               = array( 'order_item_id' => 55, 'unit_index' => 1 );
+		$this->ledger->race = static function () use ( $ledger, $item, &$winner ) {
+			$winner = $ledger->issue( array_merge( array( 'initial_amount' => 5000, 'currency' => 'ISK' ), $item ), 'issue:55:1' );
+		};
+
+		$result = $this->issue( 5000, 'issue:55:1', $item );
+		$this->assertTrue( $winner['created'] );
+		$this->assertFalse( $result['created'] );
+		$this->assertSame( (int) $winner['card']->id, (int) $result['card']->id );
+		$this->assertCount( 1, $this->ledger->cards );
+		$this->assertCount( 1, $this->ledger->rows );
 	}
 
 	public function test_negative_adjust_is_capped_at_the_balance() {

@@ -9,13 +9,22 @@
  *    pro-rata. The refund amount is the gateway (cash) part, so the cards get
  *    refund × card_paid ÷ cash_total back (a full cash refund returns the
  *    cards in full). Orders paid entirely by card (cash total 0) use the value
- *    of the refunded lines instead. `refund:{refund_id}:{card_id}`.
+ *    of the refunded lines instead (a line refunded by quantity with a zero
+ *    amount counts at its paid unit price). `refund:{refund_id}:{card_id}`.
  * 2. Refund of a gift card PURCHASE line: the cards minted for that line lose
- *    the refunded share of their FACE value (coupons may have discounted the line) (never below 0; what was already spent is noted on the
- *    order for the merchant). `adjust` row, `refund_purchase:{refund_id}:{card_id}`.
+ *    the refunded share of their FACE value (coupons may have discounted the
+ *    line) (never below 0; what was already spent is noted on the order for
+ *    the merchant). `adjust` row, `refund_purchase:{refund_id}:{card_id}`. A
+ *    full refund with no line items (order marked Refunded, amount-only full
+ *    refund) takes back the face value not yet refunded on every purchase line.
  *
  * Marking an order Refunded also returns whatever the cards still hold on it
- * (covers card-only orders, where WooCommerce creates no refund).
+ * (`refund:order-{order}:{card}:{n}`, n = spend count). That covers manual
+ * status changes (WooCommerce creates no refund when the cash total is 0) and
+ * every full refund. A card-only order has no cash to refund, so WooCommerce
+ * marks it Refunded on ANY refund, before `woocommerce_order_refunded` fires;
+ * when that refund leaves line-item quantity unrefunded, the sweep is skipped
+ * and effect 1 returns the refunded lines' share instead.
  *
  * @package StoreDash\GiftCard\Engine
  * @since   1.24.0
@@ -47,6 +56,15 @@ class Refund_Handler {
 	protected $ledger;
 
 	/**
+	 * Order id => refund id whose wc_create_refund() is flipping the order to
+	 * Refunded right now (`woocommerce_order_fully_refunded` → status →
+	 * `woocommerce_order_refunded`).
+	 *
+	 * @var array
+	 */
+	protected $refund_in_progress = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Card_Ledger|null $ledger Card store.
@@ -59,6 +77,7 @@ class Refund_Handler {
 	 * Register hooks.
 	 */
 	public function register_hooks(): void {
+		add_action( 'woocommerce_order_fully_refunded', array( $this, 'on_fully_refunded' ), 10, 2 );
 		add_action( 'woocommerce_order_refunded', array( $this, 'on_refund' ), 20, 2 );
 		add_action( 'woocommerce_order_status_refunded', array( $this, 'on_status_refunded' ), 20, 1 );
 	}
@@ -209,12 +228,23 @@ class Refund_Handler {
 		if ( ! $order instanceof \WC_Order || ! $refund instanceof \WC_Order_Refund ) {
 			return;
 		}
+		unset( $this->refund_in_progress[ $order->get_id() ] );
 		try {
 			$this->return_card_payment( $order, $refund );
 			$this->reclaim_purchased_cards( $order, $refund );
 		} catch ( \Throwable $e ) {
 			\StoreDash_Helpers::log_message( 'Gift card refund handling failed: ' . $e->getMessage(), 'error', array( 'order_id' => $order->get_id() ) );
 		}
+	}
+
+	/**
+	 * wc_create_refund() is about to mark the order Refunded for this refund.
+	 *
+	 * @param int $order_id  Order id.
+	 * @param int $refund_id Refund id.
+	 */
+	public function on_fully_refunded( $order_id, $refund_id ): void {
+		$this->refund_in_progress[ (int) $order_id ] = (int) $refund_id;
 	}
 
 	/**
@@ -230,17 +260,77 @@ class Refund_Handler {
 		// wc_create_refund flips the status (→ here) BEFORE woocommerce_order_refunded,
 		// so the refund already exists: pass its id so the ledger row (and the mirror's
 		// woo_refund_id) link to it. Manual status changes have no refund → null.
-		$refunds   = $order->get_refunds();
-		$refund_id = ! empty( $refunds ) && $refunds[0] instanceof \WC_Order_Refund ? (int) $refunds[0]->get_id() : null;
+		$refund = null;
+		if ( isset( $this->refund_in_progress[ $order->get_id() ] ) ) {
+			$refund = wc_get_order( $this->refund_in_progress[ $order->get_id() ] );
+		}
+		if ( ! $refund instanceof \WC_Order_Refund ) {
+			$refunds = $order->get_refunds();
+			$refund  = ! empty( $refunds ) && $refunds[0] instanceof \WC_Order_Refund ? $refunds[0] : null;
+		} elseif ( $this->is_card_only_partial( $order, $refund ) ) {
+			return; // on_refund returns the refunded lines' share.
+		}
+		$refund_id = $refund ? (int) $refund->get_id() : null;
 		$changed   = false;
 		foreach ( $this->ledger->order_summary( $order->get_id() ) as $card_id => $totals ) {
-			if ( $totals['outstanding'] > Money::EPSILON ) {
-				$changed = $this->refund_to_card( $order, (int) $card_id, (float) $totals['outstanding'], 'refund:order-' . $order->get_id() . ':' . (int) $card_id, $refund_id ) || $changed;
+			if ( $totals['outstanding'] <= Money::EPSILON ) {
+				continue;
 			}
+			$n   = max( 1, (int) $totals['spends'] );
+			$key = 'refund:order-' . $order->get_id() . ':' . (int) $card_id;
+			// Rows written before the `:n` suffix: their key is the first spend cycle's.
+			if ( 1 === $n && $this->ledger->find_by_idem( $key ) ) {
+				continue;
+			}
+			$changed = $this->refund_to_card( $order, (int) $card_id, (float) $totals['outstanding'], $key . ':' . $n, $refund_id ) || $changed;
 		}
 		if ( $changed ) {
 			$order->save();
 		}
+	}
+
+	/**
+	 * Card-only order (no cash) whose refund leaves line-item quantity unrefunded.
+	 *
+	 * Only such refunds are partial: a full-quantity refund, an amount-only
+	 * refund and a manual status change all keep the sweep.
+	 *
+	 * @param \WC_Order        $order  Order.
+	 * @param \WC_Order_Refund $refund The refund being created.
+	 * @return bool
+	 */
+	protected function is_card_only_partial( \WC_Order $order, \WC_Order_Refund $refund ): bool {
+		if ( (float) $order->get_total() > Money::EPSILON || empty( $refund->get_items( 'line_item' ) ) ) {
+			return false;
+		}
+		return $this->line_qty_left( $order, $refund ) > 0;
+	}
+
+	/**
+	 * Line-item quantity not refunded yet, counting $refund once (it may or may
+	 * not be in the order's cached refund list yet).
+	 *
+	 * @param \WC_Order        $order  Order.
+	 * @param \WC_Order_Refund $refund Refund.
+	 * @return int
+	 */
+	protected function line_qty_left( \WC_Order $order, \WC_Order_Refund $refund ): int {
+		$left = 0;
+		foreach ( $order->get_items( 'line_item' ) as $item ) {
+			$left += (int) $item->get_quantity();
+		}
+		$refunds = array( $refund );
+		foreach ( $order->get_refunds() as $earlier ) {
+			if ( $earlier instanceof \WC_Order_Refund && (int) $earlier->get_id() !== (int) $refund->get_id() ) {
+				$refunds[] = $earlier;
+			}
+		}
+		foreach ( $refunds as $each ) {
+			foreach ( $each->get_items( 'line_item' ) as $refunded ) {
+				$left -= abs( (int) $refunded->get_quantity() );
+			}
+		}
+		return max( 0, $left );
 	}
 
 	/**
@@ -270,11 +360,14 @@ class Refund_Handler {
 		$share      = self::share(
 			abs( (float) $refund->get_amount() ),
 			$cash_total,
-			$cash_total > Money::EPSILON ? 0.0 : $this->refunded_lines_value( $refund ),
+			$cash_total > Money::EPSILON ? 0.0 : $this->refunded_lines_value( $order, $refund ),
 			$cash_total > Money::EPSILON ? 0.0 : $cash_total + $card_paid
 		);
-		$amount     = round( $card_paid * $share, $decimals );
-		$split      = self::distribute( $amount, $weights, $caps, $decimals );
+		if ( $cash_total <= Money::EPSILON && ! empty( $refund->get_items( 'line_item' ) ) && 0 === $this->line_qty_left( $order, $refund ) ) {
+			$share = 1.0; // Last line quantity refunded: whatever is still held, no rounding left over.
+		}
+		$amount = round( $card_paid * $share, $decimals );
+		$split  = self::distribute( $amount, $weights, $caps, $decimals );
 
 		$changed = false;
 		foreach ( $split as $card_id => $card_amount ) {
@@ -332,16 +425,29 @@ class Refund_Handler {
 	/**
 	 * Gross value of a refund's lines, excluding gift card fee lines.
 	 *
+	 * A line refunded by quantity with a zero amount (the only line refund
+	 * wp-admin allows on a card-only order when taxes are on) counts at the
+	 * original line's paid unit price.
+	 *
+	 * @param \WC_Order        $order  Order.
 	 * @param \WC_Order_Refund $refund Refund.
 	 * @return float
 	 */
-	protected function refunded_lines_value( \WC_Order_Refund $refund ): float {
+	protected function refunded_lines_value( \WC_Order $order, \WC_Order_Refund $refund ): float {
 		$value = 0.0;
 		foreach ( $refund->get_items( array( 'line_item', 'shipping', 'fee' ) ) as $item ) {
 			if ( $item instanceof \WC_Order_Item_Fee && (int) $item->get_meta( Redemption::FEE_ITEM_META, true ) > 0 ) {
 				continue;
 			}
-			$value += abs( (float) $item->get_total() ) + abs( (float) $item->get_total_tax() );
+			$line = abs( (float) $item->get_total() ) + abs( (float) $item->get_total_tax() );
+			$qty  = is_callable( array( $item, 'get_quantity' ) ) ? abs( (int) $item->get_quantity() ) : 0;
+			if ( $line <= Money::EPSILON && $qty > 0 ) {
+				$original = $order->get_item( (int) $item->get_meta( '_refunded_item_id', true ) );
+				if ( $original && (int) $original->get_quantity() > 0 ) {
+					$line = ( (float) $original->get_total() + (float) $original->get_total_tax() ) / (int) $original->get_quantity() * min( $qty, (int) $original->get_quantity() );
+				}
+			}
+			$value += $line;
 		}
 		return $value;
 	}
@@ -390,52 +496,11 @@ class Refund_Handler {
 			}
 			$handled = true;
 
-			$balances = array();
-			foreach ( $card_ids as $card_id ) {
-				$card = $this->ledger->get_card( (int) $card_id );
-				if ( $card ) {
-					$balances[ (int) $card_id ] = (float) $card->balance;
-				}
-			}
+			$this->apply_reclaim( $order, $refund, self::reclaim( $value, $this->card_balances( $card_ids ), $decimals ) );
+		}
 
-			$plan = self::reclaim( $value, $balances, $decimals );
-			foreach ( $plan['take'] as $card_id => $amount ) {
-				$result = $this->ledger->move(
-					(int) $card_id,
-					-$amount,
-					Card_Ledger::TYPE_ADJUST,
-					'refund_purchase:' . $refund->get_id() . ':' . (int) $card_id,
-					array(
-						'order_id'  => $order->get_id(),
-						'refund_id' => $refund->get_id(),
-						/* translators: %d: refund id */
-						'note'      => sprintf( __( 'Gift card purchase refunded (refund #%d).', 'storedash' ), $refund->get_id() ),
-					)
-				);
-				if ( is_array( $result ) && ! empty( $result['created'] ) ) {
-					$order->add_order_note(
-						sprintf(
-							/* translators: 1: amount, 2: last 4 characters of the gift card code */
-							__( 'Removed %1$s from gift card ····%2$s after refund.', 'storedash' ),
-							wp_strip_all_tags( wc_price( $amount, array( 'currency' => $order->get_currency() ) ) ),
-							$result['card']->code_last4
-						)
-					);
-					Gift_Card_Webhook::send( 'adjusted', $result['card'], $result['row'] );
-				} elseif ( is_wp_error( $result ) ) {
-					\StoreDash_Helpers::log_message( 'Gift card purchase refund failed: ' . $result->get_error_message(), 'error', array( 'order_id' => $order->get_id() ) );
-				}
-			}
-
-			if ( $plan['short'] > Money::EPSILON ) {
-				$order->add_order_note(
-					sprintf(
-						/* translators: %s: amount */
-						__( 'Gift card refund: %s had already been spent from the refunded gift card(s) and could not be taken back. Please check this refund.', 'storedash' ),
-						wp_strip_all_tags( wc_price( $plan['short'], array( 'currency' => $order->get_currency() ) ) )
-					)
-				);
-			}
+		if ( ! $handled && empty( $refund->get_items( 'line_item' ) ) && $this->is_fully_refunded( $order ) ) {
+			$handled = $this->reclaim_all_purchases( $order, $refund, $decimals );
 		}
 
 		if ( $handled ) {
@@ -446,6 +511,130 @@ class Refund_Handler {
 		if ( abs( (float) $refund->get_amount() ) > 0 ) {
 			$order->add_order_note( __( 'This order contains gift cards, but the refund did not include the gift card lines, so no gift card balance was changed. Adjust the cards in Storedash if needed.', 'storedash' ) );
 			$order->save();
+		}
+	}
+
+	/**
+	 * Whether nothing is left to refund on the order.
+	 *
+	 * @param \WC_Order $order Order.
+	 * @return bool
+	 */
+	protected function is_fully_refunded( \WC_Order $order ): bool {
+		return $order->has_status( 'refunded' ) || (float) $order->get_remaining_refund_amount() <= Money::EPSILON;
+	}
+
+	/**
+	 * Full refund without line items: every purchase line loses the face value
+	 * its earlier line refunds did not already take.
+	 *
+	 * @param \WC_Order        $order    Order.
+	 * @param \WC_Order_Refund $refund   Refund.
+	 * @param int              $decimals Price decimals.
+	 * @return bool Whether any purchase line had value left to take.
+	 */
+	protected function reclaim_all_purchases( \WC_Order $order, \WC_Order_Refund $refund, int $decimals ): bool {
+		$earlier = array();
+		foreach ( $order->get_refunds() as $each ) {
+			if ( $each instanceof \WC_Order_Refund && (int) $each->get_id() !== (int) $refund->get_id() ) {
+				$earlier[] = $each;
+			}
+		}
+
+		$handled = false;
+		foreach ( $order->get_items( 'line_item' ) as $item_id => $item ) {
+			$card_ids = json_decode( (string) $item->get_meta( Recipient_Fields::META_CARD_IDS, true ), true );
+			if ( empty( $card_ids ) || ! is_array( $card_ids ) ) {
+				continue;
+			}
+			$face  = (float) $item->get_subtotal();
+			$taken = 0.0;
+			foreach ( $earlier as $each ) {
+				foreach ( $each->get_items( 'line_item' ) as $refund_item ) {
+					if ( (int) $refund_item->get_meta( '_refunded_item_id', true ) !== (int) $item_id ) {
+						continue;
+					}
+					$taken += self::face_value_refunded(
+						abs( (float) $refund_item->get_total() ) + abs( (float) $refund_item->get_total_tax() ),
+						abs( (int) $refund_item->get_quantity() ),
+						(float) $item->get_total() + (float) $item->get_total_tax(),
+						$face,
+						(int) $item->get_quantity(),
+						$decimals
+					);
+				}
+			}
+			$value = round( $face - $taken, $decimals );
+			if ( $value <= 0 ) {
+				continue;
+			}
+			$handled = true;
+			$this->apply_reclaim( $order, $refund, self::reclaim( $value, $this->card_balances( $card_ids ), $decimals ) );
+		}
+		return $handled;
+	}
+
+	/**
+	 * Current balances of a purchase line's cards.
+	 *
+	 * @param array $card_ids Card ids.
+	 * @return array card_id => balance
+	 */
+	protected function card_balances( array $card_ids ): array {
+		$balances = array();
+		foreach ( $card_ids as $card_id ) {
+			$card = $this->ledger->get_card( (int) $card_id );
+			if ( $card ) {
+				$balances[ (int) $card_id ] = (float) $card->balance;
+			}
+		}
+		return $balances;
+	}
+
+	/**
+	 * Write a reclaim plan (`refund_purchase:{refund_id}:{card_id}`) and note any shortfall.
+	 *
+	 * @param \WC_Order        $order  Order.
+	 * @param \WC_Order_Refund $refund Refund.
+	 * @param array            $plan   Refund_Handler::reclaim() result.
+	 */
+	protected function apply_reclaim( \WC_Order $order, \WC_Order_Refund $refund, array $plan ): void {
+		foreach ( $plan['take'] as $card_id => $amount ) {
+			$result = $this->ledger->move(
+				(int) $card_id,
+				-$amount,
+				Card_Ledger::TYPE_ADJUST,
+				'refund_purchase:' . $refund->get_id() . ':' . (int) $card_id,
+				array(
+					'order_id'  => $order->get_id(),
+					'refund_id' => $refund->get_id(),
+					/* translators: %d: refund id */
+					'note'      => sprintf( __( 'Gift card purchase refunded (refund #%d).', 'storedash' ), $refund->get_id() ),
+				)
+			);
+			if ( is_array( $result ) && ! empty( $result['created'] ) ) {
+				$order->add_order_note(
+					sprintf(
+						/* translators: 1: amount, 2: last 4 characters of the gift card code */
+						__( 'Removed %1$s from gift card ····%2$s after refund.', 'storedash' ),
+						wp_strip_all_tags( wc_price( $amount, array( 'currency' => $order->get_currency() ) ) ),
+						$result['card']->code_last4
+					)
+				);
+				Gift_Card_Webhook::send( 'adjusted', $result['card'], $result['row'] );
+			} elseif ( is_wp_error( $result ) ) {
+				\StoreDash_Helpers::log_message( 'Gift card purchase refund failed: ' . $result->get_error_message(), 'error', array( 'order_id' => $order->get_id() ) );
+			}
+		}
+
+		if ( $plan['short'] > Money::EPSILON ) {
+			$order->add_order_note(
+				sprintf(
+					/* translators: %s: amount */
+					__( 'Gift card refund: %s had already been spent from the refunded gift card(s) and could not be taken back. Please check this refund.', 'storedash' ),
+					wp_strip_all_tags( wc_price( $plan['short'], array( 'currency' => $order->get_currency() ) ) )
+				)
+			);
 		}
 	}
 }

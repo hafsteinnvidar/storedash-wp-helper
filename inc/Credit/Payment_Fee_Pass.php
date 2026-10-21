@@ -26,7 +26,9 @@
  * onto them. For our fee lines (meta `_storedash_credit_fee` /
  * `_storedash_gift_card_id`) taxes are cleared, the pre-clamp amount restored
  * and the order total recomputed, so order VAT == the same order paid without
- * them and the fee line == what the ledger consumed.
+ * them and the fee line == what the ledger consumed. When the fees exceed the
+ * order (items removed in admin) the last ones shrink and
+ * `storedash_payment_fees_adjusted` fires so the card ledger re-syncs.
  *
  * Shared by both modules — one pass, one filter, claims in fee order.
  *
@@ -317,7 +319,8 @@ class Payment_Fee_Pass {
 			$decimals
 		);
 
-		$retaxed = false;
+		$retaxed  = false;
+		$adjusted = false;
 		foreach ( $ours as $key => $entry ) {
 			$total = $result['fees'][ $key ];
 			if ( abs( (float) $entry['item']->get_total_tax() ) > 0.000001 ) {
@@ -327,11 +330,32 @@ class Payment_Fee_Pass {
 			if ( abs( (float) $entry['item']->get_total() - $total ) > 0.000001 ) {
 				$entry['item']->set_total( $total );
 			}
+			// Shrunk below its pre-totals amount (items removed): the card ledger
+			// still holds the old amount. Restoring a WC clamp is not a change.
+			if ( (int) $entry['item']->get_meta( '_storedash_gift_card_id', true ) > 0 && abs( $entry['total'] - $total ) > 0.000001 ) {
+				$adjusted = true;
+			}
 		}
 		if ( $retaxed && method_exists( $order, 'update_taxes' ) ) {
 			$order->update_taxes(); // Order tax lines must not keep the removed fee VAT.
 		}
 		$order->set_total( $result['total'] );
+
+		if ( $adjusted ) {
+			$this->fees_adjusted( $order );
+		}
+	}
+
+	/**
+	 * A gift card fee line total changed: let the card ledger re-sync
+	 * (`Reservation::on_fees_adjusted`).
+	 *
+	 * @param object $order WC_Order (or WC_Order_Refund — listeners must check).
+	 */
+	protected function fees_adjusted( $order ): void {
+		if ( function_exists( 'do_action' ) ) {
+			do_action( 'storedash_payment_fees_adjusted', $order );
+		}
 	}
 
 	/**

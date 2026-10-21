@@ -90,7 +90,7 @@ class Gift_Card_Webhook {
 	 * Send an event, reporting WHY it could not be dispatched. Codes (all 503):
 	 * `storedash_gift_card_not_connected`, `storedash_gift_card_webhook_disabled`,
 	 * `storedash_gift_card_dispatch_failed`. Controllers that must tell the
-	 * dashboard the cause (resend) use this; fire-and-forget callers use `send()`.
+	 * dashboard the cause (resend, manual issue) use this; fire-and-forget callers use `send()`.
 	 *
 	 * @param string      $event    Event.
 	 * @param object      $card     Card DB row.

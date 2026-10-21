@@ -135,16 +135,6 @@ class Card_Ledger {
 	}
 
 	/**
-	 * Ledger rows of an order (spend / release / refund), oldest first.
-	 *
-	 * @param int $order_id Order id.
-	 * @return object[]
-	 */
-	public function rows_for_order( int $order_id ): array {
-		return $this->db_rows_for_order( $order_id );
-	}
-
-	/**
 	 * What each card has spent / got back on an order.
 	 *
 	 * @param int $order_id Order id.
