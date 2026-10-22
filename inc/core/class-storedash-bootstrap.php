@@ -247,6 +247,9 @@ class StoreDash_Bootstrap {
 		// DK: read-only export of DKSync's settings for "Import from DKSync".
 		// Registers one route and nothing else.
 		require_once STOREDASH_PATH . 'inc/services/dk/class-dk-legacy-settings-controller.php';
+		// Core settings groups fallback for stores where a plugin (DKSync)
+		// broke wc/v3/settings/*. Registers two routes and nothing else.
+		require_once STOREDASH_PATH . 'inc/services/wc-settings/class-wc-settings-fallback-controller.php';
 		// DK native (plan §4.8): checkout config pushed from the dashboard +
 		// the kennitala field it switches on. No hooks while the mode is off.
 		require_once STOREDASH_PATH . 'inc/services/dk/class-dk-config.php';
