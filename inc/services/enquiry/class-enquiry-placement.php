@@ -341,16 +341,22 @@ class Enquiry_Placement {
 			// equivalent — WooCommerce's add-to-cart form, present on every
 			// purchasable product in every theme.
 			//
+			// '.wp-block-add-to-cart-form' is the block-theme equivalent:
+			// block themes (Twenty Twenty-Four/Five) never print form.cart
+			// for an unpurchasable product but always print this wrapper.
+			//
 			// '.product' stays as the last resort, but note it matches the
 			// WHOLE product section — appending there lands the button below
 			// the tabs and related products. Better than nothing, worse than
-			// anything above it.
+			// anything above it. ':not(body)' because block themes put
+			// `product` in the body class, which would drop it at page end.
 			var anchors = [
 				['form.cart', 'after'],
+				['.wp-block-add-to-cart-form', 'after'],
 				['.elementor-widget-woocommerce-product-add-to-cart', 'append'],
 				['.summary', 'append'],
 				['.entry-summary', 'append'],
-				['.product', 'append']
+				['.product:not(body)', 'append']
 			];
 
 			var host = null;

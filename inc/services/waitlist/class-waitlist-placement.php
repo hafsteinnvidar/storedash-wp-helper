@@ -230,16 +230,19 @@ class Waitlist_Placement {
 			// '.product' stays as the last resort, but note it matches the
 			// WHOLE product section — appending there lands the form below the
 			// tabs/related products. Better than nothing, worse than anything
-			// above it.
+			// above it. ':not(body)' because block themes put `product` in the
+			// body class, which would drop the form at the very end of the page.
+			// '.wp-block-add-to-cart-form' is the block-theme product form.
 			var anchors = [
 				['form.cart', 'after'],
 				['.stock.out-of-stock', 'after'],
+				['.wp-block-add-to-cart-form', 'after'],
 				['.elementor-widget-woocommerce-product-add-to-cart', 'append'],
 				['.wd-single-price', 'after'],
 				['.elementor-widget-woocommerce-product-price', 'after'],
 				['.summary', 'append'],
 				['.entry-summary', 'append'],
-				['.product', 'append']
+				['.product:not(body)', 'append']
 			];
 
 			var host = null;

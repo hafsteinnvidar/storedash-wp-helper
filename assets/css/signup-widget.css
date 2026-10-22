@@ -2,6 +2,14 @@
  * StoreDash Email Signup Widget styles
  * Minimal, on-brand defaults — most visuals are overridable via Elementor controls.
  *
+ * Two looks share this file:
+ *   - Classic (Elementor widget): fixed colours below, wrapped in
+ *     `:where(…:not(--tokens))`. :where() adds zero specificity, so each rule
+ *     weighs exactly what it did before and Elementor's `{{WRAPPER}} .x`
+ *     controls still win.
+ *   - Theme (`[storedash_signup]`, `--tokens`): no fixed colours — the theme's
+ *     input and button styles apply; optional `--sd-su-*` vars override.
+ *
  * The row is direction-agnostic: the "Button Position" control only flips
  * `flex-direction`, so nothing here may depend on the main axis being horizontal
  * (no flex-basis sizing — `min-width` sets the wrap threshold instead).
@@ -19,7 +27,7 @@
 	--sd-signup-align: inherit;
 }
 
-.storedash-signup-form {
+:where(.storedash-signup-widget:not(.storedash-signup-widget--tokens)) .storedash-signup-form {
 	background-color: #f8f8f8;
 	padding: 20px;
 	border-radius: 5px;
@@ -33,7 +41,6 @@
 
 .storedash-signup-description {
 	margin: 0 0 15px;
-	color: #666666;
 	text-align: var(--sd-signup-description-align, var(--sd-signup-align));
 }
 
@@ -62,35 +69,50 @@
 	min-width: min(200px, 100%);
 	max-width: 100%;
 	box-sizing: border-box;
-	padding: 10px 15px;
-	border: 1px solid #cccccc;
-	border-radius: 3px;
-	background-color: #ffffff;
-	color: #333333;
-	font-size: 1em;
 	text-align: var(--sd-signup-input-align, start);
-}
-
-.storedash-signup-input:focus {
-	outline: none;
-	border-color: #0073aa;
 }
 
 .storedash-signup-submit {
 	flex: 0 0 auto;
 	max-width: 100%;
 	box-sizing: border-box;
+	text-align: var(--sd-signup-button-align, center);
+	cursor: pointer;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+:where(.storedash-signup-widget:not(.storedash-signup-widget--tokens)) .storedash-signup-description,
+:where(.storedash-signup-widget:not(.storedash-signup-widget--tokens)) .storedash-signup-privacy {
+	color: #666666;
+}
+
+:where(.storedash-signup-widget:not(.storedash-signup-widget--tokens)) .storedash-signup-input {
+	padding: 10px 15px;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	background-color: #ffffff;
+	color: #333333;
+	font-size: 1em;
+}
+
+:where(.storedash-signup-widget:not(.storedash-signup-widget--tokens)) .storedash-signup-input:focus {
+	outline: none;
+	border-color: #0073aa;
+}
+
+:where(.storedash-signup-widget:not(.storedash-signup-widget--tokens)) .storedash-signup-submit {
 	padding: 10px 24px;
 	border: none;
 	border-radius: 3px;
 	background-color: #0073aa;
 	color: #ffffff;
 	font-size: 1em;
-	text-align: var(--sd-signup-button-align, center);
 	-webkit-appearance: none;
 	appearance: none;
-	cursor: pointer;
-	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+:where(.storedash-signup-widget:not(.storedash-signup-widget--tokens)) .storedash-signup-submit:hover {
+	background-color: #005177;
 }
 
 /*
@@ -106,10 +128,6 @@
 	width: auto;
 }
 
-.storedash-signup-submit:hover {
-	background-color: #005177;
-}
-
 .storedash-signup-submit:disabled {
 	opacity: 0.7;
 	cursor: default;
@@ -118,7 +136,6 @@
 .storedash-signup-privacy {
 	margin: 12px 0 0;
 	font-size: 0.85em;
-	color: #666666;
 	text-align: var(--sd-signup-privacy-align, var(--sd-signup-align));
 }
 
@@ -140,4 +157,46 @@
 	color: #721c24;
 	background-color: #f8d7da;
 	border-color: #f5c6cb;
+}
+
+/*
+ * Theme look — `[storedash_signup]`. Inherits the theme's text colour and
+ * leaves inputs/buttons to the theme. The input rule is wrapped in :where()
+ * so any theme `input[type="email"]` rule beats it; it only fills in when the
+ * theme styles nothing.
+ */
+.storedash-signup-widget--tokens .storedash-signup-form {
+	color: var(--sd-su-text, inherit);
+	background-color: var(--sd-su-bg, transparent);
+}
+
+.storedash-signup-widget--tokens .storedash-signup-description,
+.storedash-signup-widget--tokens .storedash-signup-privacy {
+	opacity: 0.75;
+}
+
+:where(.storedash-signup-widget--tokens) .storedash-signup-input {
+	padding: 0.6em 0.9em;
+	border: 1px solid #8c8c8c;
+	border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+	background-color: transparent;
+	color: inherit;
+	font: inherit;
+}
+
+/* A background colour needs room; without one the form sits flush. */
+.storedash-signup-widget--tokens[style*="--sd-su-bg"] .storedash-signup-form {
+	padding: 20px;
+	border-radius: 5px;
+}
+
+/* Three classes so it beats theme `.woocommerce .button`-style rules. */
+.storedash-signup-widget--accent .storedash-signup-form .storedash-signup-submit {
+	background-color: var(--sd-su-accent);
+	border-color: var(--sd-su-accent);
+	color: var(--sd-su-accent-text, #ffffff);
+}
+
+.storedash-signup-widget--accent .storedash-signup-form .storedash-signup-submit:hover {
+	filter: brightness(1.08);
 }

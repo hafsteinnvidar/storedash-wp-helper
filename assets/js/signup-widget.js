@@ -64,11 +64,38 @@
 			_ts: tsInput ? tsInput.value : ''
 		});
 
-		fetch(storedashSignup.ajax_url, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: body.toString()
-		})
+		function post() {
+			return fetch(storedashSignup.ajax_url, {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: body.toString()
+			});
+		}
+
+		post()
+			.then(function (res) {
+				if (res.status !== 403) return res;
+
+				// A full-page cache served a nonce past its lifetime. Fetch a
+				// live one and retry once. Only on failure, never at init: the
+				// form often sits in a site-wide footer, so an init-time call
+				// would be one uncached PHP request per pageview.
+				return fetch(storedashSignup.ajax_url + '?action=storedash_optin_refresh', { credentials: 'same-origin' })
+					.then(function (r) {
+						return r.ok ? r.json() : null;
+					})
+					.then(function (json) {
+						if (!json || !json.success || !json.data || !json.data.nonce) return res;
+						if (nonceField) nonceField.value = json.data.nonce;
+						storedashSignup.nonce = json.data.nonce;
+						body.set('nonce', json.data.nonce);
+						return post();
+					})
+					.catch(function () {
+						return res;
+					});
+			})
 			.then(function (res) {
 				return res.json();
 			})

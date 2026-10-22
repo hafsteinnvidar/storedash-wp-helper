@@ -63,6 +63,42 @@ class Opt_In_Handler {
 		// Elementor signup widget submissions (logged-in + guests).
 		add_action( 'wp_ajax_storedash_optin_submit', array( $this, 'handle_signup_submit' ) );
 		add_action( 'wp_ajax_nopriv_storedash_optin_submit', array( $this, 'handle_signup_submit' ) );
+
+		// Nonce refresh for cached pages — see handle_refresh().
+		add_action( 'wp_ajax_storedash_optin_refresh', array( $this, 'handle_refresh' ) );
+		add_action( 'wp_ajax_nopriv_storedash_optin_refresh', array( $this, 'handle_refresh' ) );
+	}
+
+	/**
+	 * Hand a fresh signup nonce to the page's own JavaScript.
+	 *
+	 * Full-page caching freezes the nonce rendered into the form; past the
+	 * nonce lifetime (~12–24h) every signup from that cached page fails with
+	 * "Security verification failed". The signup script only calls this after
+	 * a submission comes back 403, then retries once — the form often sits in
+	 * a site-wide footer, so an init-time refresh would cost one uncached PHP
+	 * request per pageview.
+	 *
+	 * Deliberately unauthenticated and NOT nonce-checked (it is the nonce
+	 * bootstrap). Same-origin policy keeps the response unreadable to other
+	 * origins, which is what protects the value. Own rate-limit counter so it
+	 * can never eat into the submit budget.
+	 */
+	public function handle_refresh() {
+		$refresh_key   = 'optin_rf_' . md5( \StoreDash_Helpers::get_client_ip() );
+		$refresh_count = (int) get_transient( $refresh_key );
+
+		if ( $refresh_count >= 100 ) {
+			wp_send_json_error( array( 'message' => 'rate_limited' ), 429 );
+			return;
+		}
+		set_transient( $refresh_key, $refresh_count + 1, HOUR_IN_SECONDS );
+
+		wp_send_json_success(
+			array(
+				'nonce' => wp_create_nonce( 'storedash_optin_submit' ),
+			)
+		);
 	}
 
 	/**

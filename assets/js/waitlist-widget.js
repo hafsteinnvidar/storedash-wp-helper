@@ -26,6 +26,36 @@
 		el.style.display = 'none';
 	}
 
+	/**
+	 * Lift the modal into the browser top layer.
+	 *
+	 * `position: fixed` is trapped by any ancestor with transform, filter or
+	 * will-change (Elementor motion effects, sticky containers, theme
+	 * animations) and clipped by overflow — the modal then opens inside the
+	 * product column. The top layer escapes all of that while the element
+	 * stays where it is in the DOM, so Elementor `{{WRAPPER}}` selectors and
+	 * inherited token variables keep applying (moving it to <body> would
+	 * break both). Browsers without the popover API keep the old behaviour.
+	 */
+	function promoteModal(modal) {
+		if (typeof modal.showPopover !== 'function') return;
+		if (!modal.hasAttribute('popover')) modal.setAttribute('popover', 'manual');
+		try {
+			if (!modal.matches(':popover-open')) modal.showPopover();
+		} catch (e) {
+			/* stay in normal flow */
+		}
+	}
+
+	function demoteModal(modal) {
+		if (typeof modal.hidePopover !== 'function' || !modal.hasAttribute('popover')) return;
+		try {
+			if (modal.matches(':popover-open')) modal.hidePopover();
+		} catch (e) {
+			/* already hidden */
+		}
+	}
+
 	function openModal(modal) {
 		if (!modal) return;
 
@@ -40,6 +70,7 @@
 		//
 		// Set once at init(), from page render, and left alone.
 
+		promoteModal(modal);
 		modal.style.display = 'block';
 		void modal.offsetHeight;
 		modal.classList.add('storedash-waitlist-modal--visible');
@@ -55,6 +86,7 @@
 			modal.removeEventListener('transitionend', onEnd);
 			if (!modal.classList.contains('storedash-waitlist-modal--visible')) {
 				modal.style.display = 'none';
+				demoteModal(modal);
 			}
 		}
 		modal.addEventListener('transitionend', onEnd);

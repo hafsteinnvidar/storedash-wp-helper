@@ -63,3 +63,31 @@ Two routes are not served by `wc/v3` (registered in `Route_Registry.php`):
 - `POST /storedash/v1/products/bulk` — time-budgeted product / variation updates (`Controllers/Products_Bulk_Controller.php`).
 - `POST /storedash/v1/products/menu-order` — shop-order positions, `{ items: [{ id, menu_order }] }` (max 500). Writes `posts.menu_order` directly, the way WooCommerce's own Sorting screen does: no product save, no `woocommerce_update_product`, no `post_modified` change. Cleans the post cache for changed rows and flushes the product-query transients once. Answers `{ done: [{ id, ok, code?, message? }], changed }` (`Controllers/Products_Menu_Order_Controller.php`).
 
+
+## Variation swatches (`Swatches/`)
+
+Bridges Storedash to the store's "Variation Swatches" plugin — Emran Ahmed's
+(`woo-variation-swatches`, term meta `product_attribute_color` / `secondary_color` +
+`is_dual_color` / `product_attribute_image` id) or CartFlows' (`variation-swatches-woo`,
+term meta `cfvsw_color` / `cfvsw_image` **URL**). Wired from `Products_Manager::init()` via
+`Swatches/Swatches_Manager.php`. Provider pick (`Provider_Resolver`): option
+`storedash_swatch_provider` if that plugin is active, else Emran, else CartFlows. Detection
+uses each plugin's version constant (`WOO_VARIATION_SWATCHES_PLUGIN_VERSION`, `CFVSW_VER`).
+
+Normalized types: `select | color | image | button | radio` (CartFlows `label` ⇄ `button`,
+no `radio` → 422).
+
+- **Term field** `storedash_swatch` on `wc/v3/products/attributes/{id}/terms` (GET, PUT, POST,
+  `terms/batch`). GET: `null` without provider, else
+  `{ provider, color, color2, image_id, image_url, tooltip }`. Write: `{ color?, color2?, image_id?, image_src? }`,
+  present key writes, `null`/`""` deletes. WooCommerce ignores field-callback errors, so
+  `Swatch_Rest_Field::guard_request()` validates on `rest_request_before_callbacks` (409 no
+  provider, 400 invalid; a batch is rejected whole) and resolves `image_src` → attachment id
+  (existing attachment, previous sideload via `_source_url`, else `media_sideload_image`).
+- **Routes** (`storedash/v1`, `manage_woocommerce`): `GET swatches/status`,
+  `POST swatches/provider {provider|null}`, `POST swatches/attributes/{id}/type {type}`.
+  Use the type route, not `PUT wc/v3/products/attributes/{id}` — WC validates `type` against
+  `product_attributes_type_selector`, which CartFlows only fills on its admin screen.
+- **Store API** product extension `storedash_swatches`:
+  `{ "pa_x": { type, terms: { "<slug>": { color?, color2?, image_url? } } } }`, non-select
+  taxonomy attributes only; `[]` when empty (Store API requires an array). Cached per request.

@@ -57,6 +57,10 @@ class Products_Manager {
 		// Keep YouTube/Vimeo iframes that WooCommerce's description kses strips.
 		( new Video_Embeds() )->init();
 
+		// Variation swatches bridge (Emran / CartFlows swatch plugins): term
+		// REST field, storedash/v1/swatches routes, Store API product extension.
+		( new Swatches\Swatches_Manager() )->init();
+
 		// The Storedash-owned product routes: the time-budgeted bulk writer
 		// (POST /storedash/v1/products/bulk) and the shop-order writer
 		// (POST /storedash/v1/products/menu-order). Everything else stays on wc/v3.

@@ -169,12 +169,37 @@
 		body.set('product_id', String(this.productId));
 		body.set('items', JSON.stringify(items));
 
-		fetch(config.ajax_url || '/wp-admin/admin-ajax.php', {
-			method: 'POST',
-			credentials: 'same-origin',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: body.toString()
-		})
+		var ajaxUrl = config.ajax_url || '/wp-admin/admin-ajax.php';
+
+		function post() {
+			return fetch(ajaxUrl, {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: body.toString()
+			});
+		}
+
+		post()
+			.then(function (response) {
+				if (response.status !== 403) return response;
+
+				// A full-page cache served a nonce past its lifetime. Fetch a
+				// live one and retry once; the cached HTML can be any age.
+				return fetch(ajaxUrl + '?action=storedash_fbt_refresh', { credentials: 'same-origin' })
+					.then(function (res) {
+						return res.ok ? res.json() : null;
+					})
+					.then(function (json) {
+						if (!json || !json.success || !json.data || !json.data.nonce) return response;
+						config.nonce = json.data.nonce;
+						body.set('nonce', config.nonce);
+						return post();
+					})
+					.catch(function () {
+						return response;
+					});
+			})
 			.then(function (response) {
 				return response.json();
 			})

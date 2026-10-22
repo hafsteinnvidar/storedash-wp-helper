@@ -48,6 +48,11 @@ class FBT_Cart {
 	const ACTION = 'storedash_fbt_add_bundle';
 
 	/**
+	 * AJAX action that hands out a fresh ACTION nonce (cached pages).
+	 */
+	const REFRESH_ACTION = 'storedash_fbt_refresh';
+
+	/**
 	 * Hard cap on companions accepted in one submission. Bundle meta rarely
 	 * holds more than a handful; this only bounds a hand-crafted request.
 	 */
@@ -60,11 +65,43 @@ class FBT_Cart {
 		add_action( 'wp_ajax_' . self::ACTION, array( $this, 'handle_add_bundle' ) );
 		add_action( 'wp_ajax_nopriv_' . self::ACTION, array( $this, 'handle_add_bundle' ) );
 
+		// Nonce refresh for cached pages — see handle_refresh().
+		add_action( 'wp_ajax_' . self::REFRESH_ACTION, array( $this, 'handle_refresh' ) );
+		add_action( 'wp_ajax_nopriv_' . self::REFRESH_ACTION, array( $this, 'handle_refresh' ) );
+
 		// Priority 20 matches the legacy storedash-wp hook; both are idempotent
 		// (absolute price from DB), so double-registration cannot compound.
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'apply_fbt_discount' ), 20 );
 		add_filter( 'woocommerce_get_cart_item_from_session', array( $this, 'restore_session_data' ), 10, 2 );
 		add_action( 'woocommerce_cart_item_removed', array( $this, 'remove_companion_items' ), 10, 2 );
+	}
+
+	/**
+	 * AJAX: hand a fresh bundle nonce to the page's own JavaScript.
+	 *
+	 * Full-page caching freezes the nonce FBT_Placement localized into the
+	 * HTML; past the nonce lifetime (~12–24h) every "Add bundle" click from
+	 * that cached product page fails. The widget script only calls this after
+	 * an add comes back 403, then retries once, so uncached pages never pay
+	 * for it. The add button is usually the shopper's first interaction, so a
+	 * refresh-on-interaction (as the enquiry form does) would race the click.
+	 *
+	 * Deliberately unauthenticated and NOT nonce-checked (it is the nonce
+	 * bootstrap); same-origin policy keeps the response unreadable to other
+	 * origins. Own rate-limit counter.
+	 *
+	 * @return void
+	 */
+	public function handle_refresh(): void {
+		$refresh_key   = 'storedash_fbt_rf_' . md5( \StoreDash_Helpers::get_client_ip() );
+		$refresh_count = (int) get_transient( $refresh_key );
+
+		if ( $refresh_count >= 100 ) {
+			wp_send_json_error( array( 'message' => 'rate_limited' ), 429 );
+		}
+		set_transient( $refresh_key, $refresh_count + 1, HOUR_IN_SECONDS );
+
+		wp_send_json_success( array( 'nonce' => wp_create_nonce( self::ACTION ) ) );
 	}
 
 	/**
@@ -83,7 +120,14 @@ class FBT_Cart {
 	 * @return void
 	 */
 	public function handle_add_bundle(): void {
-		check_ajax_referer( self::ACTION, 'nonce' );
+		// JSON 403 (not check_ajax_referer's bare "-1" die) so the script can
+		// tell a stale cached-page nonce apart and retry with a fresh one.
+		if ( ! check_ajax_referer( self::ACTION, 'nonce', false ) ) {
+			wp_send_json_error(
+				array( 'message' => __( 'Security verification failed. Please refresh the page and try again.', 'storedash' ) ),
+				403
+			);
+		}
 
 		$product_id = isset( $_POST['product_id'] ) ? absint( wp_unslash( $_POST['product_id'] ) ) : 0;
 		$raw_items  = isset( $_POST['items'] ) ? (string) wp_unslash( $_POST['items'] ) : '[]';

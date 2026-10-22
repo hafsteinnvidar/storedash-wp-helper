@@ -283,13 +283,16 @@ class FBT_Placement {
 			// below the anchor; 'append' inserts inside it at the end.
 			// 'form.cart' is WooCommerce's add-to-cart form — present on every
 			// purchasable product in every theme, and the bundle's natural
-			// neighbour.
+			// neighbour. '.wp-block-add-to-cart-form' is its block-theme
+			// wrapper. ':not(body)' because block themes put `product` in the
+			// body class, which would drop the bundle at the very end.
 			var anchors = [
 				['form.cart', 'after'],
+				['.wp-block-add-to-cart-form', 'after'],
 				['.elementor-widget-woocommerce-product-add-to-cart', 'append'],
 				['.summary', 'append'],
 				['.entry-summary', 'append'],
-				['.product', 'append']
+				['.product:not(body)', 'append']
 			];
 
 			var host = null;

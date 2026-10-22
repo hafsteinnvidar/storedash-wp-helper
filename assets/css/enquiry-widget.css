@@ -149,7 +149,15 @@
 	border-width: 1px;
 }
 
-/* Modal Styles */
+/*
+ * Modal Styles
+ *
+ * The script promotes the modal into the browser top layer (popover API) so
+ * a theme ancestor with transform/filter/overflow cannot trap or clip it.
+ * margin/padding/border/color/background undo the UA `[popover]` defaults;
+ * all equal a plain div's, and at one class they lose to Elementor and token
+ * rules, so nothing changes where those set them.
+ */
 .storedash-enquiry-modal {
 	display: none;
 	position: fixed;
@@ -158,6 +166,11 @@
 	top: 0;
 	width: 100%;
 	height: 100%;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	color: inherit;
+	background-color: transparent;
 	overflow-y: auto;
 	opacity: 0;
 	transition: opacity 0.3s ease;
@@ -305,6 +318,48 @@
 	background: var(--sd-eq-accent, #111111);
 	color: var(--sd-eq-accent-text, #ffffff);
 	border-radius: var(--sd-eq-field-radius, 8px);
+}
+
+/* Fields need their own box: themes rarely style a bare text input. */
+.storedash-enquiry-widget--tokens .storedash-enquiry-input,
+.storedash-enquiry-widget--tokens .storedash-enquiry-textarea {
+	padding: 10px 12px;
+	font-size: 0.95em;
+	background-color: #fff;
+	border-width: 1px;
+	border-style: solid;
+}
+
+.storedash-enquiry-widget--tokens .storedash-enquiry-submit,
+.storedash-enquiry-widget--tokens .storedash-enquiry-trigger {
+	padding: 11px 18px;
+	font-size: 0.95em;
+	font-weight: 600;
+}
+
+/* Modal — same dim backdrop + card as the waitlist token modal. */
+.storedash-enquiry-widget--tokens .storedash-enquiry-modal {
+	background-color: rgba(0, 0, 0, 0.55);
+}
+
+.storedash-enquiry-widget--tokens .storedash-enquiry-modal-content {
+	max-width: 480px;
+	padding: 22px;
+	/* Fixed, not --sd-eq-bg/text: those default to transparent/inherit. */
+	color: #111111;
+	background-color: #fff;
+	border-radius: var(--sd-eq-radius, 12px);
+}
+
+/* The card supplies the surface; the inner form stays flat. */
+.storedash-enquiry-widget--tokens .storedash-enquiry-modal-content .storedash-enquiry-form {
+	background: transparent;
+	padding: 0;
+}
+
+.storedash-enquiry-widget--tokens .storedash-enquiry-close {
+	color: var(--sd-eq-muted, #6b7280);
+	font-size: 22px;
 }
 
 /* Consent checkbox — only rendered when the merchant enables it. */
