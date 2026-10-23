@@ -1,0 +1,61 @@
+/**
+ * Storedash free-shipping bar (cart + checkout, classic and blocks).
+ * Scoped to .storedash-fs-bar; merchant tokens arrive as CSS custom
+ * properties on the root element, with defaults here.
+ *
+ * @since 1.29.0
+ */
+.storedash-fs-bar {
+	--sd-fs-bg: #f3f4f6;
+	--sd-fs-fg: #111111;
+	--sd-fs-accent: #111111;
+	--sd-fs-radius: 8px;
+	box-sizing: border-box;
+	display: block;
+	margin: 0 0 1.25em;
+	padding: 0.75em 1em;
+	background: var(--sd-fs-bg);
+	color: var(--sd-fs-fg);
+	border-radius: var(--sd-fs-radius);
+	font-size: 0.9375em;
+	line-height: 1.4;
+}
+
+.storedash-fs-bar.is-hidden {
+	display: none;
+}
+
+.storedash-fs-bar__text {
+	margin: 0 0 0.5em;
+}
+
+.storedash-fs-bar__text .woocommerce-Price-amount,
+.storedash-fs-bar__amount {
+	font-weight: 600;
+}
+
+.storedash-fs-bar__track {
+	position: relative;
+	height: 6px;
+	overflow: hidden;
+	background: rgba(0, 0, 0, 0.08);
+	border-radius: 999px;
+}
+
+.storedash-fs-bar__fill {
+	height: 100%;
+	width: 0;
+	background: var(--sd-fs-accent);
+	border-radius: inherit;
+	transition: width 0.3s ease;
+}
+
+.storedash-fs-bar.is-unlocked .storedash-fs-bar__fill {
+	width: 100% !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.storedash-fs-bar__fill {
+		transition: none;
+	}
+}

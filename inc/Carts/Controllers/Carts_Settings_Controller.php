@@ -81,17 +81,44 @@ class Carts_Settings_Controller extends Abstract_Carts_Controller {
 			);
 		}
 
+		// SMS consent checkbox (separate channel, separate consent) — same
+		// storage rules as the e-mail toggle/label above.
+		if ( isset( $params['checkout_sms_optin_enabled'] ) ) {
+			update_option(
+				'woodash_checkout_sms_optin_enabled',
+				rest_sanitize_boolean( $params['checkout_sms_optin_enabled'] ) ? '1' : '0'
+			);
+		}
+
+		if ( isset( $params['checkout_sms_optin_label'] ) ) {
+			update_option(
+				'woodash_checkout_sms_optin_label',
+				sanitize_text_field( wp_unslash( (string) $params['checkout_sms_optin_label'] ) )
+			);
+		}
+
 		return new WP_REST_Response(
 			array(
 				'success'  => true,
-				'settings' => array(
-					'enabled'                     => Cart_Tracking::cart_tracking_enabled(),
-					'abandonment_timeout_minutes' => (int) get_option( 'woodash_cart_abandon_time', 60 ),
-					'cart_retention_days'         => (int) get_option( 'woodash_cart_retention_days', 30 ),
-					'checkout_optin_enabled'      => (bool) get_option( 'woodash_checkout_optin_enabled', false ),
-					'checkout_optin_label'        => (string) get_option( 'woodash_checkout_optin_label', '' ),
-				),
+				'settings' => $this->current_settings(),
 			)
+		);
+	}
+
+	/**
+	 * Current cart + checkout-consent settings (shared by GET and POST).
+	 *
+	 * @return array
+	 */
+	private function current_settings(): array {
+		return array(
+			'enabled'                     => Cart_Tracking::cart_tracking_enabled(),
+			'abandonment_timeout_minutes' => (int) get_option( 'woodash_cart_abandon_time', 60 ),
+			'cart_retention_days'         => (int) get_option( 'woodash_cart_retention_days', 30 ),
+			'checkout_optin_enabled'      => (bool) get_option( 'woodash_checkout_optin_enabled', false ),
+			'checkout_optin_label'        => (string) get_option( 'woodash_checkout_optin_label', '' ),
+			'checkout_sms_optin_enabled'  => (bool) get_option( 'woodash_checkout_sms_optin_enabled', false ),
+			'checkout_sms_optin_label'    => (string) get_option( 'woodash_checkout_sms_optin_label', '' ),
 		);
 	}
 
@@ -104,14 +131,6 @@ class Carts_Settings_Controller extends Abstract_Carts_Controller {
 	 * @return WP_REST_Response
 	 */
 	public function get_settings( $request ) {
-		return new WP_REST_Response(
-			array(
-				'enabled'                     => Cart_Tracking::cart_tracking_enabled(),
-				'abandonment_timeout_minutes' => (int) get_option( 'woodash_cart_abandon_time', 60 ),
-				'cart_retention_days'         => (int) get_option( 'woodash_cart_retention_days', 30 ),
-				'checkout_optin_enabled'      => (bool) get_option( 'woodash_checkout_optin_enabled', false ),
-				'checkout_optin_label'        => (string) get_option( 'woodash_checkout_optin_label', '' ),
-			)
-		);
+		return new WP_REST_Response( $this->current_settings() );
 	}
 }

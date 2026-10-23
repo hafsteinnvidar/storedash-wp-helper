@@ -74,6 +74,13 @@ class StoreDash_API {
 	private $seo_controller;
 
 	/**
+	 * Checkout optimization module.
+	 *
+	 * @var StoreDash\Checkout\Checkout_Manager
+	 */
+	private $checkout_controller;
+
+	/**
 	 * Get singleton instance
 	 *
 	 * @return StoreDash_API
@@ -206,6 +213,18 @@ class StoreDash_API {
 					$this->seo_controller->init();
 				} catch ( Exception $e ) {
 					$this->log_api_error( 'Failed to initialize SEO Manager: ' . $e->getMessage() );
+				}
+			}
+
+			// Checkout optimization (funnel counter, settings route). Always constructed
+			// so the settings route exists; every front-end component self-skips
+			// unless its feature is switched on in storedash_checkout_config.
+			if ( class_exists( 'StoreDash\Checkout\Checkout_Manager' ) ) {
+				try {
+					$this->checkout_controller = new \StoreDash\Checkout\Checkout_Manager();
+					$this->checkout_controller->init();
+				} catch ( Exception $e ) {
+					$this->log_api_error( 'Failed to initialize Checkout Manager: ' . $e->getMessage() );
 				}
 			}
 

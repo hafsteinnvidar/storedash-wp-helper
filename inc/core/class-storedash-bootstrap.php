@@ -261,6 +261,8 @@ class StoreDash_Bootstrap {
 		require_once STOREDASH_PATH . 'inc/services/optin/class-optin-handler.php';
 		// Block (Store API) checkout opt-in field — bridges into the handler above.
 		require_once STOREDASH_PATH . 'inc/services/optin/class-blocks-optin-field.php';
+		// Block checkout SMS consent field — bridges into the handler's SMS path.
+		require_once STOREDASH_PATH . 'inc/services/optin/class-blocks-sms-optin-field.php';
 		// `[storedash_signup]` — the signup form without Elementor.
 		require_once STOREDASH_PATH . 'inc/services/optin/class-signup-shortcode.php';
 

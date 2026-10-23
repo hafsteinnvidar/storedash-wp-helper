@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.27.0
+Stable tag: 1.29.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,12 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.29.0 =
+* Checkout funnel counter (off by default): counts cart, checkout and order sessions per day and sends hourly totals to Storedash. No personal data.
+* New: SMS consent checkbox at checkout (off by default), separate from the e-mail one. Turn it on in Storedash under Settings > Cart recovery. Works with the classic and the block checkout; the customer's choice and the exact wording they agreed to are saved on the order and sent to Storedash for SMS campaigns.
+* Free-shipping progress bar (off by default) on cart and checkout: 'Add X more for free shipping'.
+* Estimated delivery dates under shipping methods (off by default), per method with cutoff time, ship days and holidays.
 
 = 1.27.0 =
 * New: kennitala field at checkout for DK Plus. Switch it on in Storedash under Settings > DK Plus > Checkout, choose optional or required and where it sits among the billing fields. Shown for Icelandic addresses only, checked for a valid check digit, saved on the order so Storedash can put it on the DK invoice. Works with both the classic and the block checkout. Nothing changes until you save the setting in Storedash.

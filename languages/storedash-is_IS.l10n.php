@@ -18,6 +18,7 @@ return array(
 	'plural-forms' => 'nplurals=2; plural=(n % 10 != 1 || n % 100 == 11);',
 	'language'     => 'is_IS',
 	'messages'     => array(
+		'Send me offers and news by SMS'                 => 'Senda mér tilboð og fréttir með SMS',
 		'Gift card'                                      => 'Gjafabréf',
 		'Gift card ····%s'                               => 'Gjafabréf ····%s',
 		'Gift card code'                                 => 'Kóði gjafabréfs',
@@ -57,5 +58,10 @@ return array(
 		'This order contains gift cards, but the refund did not include the gift card lines, so no gift card balance was changed. Adjust the cards in Storedash if needed.' => 'Pöntunin inniheldur gjafabréf en endurgreiðslan náði ekki til gjafabréfalínanna, svo inneign gjafabréfa var ekki breytt. Leiðréttu gjafabréfin í Storedash ef þarf.',
 		'Gift card could not be charged again, so the order total is now %s and has not been paid. Collect the payment before shipping.' => 'Ekki tókst að skuldfæra gjafabréfið aftur, svo heildarupphæð pöntunar er nú %s og hún er ógreidd. Innheimtu greiðsluna áður en pöntunin er send.',
 		'Sell this product as a Storedash gift card. Each unit bought issues its own code worth the price paid. Gift cards are virtual and not taxed at sale (VAT is charged when the card is used).' => 'Selja þessa vöru sem Storedash gjafabréf. Hvert keypt eintak fær eigin kóða að verðmæti kaupverðsins. Gjafabréf eru rafræn og ekki skattlögð við sölu (VSK er innheimtur þegar gjafabréfið er notað).',
+		'Arrives {date}'                                 => 'Kemur {date}',
+		'Arrives {from}–{to}'                            => 'Kemur {from}–{to}',
+		'Ready for pickup {date}'                        => 'Hægt að sækja {date}',
+		'Add {amount} more for free shipping'            => 'Bættu {amount} við til að fá fría sendingu',
+		"You've unlocked free shipping"                  => 'Þú hefur fengið fría sendingu',
 	),
 );

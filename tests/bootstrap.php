@@ -175,6 +175,30 @@ if ( ! class_exists( 'StoreDash_Helpers' ) ) {
 		public static function is_store_connected(): bool {
 			return false;
 		}
+
+		// Opt-in handler surface: mirror the real option-backed resolution so
+		// the SMS/e-mail checkout tests exercise the same fallback rules.
+		public static function resolve_webhook_url( $option, $default ) {
+			$configured = get_option( $option, null );
+			if ( null === $configured || false === $configured ) {
+				return $default;
+			}
+			return trim( (string) $configured );
+		}
+
+		public static function checkout_optin_label(): string {
+			$configured = trim( (string) get_option( 'woodash_checkout_optin_label', '' ) );
+			return '' === $configured ? 'I want to receive promotional emails with sales, new products, and special offers' : $configured;
+		}
+
+		public static function checkout_sms_optin_label(): string {
+			$configured = trim( (string) get_option( 'woodash_checkout_sms_optin_label', '' ) );
+			return '' === $configured ? 'Send me offers and news by SMS' : $configured;
+		}
+
+		public static function get_client_ip() {
+			return '127.0.0.1';
+		}
 	}
 }
 
@@ -451,6 +475,30 @@ if ( ! class_exists( 'WC_Order' ) ) {
 		}
 		public function save() {
 			++$this->saves;
+		}
+		// Opt-in suites: billing identity + meta presence.
+		public $billing_email      = 'customer@example.com';
+		public $billing_phone      = '5551234';
+		public $billing_first_name = 'Anna';
+		public $billing_last_name  = 'Example';
+		public $customer_id        = 0;
+		public function get_billing_email() {
+			return $this->billing_email;
+		}
+		public function get_billing_phone() {
+			return $this->billing_phone;
+		}
+		public function get_billing_first_name() {
+			return $this->billing_first_name;
+		}
+		public function get_billing_last_name() {
+			return $this->billing_last_name;
+		}
+		public function get_customer_id() {
+			return $this->customer_id;
+		}
+		public function meta_exists( $key ) {
+			return array_key_exists( $key, $this->meta );
 		}
 	}
 }

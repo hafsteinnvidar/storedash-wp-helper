@@ -1221,6 +1221,10 @@ msgstr ""
 msgid "I want to receive promotional emails with sales, new products, and special offers"
 msgstr ""
 
+#: inc/core/class-storedash-helpers.php
+msgid "Send me offers and news by SMS"
+msgstr ""
+
 #: inc/services/class-custom-order-statuses.php:83
 #: inc/services/class-custom-order-statuses.php:275
 msgctxt "Order status"
@@ -2005,4 +2009,24 @@ msgstr ""
 
 #: inc/widgets/class-widgets-manager.php:123
 msgid "Thank you! Your enquiry has been submitted."
+msgstr ""
+
+#: inc/Checkout/Delivery/Delivery_Estimate.php
+msgid "Arrives {date}"
+msgstr ""
+
+#: inc/Checkout/Delivery/Delivery_Estimate.php
+msgid "Arrives {from}–{to}"
+msgstr ""
+
+#: inc/Checkout/Delivery/Delivery_Estimate.php
+msgid "Ready for pickup {date}"
+msgstr ""
+
+#: inc/Checkout/FreeShipping/Free_Shipping_Bar.php
+msgid "Add {amount} more for free shipping"
+msgstr ""
+
+#: inc/Checkout/FreeShipping/Free_Shipping_Bar.php
+msgid "You've unlocked free shipping"
 msgstr ""

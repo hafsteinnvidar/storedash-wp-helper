@@ -95,6 +95,7 @@ $cron_jobs = array(
 	'woodash_purge_expired_carts',
 	'storedash_purge_customer_tokens',
 	'storedash_credit_expire',
+	'storedash_checkout_hourly_flush',
 );
 
 foreach ( $cron_jobs as $job ) {

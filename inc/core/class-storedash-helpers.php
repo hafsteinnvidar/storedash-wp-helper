@@ -437,4 +437,22 @@ class StoreDash_Helpers {
 
 		return '' === $configured ? $default : $configured;
 	}
+
+	/**
+	 * Resolve the checkout SMS marketing opt-in checkbox label.
+	 *
+	 * Separate consent per channel: the SMS checkbox has its own wording
+	 * (`woodash_checkout_sms_optin_label` option) and never shares the e-mail
+	 * label. The exact sentence shown is stored on the order and sent as
+	 * `consent_text` so the consent record can quote what the customer agreed to.
+	 *
+	 * @return string The label to display next to the SMS checkbox.
+	 */
+	public static function checkout_sms_optin_label(): string {
+		$default = __( 'Send me offers and news by SMS', 'storedash' );
+
+		$configured = trim( (string) get_option( 'woodash_checkout_sms_optin_label', '' ) );
+
+		return '' === $configured ? $default : $configured;
+	}
 }

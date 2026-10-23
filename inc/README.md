@@ -119,7 +119,9 @@ Sanity check: `GET /wp-json/storedash/v1/ping`, `GET /wp-json/storedash/v1/verif
 - **waitlist/** — back-in-stock: `class-waitlist-handler`, `class-stock-monitor`, `class-waitlist-api`,
   `class-yith-migration` (imports from YITH waitlist).
 - **optin/** — marketing opt-in: `class-optin-handler` (checkout checkbox + Elementor signup) and
-  `class-blocks-optin-field` (Store API / block checkout, bridges into the handler).
+  `class-blocks-optin-field` (Store API / block checkout, bridges into the handler); SMS consent is a
+  second, separate checkbox (`handle_order_sms_optin` + `class-blocks-sms-optin-field`, event
+  `subscription.sms_optin`, option `woodash_checkout_sms_optin_enabled`).
 - **enquiry/** — `class-enquiry-handler` (product enquiry).
 - **webhooks/** — `webhooks.php` (registration/handling), `webhook-payload-modifier.php`,
   `webhook-filter.php`. Inbound receiver hook is `woodash_webhook`;

@@ -45,11 +45,30 @@ class Opt_In_Handler {
 	const ORDER_SENT_META = '_woodash_optin_webhook_sent';
 
 	/**
+	 * SMS consent: option gate, checkout field name, order meta keys, event name.
+	 * A separate channel with separate consent (never inferred from the e-mail
+	 * checkbox). The label meta stores the exact sentence the customer saw.
+	 */
+	const SMS_ENABLED_OPTION  = 'woodash_checkout_sms_optin_enabled';
+	const SMS_FIELD_NAME      = 'woodash_sms_optin';
+	const SMS_META            = '_woodash_sms_optin';
+	const SMS_LABEL_META      = '_woodash_sms_optin_label';
+	const SMS_ORDER_SENT_META = '_woodash_sms_optin_webhook_sent';
+	const SMS_EVENT           = 'subscription.sms_optin';
+
+	/**
 	 * Order IDs already processed in the current request (per-request idempotency).
 	 *
 	 * @var array
 	 */
 	private static $processed_order_ids = array();
+
+	/**
+	 * Order IDs whose SMS consent was already processed in this request.
+	 *
+	 * @var array
+	 */
+	private static $processed_sms_order_ids = array();
 
 	/**
 	 * Constructor
@@ -59,6 +78,12 @@ class Opt_In_Handler {
 		// which may already have stored the order meta. Classic + block checkout.
 		add_action( 'woocommerce_checkout_order_processed', array( $this, 'handle_order_optin' ), 20 );
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'handle_order_optin' ), 20 );
+
+		// SMS consent: classic checkout checkbox (priority 11 = right below the
+		// e-mail checkbox Cart_Tracking renders at 10) + order-placed handler.
+		add_action( 'woocommerce_review_order_before_submit', array( $this, 'display_checkout_sms_optin' ), 11 );
+		add_action( 'woocommerce_checkout_order_processed', array( $this, 'handle_order_sms_optin' ), 20 );
+		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'handle_order_sms_optin' ), 20 );
 
 		// Elementor signup widget submissions (logged-in + guests).
 		add_action( 'wp_ajax_storedash_optin_submit', array( $this, 'handle_signup_submit' ) );
@@ -188,6 +213,113 @@ class Opt_In_Handler {
 	}
 
 	/**
+	 * Render the classic-checkout SMS consent checkbox.
+	 *
+	 * Own option gate (`woodash_checkout_sms_optin_enabled`, default off) so a
+	 * merchant can collect e-mail consent without SMS and vice versa. Always
+	 * unchecked by default (consent must be an affirmative act).
+	 */
+	public function display_checkout_sms_optin() {
+		if ( ! get_option( self::SMS_ENABLED_OPTION, false ) ) {
+			return;
+		}
+
+		?>
+		<p class="form-row storedash-sms-optin">
+			<label class="woocommerce-form__label woocommerce-form__label-for-checkbox checkbox">
+				<input type="checkbox" class="woocommerce-form__input woocommerce-form__input-checkbox"
+						name="<?php echo esc_attr( self::SMS_FIELD_NAME ); ?>" id="<?php echo esc_attr( self::SMS_FIELD_NAME ); ?>" value="1" />
+				<span class="woocommerce-form__label-text">
+					<?php echo esc_html( \StoreDash_Helpers::checkout_sms_optin_label() ); ?>
+				</span>
+			</label>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Handle the checkout SMS consent on order placed.
+	 *
+	 * Mirrors handle_order_optin() for the SMS channel: persists the choice (and
+	 * the exact label shown) to order meta, then posts a `subscription.sms_optin`
+	 * webhook when the box was checked and the order has a billing phone. The
+	 * classic checkout posts `woodash_sms_optin`; the block checkout bridges its
+	 * field into `_woodash_sms_optin` first (Blocks_Sms_Optin_Field, priority 15).
+	 *
+	 * @param int|\WC_Order $order Order ID or object (both hooks supported).
+	 */
+	public function handle_order_sms_optin( $order ) {
+		if ( ! get_option( self::SMS_ENABLED_OPTION, false ) ) {
+			return;
+		}
+
+		$order = wc_get_order( $order );
+		if ( ! $order instanceof \WC_Order ) {
+			return;
+		}
+
+		$order_id = (int) $order->get_id();
+
+		if ( in_array( $order_id, self::$processed_sms_order_ids, true ) ) {
+			return;
+		}
+		self::$processed_sms_order_ids[] = $order_id;
+
+		if ( $order->get_meta( self::SMS_ORDER_SENT_META ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce checkout nonce already verified upstream
+		$posted_optin = isset( $_POST[ self::SMS_FIELD_NAME ] );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce checkout nonce already verified upstream
+		$is_opted_in = ! empty( $_POST[ self::SMS_FIELD_NAME ] )
+			|| 1 === (int) $order->get_meta( self::SMS_META );
+
+		$label = \StoreDash_Helpers::checkout_sms_optin_label();
+
+		if ( $posted_optin || $is_opted_in ) {
+			$order->update_meta_data( self::SMS_META, $is_opted_in ? 1 : 0 );
+			if ( $is_opted_in ) {
+				$order->update_meta_data( self::SMS_LABEL_META, $label );
+			}
+		}
+
+		if ( ! $is_opted_in ) {
+			$order->save();
+			return;
+		}
+
+		$phone = trim( (string) $order->get_billing_phone() );
+		if ( '' === $phone ) {
+			$order->save();
+			return;
+		}
+
+		$customer_id = (int) $order->get_customer_id();
+
+		$sent = self::send_optin_webhook(
+			array(
+				'email'       => (string) $order->get_billing_email(),
+				'customer_id' => $customer_id > 0 ? $customer_id : null,
+				'source'      => 'checkout_optin',
+			),
+			self::SMS_EVENT,
+			array(
+				'phone'        => $phone,
+				'country'      => (string) $order->get_billing_country(),
+				'first_name'   => (string) $order->get_billing_first_name(),
+				'last_name'    => (string) $order->get_billing_last_name(),
+				'consent_text' => $label,
+			)
+		);
+
+		if ( $sent ) {
+			$order->update_meta_data( self::SMS_ORDER_SENT_META, 1 );
+		}
+		$order->save();
+	}
+
+	/**
 	 * Handle the Elementor signup widget submission.
 	 *
 	 * Net-new single opt-in: validates the email, then posts the opt-in webhook
@@ -298,13 +430,24 @@ class Opt_In_Handler {
 	 * checkbox calls this with `waitlist_optin`, the enquiry form with
 	 * `enquiry_optin` (both `signup_widget` before 1.17.0).
 	 *
+	 * @param string $event      Webhook event name. Defaults to the e-mail
+	 *                           `subscription.optin`; `subscription.sms_optin`
+	 *                           switches the required identifier to `phone`.
+	 * @param array  $extra_data Extra keys merged into `data` (phone, country,
+	 *                           names, consent_text for SMS). Empty for e-mail
+	 *                           callers, whose payload is unchanged.
+	 *
 	 * @return bool True when a POST was actually attempted (non-empty email and
 	 *              webhook URL); false when the send was a no-op. Lets callers
 	 *              avoid stamping "sent" state for a webhook that never fired.
 	 */
-	public static function send_optin_webhook( array $args ) {
-		$email = strtolower( trim( (string) ( $args['email'] ?? '' ) ) );
-		if ( empty( $email ) ) {
+	public static function send_optin_webhook( array $args, $event = 'subscription.optin', array $extra_data = array() ) {
+		$is_sms = self::SMS_EVENT === $event;
+		$email  = strtolower( trim( (string) ( $args['email'] ?? '' ) ) );
+		if ( empty( $email ) && ! $is_sms ) {
+			return false;
+		}
+		if ( $is_sms && '' === trim( (string) ( $extra_data['phone'] ?? '' ) ) ) {
 			return false;
 		}
 
@@ -326,14 +469,17 @@ class Opt_In_Handler {
 		}
 
 		$payload = array(
-			'event'      => 'subscription.optin',
+			'event'      => $is_sms ? self::SMS_EVENT : 'subscription.optin',
 			'store_id'   => (int) get_option( 'woodash_store_id', 0 ),
 			'store_url'  => get_site_url(),
-			'data'       => array(
-				'email'       => $email,
-				'customer_id' => $customer_id,
-				'source'      => $source,
-				'initiator'   => 'customer',
+			'data'       => array_merge(
+				array(
+					'email'       => $email,
+					'customer_id' => $customer_id,
+					'source'      => $source,
+					'initiator'   => 'customer',
+				),
+				$extra_data
 			),
 			'webhook_id' => wp_generate_uuid4(),
 			'timestamp'  => current_time( 'c' ),
@@ -364,7 +510,7 @@ class Opt_In_Handler {
 		);
 
 		if ( class_exists( 'StoreDash_Helpers' ) ) {
-			\StoreDash_Helpers::debug_log( 'Opt-in: webhook triggered (' . $source . ') for ' . $email );
+			\StoreDash_Helpers::debug_log( 'Opt-in: webhook ' . $payload['event'] . ' triggered (' . $source . ') for ' . ( $is_sms ? 'phone' : $email ) );
 		}
 
 		return true;
