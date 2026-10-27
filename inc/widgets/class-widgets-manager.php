@@ -85,11 +85,13 @@ class Widgets_Manager {
 				'ajax_url' => admin_url( 'admin-ajax.php' ),
 				'nonce'    => wp_create_nonce( 'storedash_waitlist_submit' ),
 				'strings'  => array(
-					'error_general'   => __( 'An error occurred. Please try again.', 'storedash' ),
-					'error_duplicate' => __( 'You\'re already on the waitlist for this product.', 'storedash' ),
-					'error_email'     => __( 'Please enter a valid email address.', 'storedash' ),
-					'error_name'      => __( 'Please enter your name.', 'storedash' ),
-					'error_variation' => __( 'Please select a variation.', 'storedash' ),
+					'error_general'        => __( 'An error occurred. Please try again.', 'storedash' ),
+					'error_duplicate'      => __( 'You\'re already on the waitlist for this product.', 'storedash' ),
+					'error_email'          => __( 'Please enter a valid email address.', 'storedash' ),
+					'error_name'           => __( 'Please enter your name.', 'storedash' ),
+					'error_variation'      => __( 'Please select a variation.', 'storedash' ),
+					'error_phone_required' => __( 'Please enter your phone number to get a text message.', 'storedash' ),
+					'error_email_required' => __( 'Please enter your email address.', 'storedash' ),
 				),
 			)
 		);

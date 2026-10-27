@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.29.0
+Stable tag: 1.30.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,10 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.30.0 =
+* Back-in-stock form: shoppers can choose to be told by Email, SMS or Both (off by default). Turn it on in Storedash under the waitlist settings. You choose which option the form starts on. Picking SMS or Both shows the phone field and makes it required. SMS-only signups can leave out their email address.
+* Signing up again for the same product now updates how the shopper wants to be told (and their phone number) instead of being ignored.
 
 = 1.29.0 =
 * Checkout funnel counter (off by default): counts cart, checkout and order sessions per day and sends hourly totals to Storedash. No personal data.

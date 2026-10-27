@@ -232,9 +232,10 @@ class StoreDash_Activator {
             store_id BIGINT UNSIGNED NOT NULL,
             product_id BIGINT UNSIGNED NOT NULL,
             variation_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
-            customer_email VARCHAR(100) NOT NULL,
+            customer_email VARCHAR(100) DEFAULT NULL,
             customer_name VARCHAR(100) NOT NULL,
             customer_phone VARCHAR(20) DEFAULT NULL,
+            notify_channel VARCHAR(10) NOT NULL DEFAULT 'email',
             language VARCHAR(10) DEFAULT 'en',
             product_sku VARCHAR(100) DEFAULT NULL,
             product_name VARCHAR(255) DEFAULT NULL,
@@ -264,6 +265,44 @@ class StoreDash_Activator {
 			self::log( 'Database error during waitlist table creation: ' . $wpdb->last_error, 'error' );
 		}
 
+		/*
+		 * Belt-and-braces for notify_channel (waitlist db 1.2.0). dbDelta should
+		 * have added it, but its column diff is fragile and a missing column
+		 * would fail EVERY signup insert, so verify and add it directly if not.
+		 */
+		$channel_column = $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+				$table_name,
+				'notify_channel'
+			)
+		);
+		if ( ! $channel_column ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.SchemaChange -- table name from $wpdb->prefix.
+			$wpdb->query( "ALTER TABLE {$table_name} ADD COLUMN notify_channel VARCHAR(10) NOT NULL DEFAULT 'email' AFTER customer_phone" );
+			self::log( 'Added notify_channel column to waitlist table' );
+		}
+
+		/*
+		 * customer_email nullable (waitlist db 1.3.0): SMS-only signups may omit
+		 * it. dbDelta only diffs column TYPES, never nullability, so it cannot
+		 * make this change on existing tables — do it directly, once.
+		 */
+		$email_nullable = $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+				WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s',
+				$table_name,
+				'customer_email'
+			)
+		);
+		if ( 'NO' === $email_nullable ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.SchemaChange -- table name from $wpdb->prefix.
+			$wpdb->query( "ALTER TABLE {$table_name} MODIFY customer_email VARCHAR(100) NULL DEFAULT NULL" );
+			self::log( 'Made waitlist customer_email nullable' );
+		}
+
 		// Migrate existing NULL variation_id values to 0
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Safe DML operation, table name from $wpdb->prefix
 		$wpdb->query( "UPDATE {$table_name} SET variation_id = 0 WHERE variation_id IS NULL" );
@@ -291,8 +330,11 @@ class StoreDash_Activator {
 			self::log( 'Created unique index for waitlist table' );
 		}
 
-		// Store DB version (no autoload - only needed during upgrades)
-		update_option( 'storedash_waitlist_db_version', '1.1.0', false );
+		// Store DB version (no autoload - only needed during upgrades).
+		// 1.2.0: notify_channel (email|sms|both). dbDelta adds the column to
+		// existing tables; NOT NULL DEFAULT backfills old rows as 'email'.
+		// 1.3.0: customer_email nullable (SMS-only signups).
+		update_option( 'storedash_waitlist_db_version', '1.3.0', false );
 	}
 
 	/**

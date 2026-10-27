@@ -27,6 +27,83 @@
 	}
 
 	/**
+	 * Notification channel picked in the Email / SMS / Both choice.
+	 *
+	 * '' when the form has no choice (merchant hasn't enabled it, cached
+	 * HTML from an older build, or the Elementor widget) — the server then
+	 * treats the signup as email-only.
+	 */
+	function getChannel(form) {
+		var checked = form.querySelector('input[name="notify_channel"]:checked');
+		return checked ? checked.value : '';
+	}
+
+	function channelNeedsPhone(channel) {
+		return channel === 'sms' || channel === 'both';
+	}
+
+	// Email is required for 'email' and 'both', and for forms without a
+	// choice (''). Only an SMS-only signup may leave it out.
+	function channelNeedsEmail(channel) {
+		return channel !== 'sms';
+	}
+
+	function getPhoneWrap(phone) {
+		return phone.closest('.storedash-waitlist-phone-field') || phone.parentNode;
+	}
+
+	function getEmailWrap(email) {
+		return email.closest('.storedash-waitlist-email-field') || email.parentNode;
+	}
+
+	/**
+	 * Reflect the channel choice on the email and phone inputs.
+	 *
+	 * Email: email required; phone back to the merchant's own setting
+	 *        (hidden when 'off', otherwise its original optional/required).
+	 * SMS:   phone shown + required; email hidden, not required, not sent.
+	 * Both:  both shown + required.
+	 */
+	function syncChannel(form) {
+		if (!form.querySelector('input[name="notify_channel"]')) return;
+
+		var channel = getChannel(form);
+
+		var email = form.querySelector('input[name="customer_email"]');
+		if (email) {
+			var needsEmail = channelNeedsEmail(channel);
+			email.required = needsEmail;
+			getEmailWrap(email).hidden = !needsEmail;
+		}
+
+		var phone = form.querySelector('input[name="customer_phone"]');
+		if (!phone) return;
+
+		var needsPhone = channelNeedsPhone(channel);
+		var mode = phone.dataset.phoneMode || 'off';
+		var placeholder = needsPhone
+			? (phone.dataset.placeholderSms || phone.dataset.placeholderDefault || '')
+			: (phone.dataset.placeholderDefault || '');
+
+		phone.required = needsPhone || mode === 'required';
+		phone.placeholder = placeholder;
+		phone.setAttribute('aria-label', placeholder);
+
+		if (mode === 'off') {
+			getPhoneWrap(phone).hidden = !needsPhone;
+		}
+	}
+
+	function initChannelChoices() {
+		var forms = document.querySelectorAll('.storedash-waitlist-form-fields');
+		for (var i = 0; i < forms.length; i++) {
+			// Covers back/forward-cache restores, where the browser keeps a
+			// previously picked radio but the phone field starts hidden.
+			syncChannel(forms[i]);
+		}
+	}
+
+	/**
 	 * Lift the modal into the browser top layer.
 	 *
 	 * `position: fixed` is trapped by any ancestor with transform, filter or
@@ -107,8 +184,14 @@
 		var productId     = form.dataset.productId   || (widget && widget.dataset.productId)   || '';
 		var variationId   = form.dataset.variationId  || (widget && widget.dataset.variationId) || 0;
 		var customerName  = (form.querySelector('input[name="customer_name"]')  || {}).value || '';
-		var customerEmail = (form.querySelector('input[name="customer_email"]') || {}).value || '';
-		var customerPhone = (form.querySelector('input[name="customer_phone"]') || {}).value || '';
+		var emailInput    = form.querySelector('input[name="customer_email"]');
+		var phoneInput    = form.querySelector('input[name="customer_phone"]');
+		var channel       = getChannel(form);
+		// Same rule for email: a field hidden by the SMS choice is not sent.
+		var customerEmail = emailInput && !getEmailWrap(emailInput).hidden ? emailInput.value.trim() : '';
+		// A phone field hidden by the channel choice is not part of this
+		// signup — never send a number the shopper can no longer see.
+		var customerPhone = phoneInput && !getPhoneWrap(phoneInput).hidden ? phoneInput.value.trim() : '';
 
 		// Marketing consent (ADR-019). Absent unless the merchant enabled the
 		// checkbox; never gates submission — the back-in-stock notification is
@@ -132,8 +215,23 @@
 			return;
 		}
 
-		if (!customerEmail || !isValidEmail(customerEmail)) {
+		if (!customerEmail && channelNeedsEmail(channel)) {
+			if (channel) {
+				showFieldError(form, msgEl, 'email', '');
+			} else {
+				// No choice on this form: keep the original email-only message.
+				showMessage(msgEl, storedashWaitlist.strings.error_email, 'error');
+			}
+			return;
+		}
+
+		if (customerEmail && !isValidEmail(customerEmail)) {
 			showMessage(msgEl, storedashWaitlist.strings.error_email, 'error');
+			return;
+		}
+
+		if (channelNeedsPhone(channel) && !customerPhone) {
+			showFieldError(form, msgEl, 'phone', '');
 			return;
 		}
 
@@ -157,6 +255,7 @@
 			customer_email: customerEmail,
 			customer_phone: customerPhone,
 			marketing_optin: marketingOptin,
+			notify_channel: channel || 'email',
 			_ts: tsInput ? tsInput.value : '',
 			_tsh: tshInput ? tshInput.value : ''
 		});
@@ -178,11 +277,18 @@
 				if (response.success) {
 					showMessage(msgEl, successMsg || response.data.message, 'success');
 					form.reset();
+					// `reset` restores the default radio (Email) after this
+					// tick; re-sync the phone field once it has.
+					setTimeout(function () { syncChannel(form); }, 0);
 
 					var modal = form.closest('.storedash-waitlist-modal');
 					if (modal && modal.classList.contains('storedash-waitlist-modal--visible')) {
 						setTimeout(function () { closeModal(modal); }, 2000);
 					}
+				} else if (response.data && response.data.code === 'phone_required') {
+					showFieldError(form, msgEl, 'phone', response.data.message);
+				} else if (response.data && response.data.code === 'email_required') {
+					showFieldError(form, msgEl, 'email', response.data.message);
 				} else {
 					showMessage(
 						msgEl,
@@ -198,6 +304,26 @@
 				button.disabled = false;
 				button.textContent = originalText;
 			});
+	}
+
+	/**
+	 * Show a "this field is required" error and reveal + focus the field.
+	 *
+	 * @param {string} field 'phone' or 'email'.
+	 */
+	function showFieldError(form, msgEl, field, serverMessage) {
+		var isPhone = field === 'phone';
+		var message = isPhone
+			? form.dataset.errorPhoneRequired || serverMessage || storedashWaitlist.strings.error_phone_required
+			: form.dataset.errorEmailRequired || serverMessage || storedashWaitlist.strings.error_email_required;
+
+		showMessage(msgEl, message || storedashWaitlist.strings.error_general, 'error');
+
+		var input = form.querySelector(isPhone ? 'input[name="customer_phone"]' : 'input[name="customer_email"]');
+		if (input) {
+			(isPhone ? getPhoneWrap(input) : getEmailWrap(input)).hidden = false;
+			input.focus();
+		}
 	}
 
 	function updateWidgetVariation(widget, variationId) {
@@ -332,11 +458,19 @@
 			}
 		});
 
+		document.addEventListener('change', function (e) {
+			if (e.target && e.target.name === 'notify_channel') {
+				var form = e.target.closest('.storedash-waitlist-form-fields');
+				if (form) syncChannel(form);
+			}
+		});
+
 		document.addEventListener('keydown', function (e) {
 			if (e.key === 'Escape') closeAllVisibleModals();
 		});
 
 		initVariationListeners();
+		initChannelChoices();
 	}
 
 	if (document.readyState === 'loading') {

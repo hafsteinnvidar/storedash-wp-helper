@@ -105,6 +105,21 @@ class Waitlist_Renderer {
 
 		$consent_enabled = ! empty( $config['consent']['enabled'] );
 
+		/*
+		 * Channel choice (Email / SMS / Both). When on, both inputs are always
+		 * emitted and the script shows/hides them per choice; the initial state
+		 * is rendered here from the merchant's `default_channel` so nothing
+		 * jumps on load. When off, the markup is the plain email-only form.
+		 */
+		$sms_choice      = ! empty( $config['sms_choice_enabled'] );
+		$default_channel = Waitlist_Config::effective_default_channel( $config );
+		$start_phone     = Waitlist_Config::channel_needs_phone( $default_channel );
+		$render_phone    = $sms_choice || Waitlist_Config::FIELD_OFF !== $phone_mode;
+		$phone_hidden    = $sms_choice && Waitlist_Config::FIELD_OFF === $phone_mode && ! $start_phone;
+		$phone_required  = $start_phone || Waitlist_Config::FIELD_REQUIRED === $phone_mode;
+		$phone_label     = self::copy( $config, $start_phone ? 'placeholder_phone_sms' : 'placeholder_phone' );
+		$email_hidden    = ! Waitlist_Config::channel_needs_email( $default_channel );
+
 		$variations = isset( $stock['variations'] ) && is_array( $stock['variations'] )
 			? $stock['variations']
 			: array();
@@ -124,7 +139,11 @@ class Waitlist_Renderer {
 				data-product-id="<?php echo esc_attr( (string) $stock['product_id'] ); ?>"
 				data-variation-id="<?php echo esc_attr( (string) $stock['variation_id'] ); ?>"
 				data-success-message="<?php echo esc_attr( self::copy( $config, 'success_message' ) ); ?>"
-				data-submitting-text="<?php echo esc_attr( self::copy( $config, 'submitting_text' ) ); ?>">
+				data-submitting-text="<?php echo esc_attr( self::copy( $config, 'submitting_text' ) ); ?>"
+				<?php if ( $sms_choice ) : ?>
+					data-error-phone-required="<?php echo esc_attr( self::copy( $config, 'error_phone_required' ) ); ?>"
+					data-error-email-required="<?php echo esc_attr( self::copy( $config, 'error_email_required' ) ); ?>"
+				<?php endif; ?>>
 				<?php wp_nonce_field( 'storedash_waitlist_submit', 'storedash_waitlist_nonce' ); ?>
 
 				<?php if ( ! empty( $variations ) ) : ?>
@@ -150,16 +169,31 @@ class Waitlist_Renderer {
 					</div>
 				<?php endif; ?>
 
-				<div class="storedash-waitlist-field">
-					<input type="email" name="customer_email" class="storedash-waitlist-input"
-						placeholder="<?php echo esc_attr( self::copy( $config, 'placeholder_email' ) ); ?>" required />
-				</div>
+				<?php if ( $sms_choice ) : ?>
+					<?php echo self::render_channel_choice( $config, $default_channel ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 
-				<?php if ( Waitlist_Config::FIELD_OFF !== $phone_mode ) : ?>
+					<div class="storedash-waitlist-field storedash-waitlist-email-field"<?php echo $email_hidden ? ' hidden' : ''; ?>>
+						<input type="email" name="customer_email" class="storedash-waitlist-input" autocomplete="email"
+							placeholder="<?php echo esc_attr( self::copy( $config, 'placeholder_email' ) ); ?>"
+							aria-label="<?php echo esc_attr( self::copy( $config, 'placeholder_email' ) ); ?>"
+							<?php echo $email_hidden ? '' : 'required'; ?> />
+					</div>
+				<?php else : ?>
 					<div class="storedash-waitlist-field">
-						<input type="tel" name="customer_phone" class="storedash-waitlist-input"
-							placeholder="<?php echo esc_attr( self::copy( $config, 'placeholder_phone' ) ); ?>"
-							<?php echo Waitlist_Config::FIELD_REQUIRED === $phone_mode ? 'required' : ''; ?> />
+						<input type="email" name="customer_email" class="storedash-waitlist-input"
+							placeholder="<?php echo esc_attr( self::copy( $config, 'placeholder_email' ) ); ?>" required />
+					</div>
+				<?php endif; ?>
+
+				<?php if ( $render_phone ) : ?>
+					<div class="storedash-waitlist-field storedash-waitlist-phone-field"<?php echo $phone_hidden ? ' hidden' : ''; ?>>
+						<input type="tel" name="customer_phone" class="storedash-waitlist-input" autocomplete="tel"
+							placeholder="<?php echo esc_attr( $phone_label ); ?>"
+							aria-label="<?php echo esc_attr( $phone_label ); ?>"
+							data-phone-mode="<?php echo esc_attr( $phone_mode ); ?>"
+							data-placeholder-default="<?php echo esc_attr( self::copy( $config, 'placeholder_phone' ) ); ?>"
+							data-placeholder-sms="<?php echo esc_attr( self::copy( $config, 'placeholder_phone_sms' ) ); ?>"
+							<?php echo $phone_required ? 'required' : ''; ?> />
 					</div>
 				<?php endif; ?>
 
@@ -205,6 +239,44 @@ class Waitlist_Renderer {
 				<div class="storedash-waitlist-message" style="display:none;"></div>
 			</form>
 		</div>
+		<?php
+
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Render the "How should we tell you?" Email / SMS / Both choice.
+	 *
+	 * A native radio group inside a fieldset/legend, so keyboard (arrow keys)
+	 * and screen-reader semantics come from the browser rather than script.
+	 * Styled as a compact segmented control in the stylesheet. Starts on the
+	 * merchant's `default_channel`.
+	 *
+	 * @param array  $config          Waitlist config.
+	 * @param string $default_channel Pre-checked channel.
+	 * @return string
+	 */
+	private static function render_channel_choice( array $config, string $default_channel ): string {
+		$options = array(
+			Waitlist_Config::CHANNEL_EMAIL => self::copy( $config, 'channel_email' ),
+			Waitlist_Config::CHANNEL_SMS   => self::copy( $config, 'channel_sms' ),
+			Waitlist_Config::CHANNEL_BOTH  => self::copy( $config, 'channel_both' ),
+		);
+
+		ob_start();
+		?>
+		<fieldset class="storedash-waitlist-field storedash-waitlist-channel">
+			<legend class="storedash-waitlist-channel-label"><?php echo esc_html( self::copy( $config, 'label_channel' ) ); ?></legend>
+			<div class="storedash-waitlist-channel-options">
+				<?php foreach ( $options as $value => $label ) : ?>
+					<label class="storedash-waitlist-channel-option">
+						<input type="radio" name="notify_channel" value="<?php echo esc_attr( $value ); ?>"
+							<?php checked( $default_channel, $value ); ?> />
+						<span><?php echo esc_html( $label ); ?></span>
+					</label>
+				<?php endforeach; ?>
+			</div>
+		</fieldset>
 		<?php
 
 		return (string) ob_get_clean();
@@ -268,6 +340,20 @@ class Waitlist_Renderer {
 				return __( 'Phone number (optional)', 'storedash' );
 			case 'placeholder_variation':
 				return __( 'Choose an option', 'storedash' );
+			case 'label_channel':
+				return __( 'How should we tell you?', 'storedash' );
+			case 'channel_email':
+				return __( 'Email', 'storedash' );
+			case 'channel_sms':
+				return __( 'SMS', 'storedash' );
+			case 'channel_both':
+				return __( 'Both', 'storedash' );
+			case 'placeholder_phone_sms':
+				return __( 'Mobile number', 'storedash' );
+			case 'error_phone_required':
+				return __( 'Please enter your phone number to get a text message.', 'storedash' );
+			case 'error_email_required':
+				return __( 'Please enter your email address.', 'storedash' );
 			default:
 				return '';
 		}

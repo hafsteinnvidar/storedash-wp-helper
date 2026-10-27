@@ -80,6 +80,14 @@ class Waitlist_Config {
 	const FIELD_REQUIRED = 'required';
 
 	/**
+	 * Notification channels a shopper can pick. Email is required for
+	 * `email` and `both`; an `sms` signup may omit it (phone becomes identity).
+	 */
+	const CHANNEL_EMAIL = 'email';
+	const CHANNEL_SMS   = 'sms';
+	const CHANNEL_BOTH  = 'both';
+
+	/**
 	 * Cached config for the current request.
 	 *
 	 * @var array|null
@@ -127,6 +135,13 @@ class Waitlist_Config {
 				'placeholder_phone'     => '',
 				'placeholder_variation' => '',
 				'privacy_notice'        => '',
+				'label_channel'         => '',
+				'channel_email'         => '',
+				'channel_sms'           => '',
+				'channel_both'          => '',
+				'placeholder_phone_sms' => '',
+				'error_phone_required'  => '',
+				'error_email_required'  => '',
 			),
 			'fields'             => array(
 				'name'  => self::FIELD_OFF,
@@ -136,6 +151,12 @@ class Waitlist_Config {
 				'enabled' => false,
 				'label'   => '',
 			),
+			// Whether shoppers may choose SMS / Both. Off by default: SMS costs
+			// the merchant money, so the dashboard opts in explicitly.
+			'sms_choice_enabled' => false,
+			// Channel the choice starts on. Ignored while sms_choice_enabled is
+			// off — the form is then email-only.
+			'default_channel'    => self::CHANNEL_EMAIL,
 			'config_hash'        => '',
 			'updated_at'         => '',
 		);
@@ -273,6 +294,14 @@ class Waitlist_Config {
 			$clean['entitled'] = (bool) $raw['entitled'];
 		}
 
+		if ( array_key_exists( 'sms_choice_enabled', $raw ) ) {
+			$clean['sms_choice_enabled'] = (bool) $raw['sms_choice_enabled'];
+		}
+
+		if ( isset( $raw['default_channel'] ) ) {
+			$clean['default_channel'] = self::sanitize_channel( $raw['default_channel'] );
+		}
+
 		if ( isset( $raw['placement_mode'] ) ) {
 			$clean['placement_mode'] = self::MODE_HOOK === $raw['placement_mode']
 				? self::MODE_HOOK
@@ -330,6 +359,62 @@ class Waitlist_Config {
 		}
 
 		return $clean;
+	}
+
+	/**
+	 * Normalise a shopper-supplied notification channel.
+	 *
+	 * Anything unrecognised falls back to email — the one channel that is
+	 * always deliverable, since an email address is mandatory on every entry.
+	 *
+	 * @param mixed $channel Raw channel.
+	 * @return string One of the CHANNEL_* constants.
+	 */
+	public static function sanitize_channel( $channel ): string {
+		$channel = is_string( $channel ) ? strtolower( trim( $channel ) ) : '';
+
+		return in_array( $channel, array( self::CHANNEL_SMS, self::CHANNEL_BOTH ), true )
+			? $channel
+			: self::CHANNEL_EMAIL;
+	}
+
+	/**
+	 * Whether a channel needs a phone number to be deliverable.
+	 *
+	 * @param string $channel Sanitized channel.
+	 * @return bool
+	 */
+	public static function channel_needs_phone( string $channel ): bool {
+		return self::CHANNEL_SMS === $channel || self::CHANNEL_BOTH === $channel;
+	}
+
+	/**
+	 * Whether a channel needs an email address.
+	 *
+	 * @param string $channel Sanitized channel.
+	 * @return bool
+	 */
+	public static function channel_needs_email( string $channel ): bool {
+		return self::CHANNEL_SMS !== $channel;
+	}
+
+	/**
+	 * The channel the storefront form starts on.
+	 *
+	 * Email whenever the choice is switched off, so a stale `default_channel`
+	 * can never hide the email field on an email-only form.
+	 *
+	 * @param array|null $config Config; defaults to the stored one.
+	 * @return string
+	 */
+	public static function effective_default_channel( ?array $config = null ): string {
+		$config = $config ?? self::get();
+
+		if ( empty( $config['sms_choice_enabled'] ) ) {
+			return self::CHANNEL_EMAIL;
+		}
+
+		return self::sanitize_channel( $config['default_channel'] ?? '' );
 	}
 
 	/**

@@ -100,10 +100,13 @@ class Waitlist_API {
 						'default'           => 0,
 						'sanitize_callback' => 'absint',
 					),
+					// Optional only for notify_channel 'sms'; create_entry()
+					// answers 400 `email_required` for email/both.
 					'customer_email'  => array(
-						'required'          => true,
+						'required'          => false,
 						'type'              => 'string',
 						'maxLength'         => 100,
+						'default'           => '',
 						'sanitize_callback' => 'sanitize_email',
 					),
 					'customer_name'   => array(
@@ -119,6 +122,14 @@ class Waitlist_API {
 						'maxLength'         => 20,
 						'default'           => '',
 						'sanitize_callback' => 'sanitize_text_field',
+					),
+					// Not an `enum`: an unknown value degrades to 'email' (the
+					// always-deliverable channel) instead of rejecting a signup.
+					'notify_channel'  => array(
+						'required'          => false,
+						'type'              => 'string',
+						'default'           => 'email',
+						'sanitize_callback' => array( Waitlist_Config::class, 'sanitize_channel' ),
 					),
 					'language'        => array(
 						'required'          => false,
@@ -244,6 +255,7 @@ class Waitlist_API {
                 customer_email,
                 customer_name,
                 customer_phone,
+                notify_channel,
                 language,
                 product_sku,
                 product_name,
@@ -276,9 +288,11 @@ class Waitlist_API {
 					'store_id'             => (int) $entry['store_id'],
 					'product_id'           => (int) $entry['product_id'],
 					'variation_id'         => $entry['variation_id'] ? (int) $entry['variation_id'] : null,
-					'customer_email'       => $entry['customer_email'],
+					// NULL for SMS-only entries — JSON null, never ''.
+					'customer_email'       => '' !== (string) $entry['customer_email'] ? $entry['customer_email'] : null,
 					'customer_name'        => $entry['customer_name'],
 					'customer_phone'       => $entry['customer_phone'],
+					'notify_channel'       => Waitlist_Config::sanitize_channel( $entry['notify_channel'] ),
 					'language'             => $entry['language'],
 					'product_sku'          => $entry['product_sku'],
 					'product_name'         => $entry['product_name'],
@@ -336,6 +350,14 @@ class Waitlist_API {
 	 * than 409: the shopper's intent (be told when it's back) is satisfied
 	 * either way, and an idempotent answer lets the storefront retry a timed-
 	 * out request without surfacing an error for a signup that succeeded.
+	 * A re-signup with a different `notify_channel`/phone updates the pending
+	 * row and answers 200 with `already_registered: true, updated: true`.
+	 *
+	 * Email/Both without an email → 400 `email_required` ('sms' may omit it).
+	 * SMS/Both without a phone → 400 `phone_required` (implausible number →
+	 * 400 `phone_invalid`). Unlike the public AJAX widget, this ingress does
+	 * not gate on `sms_choice_enabled`: the caller is an authenticated
+	 * storefront server that already applies the merchant's settings.
 	 *
 	 * @param \WP_REST_Request $request Request.
 	 * @return \WP_REST_Response|\WP_Error
@@ -362,6 +384,14 @@ class Waitlist_API {
 			return $this->rate_limited();
 		}
 
+		// SMS-only signups have no email to bucket on; the phone is their
+		// identity, so it gets the same per-day cap.
+		$phone_digits = Waitlist_Handler::phone_digits( (string) $request->get_param( 'customer_phone' ) );
+		if ( '' === $email && '' !== $phone_digits
+			&& ! $this->bump_counter( 'sd_wl_rest_ph_' . md5( $phone_digits ), self::LIMIT_EMAIL_DAY[0], self::LIMIT_EMAIL_DAY[1] ) ) {
+			return $this->rate_limited();
+		}
+
 		$result = Waitlist_Handler::create_entry(
 			array(
 				'product_id'      => $request->get_param( 'product_id' ),
@@ -369,6 +399,7 @@ class Waitlist_API {
 				'customer_email'  => $request->get_param( 'customer_email' ),
 				'customer_name'   => $request->get_param( 'customer_name' ),
 				'customer_phone'  => $request->get_param( 'customer_phone' ),
+				'notify_channel'  => $request->get_param( 'notify_channel' ),
 				'language'        => $request->get_param( 'language' ),
 				'marketing_optin' => (bool) $request->get_param( 'marketing_optin' ),
 				// The authenticated user here is the API-key owner (a shop
@@ -385,6 +416,7 @@ class Waitlist_API {
 						'success' => true,
 						'data'    => array(
 							'already_registered' => true,
+							'updated'            => false,
 						),
 					),
 					200
@@ -394,15 +426,18 @@ class Waitlist_API {
 			return $result;
 		}
 
+		$updated = ! empty( $result['updated'] );
+
 		return new \WP_REST_Response(
 			array(
 				'success' => true,
 				'data'    => array(
 					'id'                 => (int) $result['id'],
-					'already_registered' => false,
+					'already_registered' => $updated,
+					'updated'            => $updated,
 				),
 			),
-			201
+			$updated ? 200 : 201
 		);
 	}
 

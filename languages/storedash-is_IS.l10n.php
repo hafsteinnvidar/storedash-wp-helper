@@ -2,7 +2,8 @@
 /**
  * Icelandic translations (WordPress 6.5+ PHP translation file).
  *
- * Covers the shopper- and merchant-facing gift card strings. Loaded by
+ * Covers the shopper- and merchant-facing gift card strings, plus selected
+ * storefront widget strings. Loaded by
  * load_plugin_textdomain() from this folder; WordPress versions before 6.5
  * ignore it and show English.
  *
@@ -63,5 +64,14 @@ return array(
 		'Ready for pickup {date}'                        => 'Hægt að sækja {date}',
 		'Add {amount} more for free shipping'            => 'Bættu {amount} við til að fá fría sendingu',
 		"You've unlocked free shipping"                  => 'Þú hefur fengið fría sendingu',
+		// Back-in-stock waitlist: notification channel choice.
+		'How should we tell you?'                        => 'Hvernig viltu fá að vita?',
+		'Email'                                          => 'Tölvupóstur',
+		'SMS'                                            => 'SMS',
+		'Both'                                           => 'Bæði',
+		'Mobile number'                                  => 'Farsímanúmer',
+		'Please enter your phone number to get a text message.' => 'Sláðu inn símanúmer til að fá SMS.',
+		'Please enter a valid phone number.'             => 'Sláðu inn gilt símanúmer.',
+		'Please enter your email address.'               => 'Sláðu inn netfangið þitt.',
 	),
 );

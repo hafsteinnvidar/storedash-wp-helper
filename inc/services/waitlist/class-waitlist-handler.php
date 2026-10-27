@@ -262,6 +262,18 @@ class Waitlist_Handler {
 			$customer_phone = isset( $_POST['customer_phone'] ) ? sanitize_text_field( wp_unslash( $_POST['customer_phone'] ) ) : '';
 
 			/*
+			 * Channel choice is only honoured when the merchant has switched it
+			 * on. This ingress is public, so without the gate anyone could file
+			 * SMS signups (which cost the merchant money) on a store that never
+			 * offered them. Forms that predate the choice — cached HTML, the
+			 * Elementor widget — send nothing and land on email.
+			 */
+			$notify_channel = Waitlist_Config::CHANNEL_EMAIL;
+			if ( ! empty( Waitlist_Config::get()['sms_choice_enabled'] ) && isset( $_POST['notify_channel'] ) ) {
+				$notify_channel = Waitlist_Config::sanitize_channel( sanitize_key( wp_unslash( $_POST['notify_channel'] ) ) );
+			}
+
+			/*
 			 * Marketing consent (ADR-019) is read here but deliberately plays no
 			 * part in validation. Joining a waitlist is a transactional request;
 			 * the back-in-stock notification must send whether or not the
@@ -278,6 +290,7 @@ class Waitlist_Handler {
 					'customer_email'  => $customer_email,
 					'customer_name'   => $customer_name,
 					'customer_phone'  => $customer_phone,
+					'notify_channel'  => $notify_channel,
 					'marketing_optin' => $marketing_optin,
 					'customer_id'     => get_current_user_id() ?: null,
 					'source'          => 'waitlist_widget',
@@ -290,13 +303,17 @@ class Waitlist_Handler {
 				wp_send_json_error(
 					array(
 						'message' => $result->get_error_message(),
+						// Machine-readable reason so the widget can react (e.g.
+						// focus the phone field on `phone_required`).
+						'code'    => $result->get_error_code(),
 					),
 					$status
 				);
 				return;
 			}
 
-			// Success response
+			// Success response — also for a re-signup that only updated the
+			// shopper's channel/phone: from their side the request succeeded.
 			wp_send_json_success(
 				array(
 					'message' => __( 'Thank you! We\'ll notify you when this product is back in stock.', 'storedash' ),
@@ -334,15 +351,18 @@ class Waitlist_Handler {
 	 *
 	 *     @type int         $product_id      Parent (or simple) product id. Required.
 	 *     @type int         $variation_id    Variation id, 0 for none.
-	 *     @type string      $customer_email  Required.
+	 *     @type string      $customer_email  Required unless the channel is 'sms'; stored as NULL when absent.
 	 *     @type string      $customer_name   Optional; stored as 'Guest' when empty.
-	 *     @type string      $customer_phone  Optional.
+	 *     @type string      $customer_phone  Optional; required when the channel is sms/both.
+	 *     @type string      $notify_channel  Optional 'email' | 'sms' | 'both'; anything else → 'email'.
 	 *     @type string      $language        Optional 2-letter code; defaults to the site locale.
 	 *     @type bool        $marketing_optin Optional; fires a separate opt-in webhook.
 	 *     @type int|null    $customer_id     Optional WP user id for the opt-in record.
 	 *     @type string      $source          Ingress label stored on the row.
 	 * }
-	 * @return array|\WP_Error `{ id: int }` on success; WP_Error carrying `status` in its data.
+	 * @return array|\WP_Error `{ id: int, updated: bool }` on success — `updated` is true when an
+	 *                         existing pending row only had its channel/phone changed. WP_Error
+	 *                         carries `status` in its data.
 	 */
 	public static function create_entry( array $input ) {
 		$product_id      = isset( $input['product_id'] ) ? absint( $input['product_id'] ) : 0;
@@ -350,6 +370,7 @@ class Waitlist_Handler {
 		$customer_email  = isset( $input['customer_email'] ) ? sanitize_email( $input['customer_email'] ) : '';
 		$customer_name   = isset( $input['customer_name'] ) ? sanitize_text_field( $input['customer_name'] ) : '';
 		$customer_phone  = isset( $input['customer_phone'] ) ? sanitize_text_field( $input['customer_phone'] ) : '';
+		$notify_channel  = Waitlist_Config::sanitize_channel( $input['notify_channel'] ?? '' );
 		$marketing_optin = ! empty( $input['marketing_optin'] );
 		$customer_id     = ! empty( $input['customer_id'] ) ? (int) $input['customer_id'] : null;
 		$source          = isset( $input['source'] ) ? sanitize_key( $input['source'] ) : 'waitlist_widget';
@@ -363,7 +384,7 @@ class Waitlist_Handler {
 		// $wpdb->insert() would otherwise fail on overlong input and surface as
 		// a generic 500 instead of a validation error.
 		$customer_name  = mb_substr( $customer_name, 0, 100 );
-		$customer_phone = mb_substr( $customer_phone, 0, 20 );
+		$customer_phone = trim( mb_substr( $customer_phone, 0, 20 ) );
 
 		if ( ! $product_id ) {
 			return new \WP_Error(
@@ -373,12 +394,45 @@ class Waitlist_Handler {
 			);
 		}
 
-		if ( ! is_email( $customer_email ) || mb_strlen( $customer_email ) > 100 ) {
+		/*
+		 * Email is the identity for `email` and `both`. An `sms` signup may omit
+		 * it — the phone is then the identity — but an email that IS given must
+		 * still be valid, whatever the channel.
+		 */
+		if ( '' === $customer_email && Waitlist_Config::channel_needs_email( $notify_channel ) ) {
+			return new \WP_Error(
+				'email_required',
+				__( 'Please enter your email address.', 'storedash' ),
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( '' !== $customer_email && ( ! is_email( $customer_email ) || mb_strlen( $customer_email ) > 100 ) ) {
 			return new \WP_Error(
 				'storedash_waitlist_invalid_email',
 				__( 'Please enter a valid email address.', 'storedash' ),
 				array( 'status' => 400 )
 			);
+		}
+
+		// Email stays mandatory for every channel (identity + dedupe); SMS and
+		// Both additionally need a number the backend can actually text.
+		if ( Waitlist_Config::channel_needs_phone( $notify_channel ) ) {
+			if ( '' === $customer_phone ) {
+				return new \WP_Error(
+					'phone_required',
+					__( 'Please enter your phone number to get a text message.', 'storedash' ),
+					array( 'status' => 400 )
+				);
+			}
+
+			if ( ! self::is_plausible_phone( $customer_phone ) ) {
+				return new \WP_Error(
+					'phone_invalid',
+					__( 'Please enter a valid phone number.', 'storedash' ),
+					array( 'status' => 400 )
+				);
+			}
 		}
 
 		// Verify product exists and is out of stock
@@ -420,15 +474,6 @@ class Waitlist_Handler {
 			);
 		}
 
-		// Check for duplicates
-		if ( self::check_duplicate( $product_id, $variation_id, $customer_email ) ) {
-			return new \WP_Error(
-				'storedash_waitlist_duplicate',
-				__( 'You\'re already on the waitlist for this product.', 'storedash' ),
-				array( 'status' => 409 )
-			);
-		}
-
 		// Prepare data
 		$store_id = get_option( 'woodash_store_id', 0 );
 
@@ -457,17 +502,96 @@ class Waitlist_Handler {
 			$variation_attributes = ! empty( $readable ) ? wp_json_encode( $readable ) : null;
 		}
 
-		// Insert into database
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'storedash_product_waitlist';
 
+		/*
+		 * Already waiting? A re-signup is how a shopper changes HOW they want to
+		 * hear (e.g. switches to SMS), so apply a changed channel/phone to the
+		 * pending row instead of dropping it. Nothing changed → the usual 409.
+		 *
+		 * Email-less (SMS-only) signups are matched on phone digits instead,
+		 * against other email-less pending rows only — a phone never merges
+		 * into a row that carries someone's email.
+		 */
+		$existing = '' !== $customer_email
+			? self::find_pending_entry( $product_id, $variation_id, $customer_email )
+			: self::find_pending_phone_entry( $product_id, $variation_id, $customer_phone );
+		if ( $existing ) {
+			$existing_channel = Waitlist_Config::sanitize_channel( $existing['notify_channel'] ?? '' );
+			$existing_phone   = (string) ( $existing['customer_phone'] ?? '' );
+			// An empty phone on re-signup never wipes a number we already hold.
+			$next_phone = '' !== $customer_phone ? $customer_phone : $existing_phone;
+
+			if ( $existing_channel === $notify_channel && $next_phone === $existing_phone ) {
+				return new \WP_Error(
+					'storedash_waitlist_duplicate',
+					__( 'You\'re already on the waitlist for this product.', 'storedash' ),
+					array( 'status' => 409 )
+				);
+			}
+
+			$updated = $wpdb->update(
+				$table_name,
+				array(
+					'notify_channel' => $notify_channel,
+					'customer_phone' => '' !== $next_phone ? $next_phone : null,
+					'updated_at'     => current_time( 'mysql' ),
+				),
+				array(
+					'id'     => (int) $existing['id'],
+					'status' => 'pending',
+				),
+				array( '%s', '%s', '%s' ),
+				array( '%d', '%s' )
+			);
+
+			if ( false === $updated ) {
+				\StoreDash_Helpers::log_message( 'Waitlist: Channel update failed - ' . $wpdb->last_error );
+				return new \WP_Error(
+					'storedash_waitlist_db_error',
+					__( 'Failed to save your request. Please try again.', 'storedash' ),
+					array( 'status' => 500 )
+				);
+			}
+
+			// Re-send the entry so Supabase picks up the change. The receiver
+			// upserts on the pending row and overwrites name/language too, so
+			// those come from the stored row, not this request.
+			self::trigger_waitlist_webhook(
+				self::webhook_entry_data(
+					array(
+						'id'                   => (int) $existing['id'],
+						'store_id'             => $existing['store_id'],
+						'product_id'           => $product_id,
+						'variation_id'         => $variation_id,
+						'customer_email'       => $customer_email,
+						'customer_name'        => (string) $existing['customer_name'],
+						'customer_phone'       => $next_phone,
+						'notify_channel'       => $notify_channel,
+						'language'             => (string) $existing['language'],
+						'product_sku'          => $product_sku,
+						'product_name'         => $product_name,
+						'variation_attributes' => $variation_attributes,
+					)
+				)
+			);
+
+			return array(
+				'id'      => (int) $existing['id'],
+				'updated' => true,
+			);
+		}
+
+		// Insert into database
 		$data = array(
 			'store_id'             => $store_id,
 			'product_id'           => $product_id,
 			'variation_id'         => $variation_id ? (int) $variation_id : 0,
-			'customer_email'       => $customer_email,
+			'customer_email'       => '' !== $customer_email ? $customer_email : null,
 			'customer_name'        => $customer_name ? $customer_name : 'Guest',
 			'customer_phone'       => $customer_phone ? $customer_phone : null,
+			'notify_channel'       => $notify_channel,
 			'language'             => $language,
 			'product_sku'          => $product_sku,
 			'product_name'         => $product_name,
@@ -505,19 +629,21 @@ class Waitlist_Handler {
 
 		// Trigger webhook (non-blocking)
 		self::trigger_waitlist_webhook(
-			array(
-				'id'                   => $waitlist_id,
-				'store_id'             => $store_id,
-				'product_id'           => $product_id,
-				'variation_id'         => $variation_id ? $variation_id : null,
-				'customer_email'       => $customer_email,
-				'customer_name'        => $customer_name ? $customer_name : 'Guest',
-				'customer_phone'       => $customer_phone ? $customer_phone : null,
-				'language'             => $language,
-				'product_sku'          => $product_sku,
-				'product_name'         => $product_name,
-				'variation_attributes' => $variation_attributes ? json_decode( $variation_attributes, true ) : null,
-				'created_at'           => current_time( 'c' ),
+			self::webhook_entry_data(
+				array(
+					'id'                   => $waitlist_id,
+					'store_id'             => $store_id,
+					'product_id'           => $product_id,
+					'variation_id'         => $variation_id,
+					'customer_email'       => $customer_email,
+					'customer_name'        => $customer_name,
+					'customer_phone'       => $customer_phone,
+					'notify_channel'       => $notify_channel,
+					'language'             => $language,
+					'product_sku'          => $product_sku,
+					'product_name'         => $product_name,
+					'variation_attributes' => $variation_attributes,
+				)
 			)
 		);
 
@@ -532,7 +658,8 @@ class Waitlist_Handler {
 		 * `signup_widget`) so merchants can tell a waitlist consent apart from
 		 * the newsletter signup widget when targeting automations and lists.
 		 */
-		if ( $marketing_optin && class_exists( '\StoreDash\Services\Optin\Opt_In_Handler' ) ) {
+		// Marketing opt-in is an email list record; nothing to record without one.
+		if ( $marketing_optin && '' !== $customer_email && class_exists( '\StoreDash\Services\Optin\Opt_In_Handler' ) ) {
 			\StoreDash\Services\Optin\Opt_In_Handler::send_optin_webhook(
 				array(
 					'email'       => $customer_email,
@@ -542,31 +669,145 @@ class Waitlist_Handler {
 			);
 		}
 
-		return array( 'id' => $waitlist_id );
+		return array(
+			'id'      => $waitlist_id,
+			'updated' => false,
+		);
 	}
 
 	/**
-	 * Check for duplicate entries
+	 * Shape one entry for the `waitlist.created` webhook `data` object.
+	 *
+	 * Single builder for both the new-entry and changed-channel paths, so the
+	 * storedash-sync receiver (internal/webhooks/waitlist.go) always gets the
+	 * same keys.
+	 *
+	 * @param array $entry Entry values; variation_attributes as a JSON string or null.
+	 * @return array
 	 */
-	private static function check_duplicate( $product_id, $variation_id, $email ) {
+	private static function webhook_entry_data( array $entry ): array {
+		$variation_id = (int) $entry['variation_id'];
+		$attributes   = $entry['variation_attributes'];
+
+		return array(
+			'id'                   => (int) $entry['id'],
+			'store_id'             => $entry['store_id'],
+			'product_id'           => (int) $entry['product_id'],
+			'variation_id'         => $variation_id ? $variation_id : null,
+			// JSON null, never '', for SMS-only entries.
+			'customer_email'       => '' !== (string) $entry['customer_email'] ? $entry['customer_email'] : null,
+			'customer_name'        => '' !== (string) $entry['customer_name'] ? $entry['customer_name'] : 'Guest',
+			'customer_phone'       => '' !== (string) $entry['customer_phone'] ? $entry['customer_phone'] : null,
+			'notify_channel'       => Waitlist_Config::sanitize_channel( $entry['notify_channel'] ),
+			'language'             => $entry['language'],
+			'product_sku'          => $entry['product_sku'],
+			'product_name'         => $entry['product_name'],
+			'variation_attributes' => $attributes ? json_decode( $attributes, true ) : null,
+			'created_at'           => current_time( 'c' ),
+		);
+	}
+
+	/**
+	 * Whether a phone string could plausibly receive an SMS.
+	 *
+	 * Deliberately loose — the sending backend owns real number validation
+	 * and country formatting. This only stops obvious junk ("n/a", "123")
+	 * from being stored as an SMS destination.
+	 *
+	 * @param string $phone Sanitized phone.
+	 * @return bool
+	 */
+	private static function is_plausible_phone( string $phone ): bool {
+		$normalised = preg_replace( '/[\s().\-]/', '', $phone );
+
+		return (bool) preg_match( '/^\+?\d{6,15}$/', (string) $normalised );
+	}
+
+	/**
+	 * Find the shopper's pending entry for a product/variation, if any.
+	 *
+	 * @param int    $product_id   Product id.
+	 * @param int    $variation_id Variation id (0 for none).
+	 * @param string $email        Customer email.
+	 * @return array|null Row (ARRAY_A) or null.
+	 */
+	private static function find_pending_entry( $product_id, $variation_id, $email ) {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'storedash_product_waitlist';
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe ($wpdb->prefix + constant)
-		$count = $wpdb->get_var(
+		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM $table_name
+				"SELECT id, store_id, customer_name, customer_phone, notify_channel, language
+            FROM $table_name
             WHERE product_id = %d
             AND COALESCE(variation_id, 0) = %d
             AND customer_email = %s
-            AND status = 'pending'",
+            AND status = 'pending'
+            ORDER BY id ASC
+            LIMIT 1",
 				$product_id,
 				$variation_id,
 				$email
-			)
+			),
+			ARRAY_A
 		);
 
-		return $count > 0;
+		return is_array( $row ) ? $row : null;
+	}
+
+	/**
+	 * Find an email-less pending entry for a product/variation by phone.
+	 *
+	 * Compares digits only, so "+354 555-1234" and "3545551234" are the same
+	 * shopper. Rows that carry an email are deliberately excluded: those are
+	 * keyed by email, and a typed-in phone must not hijack them.
+	 *
+	 * @param int    $product_id   Product id.
+	 * @param int    $variation_id Variation id (0 for none).
+	 * @param string $phone        Sanitized phone.
+	 * @return array|null Row (ARRAY_A) or null.
+	 */
+	private static function find_pending_phone_entry( $product_id, $variation_id, $phone ) {
+		$digits = self::phone_digits( $phone );
+		if ( '' === $digits ) {
+			return null;
+		}
+
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'storedash_product_waitlist';
+
+		// Strip exactly the separators is_plausible_phone() allows, plus '+'.
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe ($wpdb->prefix + constant)
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, store_id, customer_name, customer_phone, notify_channel, language
+            FROM $table_name
+            WHERE product_id = %d
+            AND COALESCE(variation_id, 0) = %d
+            AND customer_email IS NULL
+            AND status = 'pending'
+            AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(customer_phone, ' ', ''), '-', ''), '.', ''), '(', ''), ')', ''), '+', '') = %s
+            ORDER BY id ASC
+            LIMIT 1",
+				$product_id,
+				$variation_id,
+				$digits
+			),
+			ARRAY_A
+		);
+
+		return is_array( $row ) ? $row : null;
+	}
+
+	/**
+	 * Digits of a phone number, for comparison.
+	 *
+	 * @param string $phone Phone.
+	 * @return string
+	 */
+	public static function phone_digits( string $phone ): string {
+		return (string) preg_replace( '/\D/', '', $phone );
 	}
 
 	/**
@@ -701,7 +942,7 @@ class Waitlist_Handler {
 		);
 
 		// Log for debugging
-		\StoreDash_Helpers::debug_log( 'Waitlist: Webhook triggered for ' . $data['customer_email'] );
+		\StoreDash_Helpers::debug_log( 'Waitlist: Webhook triggered for entry ' . (int) $data['id'] );
 	}
 }
 
