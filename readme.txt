@@ -144,7 +144,7 @@ Your use of these services is subject to the Storedash Terms of Service
 == Changelog ==
 
 = 1.30.0 =
-* Back-in-stock form: shoppers can choose to be told by Email, SMS or Both (off by default). Turn it on in Storedash under the waitlist settings. You choose which option the form starts on. Picking SMS or Both shows the phone field and makes it required. SMS-only signups can leave out their email address.
+* Back-in-stock form: shoppers can choose to be told by Email, SMS or Both (off by default). Turn it on in Storedash under Settings › SMS › Back in stock. You choose which option the form starts on. Picking SMS or Both shows the phone field and makes it required. SMS-only signups can leave out their email address.
 * Signing up again for the same product now updates how the shopper wants to be told (and their phone number) instead of being ignored.
 
 = 1.29.0 =
