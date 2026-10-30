@@ -224,7 +224,11 @@ class Waitlist_Renderer {
 					?>
 					<label class="storedash-waitlist-consent">
 						<input type="checkbox" name="marketing_optin" value="1" />
-						<span><?php echo esc_html( self::copy( $config, 'consent_label' ) ); ?></span>
+						<span
+							data-label-email="<?php echo esc_attr( self::copy( $config, 'consent_label' ) ); ?>"
+							data-label-sms="<?php echo esc_attr( self::copy( $config, 'consent_label_sms' ) ); ?>"
+							data-label-both="<?php echo esc_attr( self::copy( $config, 'consent_label_both' ) ); ?>"
+						><?php echo esc_html( self::consent_label_for( $config, $sms_choice ? $default_channel : Waitlist_Config::CHANNEL_EMAIL ) ); ?></span>
 					</label>
 				<?php endif; ?>
 
@@ -295,6 +299,25 @@ class Waitlist_Renderer {
 	 * @param string $key    Copy key.
 	 * @return string
 	 */
+	/**
+	 * Consent wording for a channel: the box means "market to me on the
+	 * channel(s) I picked", so Email / SMS / Both each read differently.
+	 *
+	 * @param array  $config  Waitlist config.
+	 * @param string $channel One of Waitlist_Config::CHANNEL_*.
+	 * @return string
+	 */
+	public static function consent_label_for( array $config, string $channel ): string {
+		switch ( $channel ) {
+			case Waitlist_Config::CHANNEL_SMS:
+				return self::copy( $config, 'consent_label_sms' );
+			case Waitlist_Config::CHANNEL_BOTH:
+				return self::copy( $config, 'consent_label_both' );
+			default:
+				return self::copy( $config, 'consent_label' );
+		}
+	}
+
 	public static function copy( array $config, string $key ): string {
 		if ( 'consent_label' === $key ) {
 			$custom = trim( (string) ( $config['consent']['label'] ?? '' ) );
@@ -354,6 +377,10 @@ class Waitlist_Renderer {
 				return __( 'Please enter your phone number to get a text message.', 'storedash' );
 			case 'error_email_required':
 				return __( 'Please enter your email address.', 'storedash' );
+			case 'consent_label_sms':
+				return __( 'Text me about new products and offers', 'storedash' );
+			case 'consent_label_both':
+				return __( 'Email and text me about new products and offers', 'storedash' );
 			default:
 				return '';
 		}

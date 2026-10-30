@@ -356,7 +356,9 @@ class Waitlist_Handler {
 	 *     @type string      $customer_phone  Optional; required when the channel is sms/both.
 	 *     @type string      $notify_channel  Optional 'email' | 'sms' | 'both'; anything else → 'email'.
 	 *     @type string      $language        Optional 2-letter code; defaults to the site locale.
-	 *     @type bool        $marketing_optin Optional; fires a separate opt-in webhook.
+	 *     @type bool        $marketing_optin Optional; fires a separate opt-in webhook per
+	 *                                        channel (e-mail list and/or SMS consent).
+	 *     @type string      $consent_text    Optional; wording shown next to the box (SMS record).
 	 *     @type int|null    $customer_id     Optional WP user id for the opt-in record.
 	 *     @type string      $source          Ingress label stored on the row.
 	 * }
@@ -372,6 +374,7 @@ class Waitlist_Handler {
 		$customer_phone  = isset( $input['customer_phone'] ) ? sanitize_text_field( $input['customer_phone'] ) : '';
 		$notify_channel  = Waitlist_Config::sanitize_channel( $input['notify_channel'] ?? '' );
 		$marketing_optin = ! empty( $input['marketing_optin'] );
+		$consent_text    = isset( $input['consent_text'] ) ? sanitize_text_field( (string) $input['consent_text'] ) : '';
 		$customer_id     = ! empty( $input['customer_id'] ) ? (int) $input['customer_id'] : null;
 		$source          = isset( $input['source'] ) ? sanitize_key( $input['source'] ) : 'waitlist_widget';
 
@@ -658,15 +661,38 @@ class Waitlist_Handler {
 		 * `signup_widget`) so merchants can tell a waitlist consent apart from
 		 * the newsletter signup widget when targeting automations and lists.
 		 */
-		// Marketing opt-in is an email list record; nothing to record without one.
-		if ( $marketing_optin && '' !== $customer_email && class_exists( '\StoreDash\Services\Optin\Opt_In_Handler' ) ) {
-			\StoreDash\Services\Optin\Opt_In_Handler::send_optin_webhook(
-				array(
-					'email'       => $customer_email,
-					'customer_id' => $customer_id,
-					'source'      => 'waitlist_optin',
-				)
-			);
+		/*
+		 * The one checkbox means "market to me on the channel(s) I picked":
+		 * Email → e-mail list, SMS → SMS consent (phone-keyed, separate record
+		 * in Storedash), Both → both. Each half needs its own identifier.
+		 */
+		if ( $marketing_optin && class_exists( '\StoreDash\Services\Optin\Opt_In_Handler' ) ) {
+			if ( Waitlist_Config::channel_needs_email( $notify_channel ) && '' !== $customer_email ) {
+				\StoreDash\Services\Optin\Opt_In_Handler::send_optin_webhook(
+					array(
+						'email'       => $customer_email,
+						'customer_id' => $customer_id,
+						'source'      => 'waitlist_optin',
+					)
+				);
+			}
+			if ( Waitlist_Config::channel_needs_phone( $notify_channel ) && '' !== $customer_phone ) {
+				if ( '' === $consent_text ) {
+					$consent_text = Waitlist_Renderer::consent_label_for( Waitlist_Config::get(), $notify_channel );
+				}
+				\StoreDash\Services\Optin\Opt_In_Handler::send_optin_webhook(
+					array(
+						'email'       => $customer_email,
+						'customer_id' => $customer_id,
+						'source'      => 'waitlist_optin',
+					),
+					\StoreDash\Services\Optin\Opt_In_Handler::SMS_EVENT,
+					array(
+						'phone'        => $customer_phone,
+						'consent_text' => $consent_text,
+					)
+				);
+			}
 		}
 
 		return array(

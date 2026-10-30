@@ -142,6 +142,10 @@ class Waitlist_Config {
 				'placeholder_phone_sms' => '',
 				'error_phone_required'  => '',
 				'error_email_required'  => '',
+				// Consent wording for the SMS / Both choices; `consent.label`
+				// stays the email wording so older dashboards keep working.
+				'consent_label_sms'     => '',
+				'consent_label_both'    => '',
 			),
 			'fields'             => array(
 				'name'  => self::FIELD_OFF,

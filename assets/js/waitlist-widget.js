@@ -76,6 +76,14 @@
 			getEmailWrap(email).hidden = !needsEmail;
 		}
 
+		// The consent box means "market to me on the channel(s) I picked",
+		// so its wording follows the choice.
+		var consentText = form.querySelector('.storedash-waitlist-consent span');
+		if (consentText) {
+			var label = consentText.dataset['label' + (channel === 'sms' ? 'Sms' : channel === 'both' ? 'Both' : 'Email')];
+			if (label) consentText.textContent = label;
+		}
+
 		var phone = form.querySelector('input[name="customer_phone"]');
 		if (!phone) return;
 

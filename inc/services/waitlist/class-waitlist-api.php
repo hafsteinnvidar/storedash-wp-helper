@@ -143,6 +143,14 @@ class Waitlist_API {
 						'type'     => 'boolean',
 						'default'  => false,
 					),
+					// The exact consent wording the storefront showed, kept on
+					// the SMS consent record (custom storefronts have their own copy).
+					'consent_text'    => array(
+						'required'          => false,
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
 					'source'          => array(
 						'required'          => false,
 						'type'              => 'string',
@@ -402,6 +410,7 @@ class Waitlist_API {
 				'notify_channel'  => $request->get_param( 'notify_channel' ),
 				'language'        => $request->get_param( 'language' ),
 				'marketing_optin' => (bool) $request->get_param( 'marketing_optin' ),
+				'consent_text'    => (string) $request->get_param( 'consent_text' ),
 				// The authenticated user here is the API-key owner (a shop
 				// manager), not the shopper — never attach it to the opt-in.
 				'customer_id'     => null,
