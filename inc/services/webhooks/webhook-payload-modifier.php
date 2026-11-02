@@ -28,6 +28,10 @@ class StoreDash_Webhook_Payload_Modifier {
 	 * @return array Modified payload
 	 */
 	public function modify_webhook_payload( $payload, $resource, $resource_id, $webhook_id ) {
+		if ( 'product' === $resource ) {
+			return $this->modify_product_payload( $payload, $resource_id, $webhook_id );
+		}
+
 		// Only modify order payloads
 		if ( $resource !== 'order' ) {
 			return $payload;
@@ -43,6 +47,91 @@ class StoreDash_Webhook_Payload_Modifier {
 		// Add order notes to the payload
 		$payload['notes'] = $this->get_order_notes( $resource_id );
 
+		return $payload;
+	}
+
+	/**
+	 * Variation-only fields copied from WooCommerce's own variations REST shape.
+	 * `image` = the variation's main photo, `gallery_image_ids` = its native
+	 * gallery (WooCommerce 10.x+, absent on older WooCommerce),
+	 * `gallery_images` = this plugin's id → src/alt resolution of that gallery.
+	 */
+	const VARIATION_FIELDS = array( 'image', 'gallery_image_ids', 'gallery_images' );
+
+	/**
+	 * Product webhooks for a VARIATION are built by the products REST
+	 * controller, which has no variation gallery and no singular `image`. The
+	 * StoreDash sync stores that payload as the variation, so its gallery read
+	 * as "unknown" — and a later dashboard edit could replace the real
+	 * WooCommerce gallery. Add the variation fields from WooCommerce's own
+	 * variations controller so the payload matches GET /variations/<id>.
+	 *
+	 * Additive only, StoreDash destinations only, variations only. Any failure
+	 * leaves the payload exactly as WooCommerce built it.
+	 *
+	 * @param mixed      $payload     Webhook payload.
+	 * @param int        $resource_id Product/variation ID.
+	 * @param int|string $webhook_id  Webhook ID.
+	 * @return mixed
+	 */
+	private function modify_product_payload( $payload, $resource_id, $webhook_id ) {
+		if ( ! is_array( $payload ) || ( $payload['type'] ?? '' ) !== 'variation' ) {
+			return $payload;
+		}
+		if ( ! $this->is_storedash_destination( $webhook_id ) ) {
+			return $payload;
+		}
+
+		try {
+			$variation_data = $this->variation_rest_data( $resource_id );
+		} catch ( \Throwable $e ) {
+			return $payload;
+		}
+
+		return self::merge_variation_fields( $payload, $variation_data );
+	}
+
+	/**
+	 * The variation as GET /wc/v3/products/<parent>/variations/<id> returns it
+	 * (filters included, so `gallery_images` is resolved by this plugin).
+	 *
+	 * @param int $variation_id Variation ID.
+	 * @return array Empty when unavailable.
+	 */
+	private function variation_rest_data( $variation_id ) {
+		if ( ! function_exists( 'wc_get_product' ) || ! class_exists( 'WC_REST_Product_Variations_Controller' ) ) {
+			return array();
+		}
+		$variation = wc_get_product( $variation_id );
+		if ( ! $variation || ! is_a( $variation, 'WC_Product_Variation' ) ) {
+			return array();
+		}
+
+		$controller = new WC_REST_Product_Variations_Controller();
+		$request    = new WP_REST_Request( 'GET' );
+		$request->set_param( 'context', 'view' );
+		$response = $controller->prepare_object_for_response( $variation, $request );
+		$data     = is_a( $response, 'WP_REST_Response' ) ? $response->get_data() : $response;
+
+		return is_array( $data ) ? $data : array();
+	}
+
+	/**
+	 * Copy VARIATION_FIELDS that the variations REST shape actually has onto
+	 * the payload. A field this WooCommerce does not return stays absent — on
+	 * older WooCommerce there is no gallery, and "absent" correctly means
+	 * "unknown" to StoreDash rather than a false "empty gallery".
+	 *
+	 * @param array $payload        Webhook payload.
+	 * @param array $variation_data Variations REST data.
+	 * @return array
+	 */
+	public static function merge_variation_fields( array $payload, array $variation_data ) {
+		foreach ( self::VARIATION_FIELDS as $key ) {
+			if ( array_key_exists( $key, $variation_data ) ) {
+				$payload[ $key ] = $variation_data[ $key ];
+			}
+		}
 		return $payload;
 	}
 

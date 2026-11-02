@@ -15,8 +15,8 @@ no build step for the runtime code — PHP + committed `vendor/` ship as-is.
 
 Part of StoreDash (multi-repo). Consumers of this plugin:
 - **storedash-sync** (Go) calls `storedash/v1/*` and receives the outbound webhooks.
-- The **woo-dash** app ships this plugin to merchants via `GET /api/plugin/download`, rebuilding its
-  served copy (`public/storedash-plugin.zip`) from this repo's `composer build-zip`.
+- The **woo-dash** app ships this plugin to merchants via `GET /api/plugin/download`, which redirects
+  to this repo's latest GitHub Release asset (`releases/latest/download/storedash.zip`).
 
 Extracted from the woo-dash monorepo (2026-07); woo-dash expects it cloned as a **sibling**
 `../storedash-helper` for local dev and delegates its plugin build to `scripts/build-zip.sh` here.
@@ -121,8 +121,9 @@ Installed plugins update themselves from GitHub Releases (see "Self-hosted updat
    lint + tests, builds the zip, and publishes a GitHub Release with `storedash.zip` and
    `storedash.json` attached. Every site sees "Update available" within ~12 hours.
    A tag with a suffix (`v1.20.0-beta.1`) is published as a pre-release, which merchants never see.
-4. woo-dash still serves `public/storedash-plugin.zip` for first installs; copy `dist/storedash.zip`
-   there and commit when the first-install copy should move forward.
+4. Nothing to copy into woo-dash: its `/api/plugin/download` redirects to the latest release, so first
+   installs get the new version as soon as the release is published. (`woo-dash/public/plugin/storedash.zip`
+   is only a fallback for when GitHub is unreachable.)
 
 ### Self-hosted updates
 

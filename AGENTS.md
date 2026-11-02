@@ -67,8 +67,8 @@ Notes:
   to test a build on a specific site by installing that release's zip by hand.
 - Do not change the `Update URI` header in `storedash.php` or `MANIFEST_URL` in the updater class
   without a redirect in place — both are baked into every installed copy.
-- woo-dash still serves `public/storedash-plugin.zip` for **first installs**. After a release, copy
-  `dist/storedash.zip` there and commit in woo-dash if new installs should get the new version.
+- First installs need nothing extra: woo-dash's `/api/plugin/download` redirects to the latest release.
+  `woo-dash/public/plugin/storedash.zip` is only a fallback for when GitHub is unreachable.
 
 ## Quick reference
 
