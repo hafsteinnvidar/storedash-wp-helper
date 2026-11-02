@@ -83,4 +83,36 @@ class StoreDash_UpdaterTest extends TestCase {
 		$this->assertSame( array( '2x' => 'https://ok/icon.png' ), $m['icons'] );
 		$this->assertSame( array(), $m['sections'] );
 	}
+
+	public function test_needs_update_entry_only_for_a_newer_unknown_version(): void {
+		$file = 'storedash/storedash.php';
+
+		// Nothing newer than installed → never.
+		$this->assertFalse( StoreDash_Updater::needs_update_entry( false, $file, '1.32.0', '1.32.0' ) );
+		$this->assertFalse( StoreDash_Updater::needs_update_entry( false, $file, '1.32.0', '1.31.0' ) );
+
+		// Newer and core's cache is empty / missing our entry → yes.
+		$this->assertTrue( StoreDash_Updater::needs_update_entry( false, $file, '1.31.0', '1.32.0' ) );
+		$empty = (object) array( 'response' => array() );
+		$this->assertTrue( StoreDash_Updater::needs_update_entry( $empty, $file, '1.31.0', '1.32.0' ) );
+
+		// Core already lists this version → no rewrite.
+		$known = (object) array( 'response' => array( $file => (object) array( 'new_version' => '1.32.0' ) ) );
+		$this->assertFalse( StoreDash_Updater::needs_update_entry( $known, $file, '1.31.0', '1.32.0' ) );
+
+		// Core lists an older update → newer one replaces it.
+		$this->assertTrue( StoreDash_Updater::needs_update_entry( $known, $file, '1.31.0', '1.33.0' ) );
+	}
+
+	public function test_build_update_entry_matches_core_update_uri_shape(): void {
+		$manifest = StoreDash_Updater::normalize_manifest( $this->valid_manifest() );
+		$entry    = StoreDash_Updater::build_update_entry( $manifest, 'storedash/storedash.php', 'storedash' );
+
+		$this->assertSame( 'https://storedash.app/wp-helper', $entry->id );
+		$this->assertSame( 'storedash', $entry->slug );
+		$this->assertSame( 'storedash/storedash.php', $entry->plugin );
+		$this->assertSame( '1.19.0', $entry->new_version );
+		$this->assertSame( $manifest['package'], $entry->package );
+		$this->assertSame( '7.4', $entry->requires_php );
+	}
 }

@@ -39,6 +39,7 @@ class StoreDash_Deactivator {
 			'storedash_purge_customer_tokens',
 			'storedash_credit_expire',
 			'storedash_seo_hourly_flush',
+			'storedash_update_check',
 		);
 
 		foreach ( $cron_jobs as $job ) {

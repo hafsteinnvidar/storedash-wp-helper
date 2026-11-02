@@ -24,6 +24,14 @@
  * network on every admin request (core already throttles, but belt and braces).
  * "Check again" on Dashboard → Updates bypasses the cache.
  *
+ * Faster detection (1.32.0): core only runs its plugin update check about every
+ * 12 hours. An hourly WP-Cron event (`storedash_update_check`) reads the
+ * manifest fresh and, when it names a newer version than core already knows,
+ * adds the update straight into core's `update_plugins` site transient — the
+ * same entry core would build from the `Update URI` filter. Sites then show
+ * "Update available" (and auto-update, if enabled) within about an hour of a
+ * release, without forcing a full wordpress.org check.
+ *
  * @package Storedash
  * @since 1.19.0
  */
@@ -51,6 +59,12 @@ class StoreDash_Updater {
 	const TRANSIENT       = 'storedash_update_manifest';
 	const CACHE_TTL       = 6 * HOUR_IN_SECONDS;
 	const ERROR_CACHE_TTL = 15 * MINUTE_IN_SECONDS;
+
+	/**
+	 * WP-Cron hook for the hourly release check. Cleared on deactivation and
+	 * uninstall (class-storedash-deactivator.php, uninstall.php).
+	 */
+	const CRON_HOOK = 'storedash_update_check';
 
 	/**
 	 * Plugin basename, e.g. `storedash/storedash.php`.
@@ -91,6 +105,103 @@ class StoreDash_Updater {
 		add_filter( 'plugins_api', array( $this, 'filter_plugin_information' ), 10, 3 );
 		add_filter( 'upgrader_pre_download', array( $this, 'verify_package_checksum' ), 10, 4 );
 		add_action( 'upgrader_process_complete', array( $this, 'flush_cache_after_update' ), 10, 2 );
+
+		add_action( self::CRON_HOOK, array( $this, 'run_scheduled_check' ) );
+		add_action( 'init', array( $this, 'schedule_check' ) );
+	}
+
+	/**
+	 * Make sure the hourly release check is scheduled. The first run is spread
+	 * over the hour so many sites do not all ask GitHub at the same minute.
+	 */
+	public function schedule_check(): void {
+		if ( ! function_exists( 'wp_next_scheduled' ) || wp_next_scheduled( self::CRON_HOOK ) ) {
+			return;
+		}
+		wp_schedule_event( time() + wp_rand( 60, HOUR_IN_SECONDS ), 'hourly', self::CRON_HOOK );
+	}
+
+	/**
+	 * Hourly cron: read the manifest fresh and, if it names a version newer than
+	 * both the installed one and what core's update cache already lists, add it
+	 * to core's `update_plugins` transient so the update appears now instead of
+	 * at core's next ~12-hourly check.
+	 */
+	public function run_scheduled_check(): void {
+		$manifest = $this->fetch_manifest();
+		set_transient(
+			self::TRANSIENT,
+			array( 'manifest' => $manifest ),
+			$manifest ? self::CACHE_TTL : self::ERROR_CACHE_TTL
+		);
+		if ( ! $manifest ) {
+			return;
+		}
+
+		$current = get_site_transient( 'update_plugins' );
+		if ( ! self::needs_update_entry( $current, $this->plugin_file, $this->version, $manifest['version'] ) ) {
+			return;
+		}
+
+		if ( ! is_object( $current ) ) {
+			$current = new stdClass();
+		}
+		if ( ! isset( $current->response ) || ! is_array( $current->response ) ) {
+			$current->response = array();
+		}
+		$current->response[ $this->plugin_file ] = self::build_update_entry( $manifest, $this->plugin_file, $this->slug );
+		if ( isset( $current->no_update ) && is_array( $current->no_update ) ) {
+			unset( $current->no_update[ $this->plugin_file ] );
+		}
+		set_site_transient( 'update_plugins', $current );
+	}
+
+	/**
+	 * Whether core's update cache must be told about `$latest`. Pure (no
+	 * WordPress calls) for unit tests.
+	 *
+	 * @param mixed  $current     Core's `update_plugins` site transient.
+	 * @param string $plugin_file Plugin basename.
+	 * @param string $installed   Installed version.
+	 * @param string $latest      Manifest version.
+	 * @return bool
+	 */
+	public static function needs_update_entry( $current, string $plugin_file, string $installed, string $latest ): bool {
+		if ( ! version_compare( $latest, $installed, '>' ) ) {
+			return false;
+		}
+		$known         = is_object( $current ) && isset( $current->response[ $plugin_file ] )
+			? $current->response[ $plugin_file ]
+			: null;
+		$known_version = is_object( $known ) ? (string) ( $known->new_version ?? '' ) : '';
+		return '' === $known_version || version_compare( $latest, $known_version, '>' );
+	}
+
+	/**
+	 * The `update_plugins` response entry, shaped like the one core builds from
+	 * the `update_plugins_{$hostname}` filter. Pure for unit tests.
+	 *
+	 * @param array  $manifest    Normalized manifest.
+	 * @param string $plugin_file Plugin basename.
+	 * @param string $slug        Plugin slug.
+	 * @return object
+	 */
+	public static function build_update_entry( array $manifest, string $plugin_file, string $slug ) {
+		return (object) array(
+			'id'           => 'https://' . self::UPDATE_HOST . '/wp-helper',
+			'slug'         => $slug,
+			'plugin'       => $plugin_file,
+			'new_version'  => $manifest['version'],
+			'url'          => $manifest['homepage'],
+			'package'      => $manifest['package'],
+			'tested'       => $manifest['tested'],
+			'requires'     => $manifest['requires'],
+			'requires_php' => $manifest['requires_php'],
+			'icons'        => $manifest['icons'],
+			'banners'      => $manifest['banners'],
+			'banners_rtl'  => array(),
+			'translations' => array(),
+		);
 	}
 
 	/**

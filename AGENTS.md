@@ -56,7 +56,7 @@ so publishing a release is what makes "Update available" appear on every site.
 5. Watch the `Release` workflow: `gh run list --repo hafsteinnvidar/storedash-wp-helper --workflow=release.yml`.
    It lints, tests, builds `dist/storedash.zip` + `dist/storedash.json`, and publishes the GitHub Release
    with both attached. Confirm at https://github.com/hafsteinnvidar/storedash-wp-helper/releases.
-6. Merchants see the update within ~12 hours (or immediately via Dashboard → Updates → "Check again").
+6. Sites on 1.32.0+ see the update within ~1 hour (hourly `storedash_update_check` cron); older installs within ~12 hours. Immediately via Dashboard → Updates → "Check again".
 
 Notes:
 - If the tag push does not start the workflow (it happens occasionally), delete and re-push the tag:

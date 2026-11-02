@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.31.0
+Stable tag: 1.32.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,10 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.32.0 =
+* Variation photos: when you add or change a variation in WooCommerce, Storedash now receives its main photo and photo gallery right away, so editing that variation in Storedash keeps all of its gallery photos.
+* Updates: the plugin now checks for new versions every hour, so new releases show up within about an hour instead of up to 12 hours.
 
 = 1.31.0 =
 * Back-in-stock form: the marketing checkbox now follows the shopper's choice. Email → joins your e-mail list, SMS → gives SMS marketing consent, Both → both. The wording changes with the choice ("Email me…", "Text me…", "Email and text me…") and can be customised from Storedash.
