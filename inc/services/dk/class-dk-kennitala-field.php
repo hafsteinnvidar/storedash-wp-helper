@@ -207,7 +207,8 @@ class DK_Kennitala_Field {
 			return;
 		}
 		$required = DK_Config::kennitala_required() ? 'true' : 'false';
-		$optional = __( '(optional)', 'woocommerce' );
+		// WooCommerce's own string on purpose: must match the "(optional)" WC prints on the field label (and its translation), which the script swaps in and out.
+		$optional = __( '(optional)', 'woocommerce' ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 		// phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedScript -- tiny inline toggle, no external file.
 		echo '<script>(function(){' .
 			'var row=document.getElementById("billing_kennitala_field");if(!row){return;}' .

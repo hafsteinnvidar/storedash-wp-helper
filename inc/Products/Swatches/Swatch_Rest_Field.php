@@ -414,14 +414,13 @@ class Swatch_Rest_Field {
 
 		$previous = get_posts(
 			array(
-				'post_type'        => 'attachment',
-				'post_status'      => 'inherit',
-				'posts_per_page'   => 1,
-				'fields'           => 'ids',
-				'no_found_rows'    => true,
-				'suppress_filters' => true,
-				'meta_key'         => '_source_url', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
-				'meta_value'       => $url, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				'post_type'      => 'attachment',
+				'post_status'    => 'inherit',
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+				'no_found_rows'  => true, // get_posts() already defaults suppress_filters to true.
+				'meta_key'       => '_source_url', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				'meta_value'     => $url, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 			)
 		);
 		if ( ! empty( $previous ) ) {

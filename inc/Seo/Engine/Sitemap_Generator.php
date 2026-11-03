@@ -932,7 +932,7 @@ class Sitemap_Generator {
 				'fields'                 => 'ids',
 				'no_found_rows'          => true,
 				'ignore_sticky_posts'    => true,
-				'suppress_filters'       => true,
+				'suppress_filters'       => true, // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.SuppressFilters_suppress_filters -- raw published-ID list; other plugins' query filters must not hide or add rows.
 				'update_post_meta_cache' => false,
 				'update_post_term_cache' => false,
 			)

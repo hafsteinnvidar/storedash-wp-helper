@@ -464,7 +464,7 @@ class Seo_Migrate_Controller extends Abstract_Seo_Controller {
 				'fields'              => 'ids',
 				'no_found_rows'       => true,
 				'ignore_sticky_posts' => true,
-				'suppress_filters'    => true,
+				'suppress_filters'    => true, // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.SuppressFilters_suppress_filters -- migration must see every row, unfiltered by other plugins.
 			)
 		);
 		$ids   = array_map( 'intval', $query->posts );

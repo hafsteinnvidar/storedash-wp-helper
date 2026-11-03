@@ -1,7 +1,18 @@
 <?php
 /**
- * DK Legacy Settings REST Controller
+ * DK Legacy Settings REST Controller.
  *
+ * @package StoreDash\Services\DK
+ * @since   1.25.0
+ */
+
+namespace StoreDash\Services\DK;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/*
  * Read-only export of the DKSync plugin's settings so the Storedash DK settings
  * page can offer "Import from DKSync": the merchant's existing payment-gateway,
  * shipping and salesperson mappings are prefilled, reviewed and saved in
@@ -56,16 +67,7 @@
  *   under `_transient_*` names and are not matched.
  *
  * Cost when unused: one `rest_api_init` callback that registers the route.
- *
- * @package StoreDash\Services\DK
- * @since   1.25.0
  */
-
-namespace StoreDash\Services\DK;
-
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
 
 /**
  * DK Legacy Settings Controller Class
