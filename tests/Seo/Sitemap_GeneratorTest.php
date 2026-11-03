@@ -93,6 +93,17 @@ class Seo_Test_Sitemap extends Sitemap_Generator {
 	protected function redirect_to_index(): void {
 		++$this->redirected;
 	}
+
+	/** @var int */
+	public $stylesheets = 0;
+
+	protected function output_stylesheet(): void {
+		++$this->stylesheets;
+	}
+
+	public function decorated_index(): string {
+		return $this->decorate( $this->index_xml() );
+	}
 }
 
 /**
@@ -534,36 +545,120 @@ class Sitemap_GeneratorTest extends TestCase {
 	}
 
 	/**
-	 * @dataProvider core_sitemap_cases
+	 * @dataProvider request_cases
 	 */
-	public function test_is_core_sitemap_request( string $uri, string $home_path, bool $expected ) {
-		$this->assertSame( $expected, Sitemap_Generator::is_core_sitemap_request( $uri, $home_path ) );
+	public function test_classify_request( string $uri, string $home_path, string $expected ) {
+		$this->assertSame( $expected, Sitemap_Generator::classify_request( $uri, $home_path ) );
 	}
 
-	public function core_sitemap_cases(): array {
+	public function request_cases(): array {
+		$legacy = Sitemap_Generator::REQUEST_LEGACY;
+		$alias  = Sitemap_Generator::REQUEST_INDEX_ALIAS;
+		$xsl    = Sitemap_Generator::REQUEST_STYLESHEET;
 		return array(
-			array( '/wp-sitemap.xml', '/', true ),
-			array( '/wp-sitemap.xml?x=1', '', true ),
-			array( '/wp-sitemap-posts-product-1.xml', '/', true ),
-			array( '/wp-sitemap-index.xsl', '/', false ),
-			array( '/shop/wp-sitemap.xml', '/shop/', true ),
-			array( '/wp-sitemap.xml', '/shop', false ),
-			array( '/sitemap.xml', '/', false ),
-			array( '/product/wp-sitemap.xml', '/', false ),
+			// WP core.
+			array( '/wp-sitemap.xml', '/', $legacy ),
+			array( '/wp-sitemap.xml?x=1', '', $legacy ),
+			array( '/wp-sitemap-posts-product-1.xml', '/', $legacy ),
+			array( '/wp-sitemap-index.xsl', '/', '' ),
+			array( '/shop/wp-sitemap.xml', '/shop/', $legacy ),
+			array( '/wp-sitemap.xml', '/shop', '' ),
+			array( '/product/wp-sitemap.xml', '/', '' ),
+			// Yoast / Rank Math.
+			array( '/sitemap_index.xml', '/', $alias ),
+			array( '/SITEMAP_INDEX.XML?foo', '/', $alias ),
+			array( '/shop/sitemap_index.xml', '/shop/', $alias ),
+			array( '/sitemap_index.xml', '/shop/', '' ),
+			array( '/product-sitemap.xml', '/', $legacy ),
+			array( '/product-sitemap2.xml', '/', $legacy ),
+			array( '/product_cat-sitemap.xml', '/', $legacy ),
+			array( '/page-sitemap.xml', '/', $legacy ),
+			array( '/main-sitemap.xsl', '/', '' ),
+			array( '/sitemap.xsl', '/', '' ),
+			// SEOPress.
+			array( '/sitemaps.xml', '/', $legacy ),
+			array( '/sitemaps/product-sitemap1.xml', '/', $legacy ),
+			// Stylesheet.
+			array( '/sitemap.css', '/', $xsl ),
+			array( '/shop/sitemap.css', '/shop/', $xsl ),
+			// Ours (served by rewrite rules) + normal pages: untouched.
+			array( '/sitemap.xml', '/', '' ),
+			array( '/sitemap-products-1.xml', '/', '' ),
+			array( '/vefverslun/sony-a7/', '/', '' ),
+			array( '/product-sitemap/', '/', '' ),
 		);
 	}
 
-	public function test_core_sitemap_url_redirects_to_ours() {
-		$g                      = $this->small();
-		$_SERVER['REQUEST_URI'] = '/wp-sitemap.xml';
-		$g->maybe_render();
-		$this->assertSame( 1, $g->redirected );
+	public function test_old_sitemap_urls_redirect_to_ours() {
+		$g = $this->small();
+		foreach ( array( '/wp-sitemap.xml', '/product-sitemap.xml', '/sitemaps.xml' ) as $i => $uri ) {
+			$_SERVER['REQUEST_URI'] = $uri;
+			$g->maybe_render();
+			$this->assertSame( $i + 1, $g->redirected, $uri );
+		}
 		$this->assertNull( $g->sent );
 
 		$_SERVER['REQUEST_URI'] = '/about/';
 		$g->maybe_render();
-		$this->assertSame( 1, $g->redirected, 'other URLs untouched' );
+		$this->assertSame( 3, $g->redirected, 'other URLs untouched' );
+		$this->assertNull( $g->sent );
 		unset( $_SERVER['REQUEST_URI'] );
+	}
+
+	public function test_sitemap_index_alias_serves_the_same_index() {
+		$g                      = $this->small();
+		$_SERVER['REQUEST_URI'] = '/sitemap_index.xml';
+		$g->maybe_render();
+		unset( $_SERVER['REQUEST_URI'] );
+
+		$this->assertSame( 0, $g->redirected, 'served directly, no redirect' );
+		$this->assertNotNull( $g->sent );
+		$this->assertStringContainsString( '<sitemapindex', $g->sent );
+		$this->assertStringContainsString( '<loc>https://shop.test/sitemap-products-1.xml</loc>', $g->sent );
+		$this->assertSame( $g->sent, $g->decorated_index(), 'identical to /sitemap.xml' );
+	}
+
+	public function test_stylesheet_url_serves_the_stylesheet() {
+		$g                      = $this->small();
+		$_SERVER['REQUEST_URI'] = '/sitemap.css';
+		$g->maybe_render();
+		unset( $_SERVER['REQUEST_URI'] );
+		$this->assertSame( 1, $g->stylesheets );
+		$this->assertNull( $g->sent );
+	}
+
+	public function test_served_sitemaps_carry_the_stylesheet_but_cache_stays_plain() {
+		$g                                       = $this->small();
+		$GLOBALS['__seo_query_vars']['storedash_sitemap']      = 'products';
+		$GLOBALS['__seo_query_vars']['storedash_sitemap_page'] = 1;
+		$g->maybe_render();
+
+		$lines = explode( "\n", (string) $g->sent );
+		$this->assertSame( '<?xml version="1.0" encoding="UTF-8"?>', $lines[0] );
+		$this->assertSame( '<?xml-stylesheet type="text/css" href="/sitemap.css"?>', $lines[1] );
+		$this->assertSame( '<!-- XML sitemap generated by Storedash -->', $lines[2] );
+		$this->assertStringStartsWith( '<urlset', $lines[3] );
+
+		$cached = $GLOBALS['__seo_transients']['storedash_sitemap_products_1'] ?? '';
+		$cached = is_array( $cached ) ? ( $cached['value'] ?? '' ) : $cached;
+		$this->assertStringNotContainsString( 'xml-stylesheet', (string) $cached, 'transient has no stylesheet' );
+	}
+
+	public function test_with_stylesheet_is_idempotent_and_skips_unknown_docs() {
+		$doc  = Sitemap_Generator::render_index( array( array( 'loc' => 'https://shop.test/sitemap-pages-1.xml' ) ) );
+		$once = Sitemap_Generator::with_stylesheet( $doc, '/shop/sitemap.css' );
+		$this->assertStringContainsString( 'href="/shop/sitemap.css"', $once );
+		$this->assertSame( $once, Sitemap_Generator::with_stylesheet( $once, '/shop/sitemap.css' ) );
+		$this->assertSame( 'not xml', Sitemap_Generator::with_stylesheet( 'not xml', '/sitemap.css' ) );
+	}
+
+	public function test_stylesheet_file_ships_with_branding() {
+		$file = Sitemap_Generator::stylesheet_file();
+		$this->assertFileExists( $file );
+		$css = (string) file_get_contents( $file );
+		$this->assertStringContainsString( 'Generated by Storedash', $css );
+		$this->assertStringContainsString( '@namespace image', $css, 'image:* elements styled via namespace' );
+		$this->assertSame( substr_count( $css, '{' ), substr_count( $css, '}' ), 'balanced braces' );
 	}
 
 	public function test_xml_escape_never_returns_empty_for_invalid_utf8() {
