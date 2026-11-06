@@ -159,6 +159,18 @@ class Cart_Discount_Orchestrator {
 				$product = $cart_item['data'];
 				$result  = $this->resolver->resolve( $product, (int) $cart_item['quantity'], 'cart', (string) $cart_item_key );
 
+				// FBT bundle companion: the bundle price and an engine discount
+				// never stack. The cheaper single price wins; a BOGO winner is
+				// not comparable per unit, so it keeps the bundle price and the
+				// BOGO is skipped for this line.
+				$fbt_price = $this->fbt_unit_price( $cart_item );
+				if ( null !== $fbt_price && ( ! $result || 'bogo' === $result->kind || null === $result->unit_price || $result->unit_price >= $fbt_price ) ) {
+					$product->set_price( $fbt_price );
+					unset( $cart_item['storedash_discount_applied'], $cart_item['storedash_quantity_discount'] );
+					$cart->cart_contents[ $cart_item_key ] = $cart_item;
+					continue;
+				}
+
 				if ( $result && 'bogo' === $result->kind ) {
 					$this->bogo_engine->apply_bogo_line( $cart, $cart_item_key, $cart_item, $result );
 					$bogo_winners[ $cart_item_key ] = true;
@@ -224,6 +236,21 @@ class Cart_Discount_Orchestrator {
 		} finally {
 			$this->is_processing = false;
 		}
+	}
+
+	/**
+	 * FBT bundle unit price for a line, or null when it is not a discounted
+	 * FBT companion (or the FBT service is not loaded).
+	 *
+	 * @param array $cart_item Cart line.
+	 * @return float|null
+	 */
+	protected function fbt_unit_price( $cart_item ) {
+		if ( ! class_exists( '\\StoreDash\\Services\\FBT\\FBT_Cart' ) ) {
+			return null;
+		}
+
+		return \StoreDash\Services\FBT\FBT_Cart::fbt_unit_price( $cart_item );
 	}
 
 	/**

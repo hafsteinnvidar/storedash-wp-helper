@@ -151,6 +151,74 @@ class Cart_Discount_OrchestratorTest extends TestCase {
 		$this->assertSame( 'key1', $resolver->calls[0]['cart_item_key'] );
 	}
 
+	/**
+	 * Orchestrator whose FBT price lookup is stubbed (FBT_Cart needs WP).
+	 */
+	private function make_with_fbt( array $results, array $fbt_prices ) {
+		$resolver          = new Fake_Resolver();
+		$resolver->results = $results;
+		$bogo              = new Fake_Bogo_Engine();
+		$orchestrator      = new class( $resolver, $bogo, $fbt_prices ) extends Cart_Discount_Orchestrator {
+			private $fbt;
+			public function __construct( $resolver, $bogo, $fbt ) {
+				parent::__construct( $resolver, $bogo );
+				$this->fbt = $fbt;
+			}
+			protected function fbt_unit_price( $cart_item ) {
+				return $this->fbt[ $cart_item['product_id'] ] ?? null;
+			}
+		};
+		return array( $orchestrator, $bogo );
+	}
+
+	public function test_fbt_price_wins_when_cheaper_than_engine_and_never_stacks() {
+		// Engine 20% (800), FBT 35% (650): the line pays 650, not 520.
+		list( $orchestrator ) = $this->make_with_fbt( array( 101 => $this->price_result( 7, 800, 1000 ) ), array( 101 => 650.0 ) );
+		$cart                 = new \Fake_WC_Cart();
+		$cart->cart_contents  = array( 'key1' => $this->line( 101, 1000 ) );
+
+		$orchestrator->apply_discounts_to_cart( $cart );
+
+		$this->assertSame( 650.0, (float) $cart->cart_contents['key1']['data']->get_price() );
+		$this->assertArrayNotHasKey( 'storedash_discount_applied', $cart->cart_contents['key1'] );
+	}
+
+	public function test_engine_wins_when_cheaper_than_fbt_and_never_stacks() {
+		// Engine 20% (800), FBT 10% (900): the line pays 800, not 720.
+		list( $orchestrator ) = $this->make_with_fbt( array( 101 => $this->price_result( 7, 800, 1000 ) ), array( 101 => 900.0 ) );
+		$cart                 = new \Fake_WC_Cart();
+		$cart->cart_contents  = array( 'key1' => $this->line( 101, 1000 ) );
+
+		$orchestrator->apply_discounts_to_cart( $cart );
+
+		$this->assertSame( 800.0, (float) $cart->cart_contents['key1']['data']->get_price() );
+		$this->assertSame( 7, $cart->cart_contents['key1']['storedash_discount_applied']['discount_id'] );
+	}
+
+	public function test_fbt_line_without_engine_winner_keeps_bundle_price() {
+		list( $orchestrator ) = $this->make_with_fbt( array(), array( 101 => 900.0 ) );
+		$cart                 = new \Fake_WC_Cart();
+		// Stale engine marker from an earlier round must not reset it to full price.
+		$cart->cart_contents = array( 'key1' => $this->line( 101, 1000, 1, array( 'storedash_discount_applied' => array( 'discount_id' => 7 ) ) ) );
+
+		$orchestrator->apply_discounts_to_cart( $cart );
+
+		$this->assertSame( 900.0, (float) $cart->cart_contents['key1']['data']->get_price() );
+		$this->assertArrayNotHasKey( 'storedash_discount_applied', $cart->cart_contents['key1'] );
+	}
+
+	public function test_fbt_line_skips_bogo() {
+		$bogo_result = (object) array( 'discount' => (object) array( 'id' => 3, 'name' => 'B' ), 'kind' => 'bogo', 'unit_price' => null, 'base_price' => 1000.0, 'bogo' => array() );
+		list( $orchestrator, $bogo ) = $this->make_with_fbt( array( 101 => $bogo_result ), array( 101 => 900.0 ) );
+		$cart                        = new \Fake_WC_Cart();
+		$cart->cart_contents         = array( 'key1' => $this->line( 101, 1000 ) );
+
+		$orchestrator->apply_discounts_to_cart( $cart );
+
+		$this->assertSame( 900.0, (float) $cart->cart_contents['key1']['data']->get_price() );
+		$this->assertSame( array(), $bogo->applied );
+	}
+
 	public function test_price_winner_sets_line_price_and_marker() {
 		list( $orchestrator ) = $this->make( array( 101 => $this->price_result( 1, 80.0, 100.0 ) ) );
 		$cart                 = new \Fake_WC_Cart();

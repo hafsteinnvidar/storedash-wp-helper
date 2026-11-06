@@ -59,6 +59,13 @@ class FBT_Cart {
 	const MAX_ITEMS = 20;
 
 	/**
+	 * Store API add-item param a headless storefront sends on a companion
+	 * line: the main product's id. The discount itself is never taken from
+	 * the request — it is read from the main product's bundle meta.
+	 */
+	const STORE_API_PARAM = 'storedash_fbt_parent';
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -74,6 +81,149 @@ class FBT_Cart {
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'apply_fbt_discount' ), 20 );
 		add_filter( 'woocommerce_get_cart_item_from_session', array( $this, 'restore_session_data' ), 10, 2 );
 		add_action( 'woocommerce_cart_item_removed', array( $this, 'remove_companion_items' ), 10, 2 );
+
+		// Headless storefronts add through the Store API (`/cart/add-item`),
+		// one line at a time. Without these the companion lines carried no FBT
+		// meta and were charged full price.
+		add_filter( 'woocommerce_store_api_add_to_cart_data', array( $this, 'store_api_cart_item_data' ), 20, 2 );
+		add_action( 'woocommerce_add_to_cart', array( $this, 'link_companion_to_parent' ), 20, 6 );
+	}
+
+	/**
+	 * Store API add-item: tag a companion line with the FBT meta.
+	 *
+	 * Only when the request names a main product (`storedash_fbt_parent`)
+	 * that is already in the cart and whose bundle meta lists this product.
+	 * Anything else is added as a normal, full-price line — never an error.
+	 *
+	 * @param array            $data    { id, quantity, variation, cart_item_data }.
+	 * @param \WP_REST_Request $request Request.
+	 * @return array
+	 */
+	public function store_api_cart_item_data( $data, $request ) {
+		if ( ! is_array( $data ) || ! $request instanceof \WP_REST_Request ) {
+			return $data;
+		}
+
+		$parent_id = absint( $request->get_param( self::STORE_API_PARAM ) );
+		$item_id   = absint( $data['id'] ?? 0 );
+		if ( ! $parent_id || ! $item_id || $parent_id === $item_id ) {
+			return $data;
+		}
+
+		$discount = FBT_Data::discount( $parent_id );
+		if ( $discount <= 0 ) {
+			return $data;
+		}
+
+		$item_product = wc_get_product( $item_id );
+		if ( ! $item_product ) {
+			return $data;
+		}
+		$allowed = FBT_Data::allowed_companion_ids( $parent_id );
+		if ( ! in_array( $item_id, $allowed, true ) && ! in_array( (int) $item_product->get_parent_id(), $allowed, true ) ) {
+			return $data;
+		}
+
+		$cart = function_exists( 'WC' ) ? WC()->cart : null;
+		if ( ! $cart ) {
+			return $data;
+		}
+		$parent_key = self::find_main_line_key( $cart, $parent_id );
+		if ( null === $parent_key ) {
+			return $data;
+		}
+
+		$data['cart_item_data'] = isset( $data['cart_item_data'] ) && is_array( $data['cart_item_data'] ) ? $data['cart_item_data'] : array();
+
+		$data['cart_item_data']['storedash_fbt_parent_id']  = $parent_id;
+		$data['cart_item_data']['storedash_fbt_parent_key'] = $parent_key;
+		$data['cart_item_data']['storedash_fbt_price_item'] = (string) ( 100 - $discount );
+
+		return $data;
+	}
+
+	/**
+	 * Record a Store API companion line on its main line, so removing the
+	 * main product removes it too (same as the AJAX bundle path).
+	 *
+	 * @param string $cart_item_key  New line's key.
+	 * @param int    $product_id     Product id.
+	 * @param int    $quantity       Quantity.
+	 * @param int    $variation_id   Variation id.
+	 * @param array  $variation      Variation attributes.
+	 * @param array  $cart_item_data Cart item data.
+	 * @return void
+	 */
+	public function link_companion_to_parent( $cart_item_key, $product_id, $quantity, $variation_id, $variation, $cart_item_data ): void {
+		$parent_key = is_array( $cart_item_data ) ? ( $cart_item_data['storedash_fbt_parent_key'] ?? '' ) : '';
+		if ( '' === $parent_key || ! function_exists( 'WC' ) || ! WC()->cart ) {
+			return;
+		}
+
+		$cart = WC()->cart;
+		if ( ! isset( $cart->cart_contents[ $parent_key ] ) ) {
+			return;
+		}
+
+		$keys = (array) ( $cart->cart_contents[ $parent_key ]['storedash_fbt_keys'] ?? array() );
+		if ( ! in_array( $cart_item_key, $keys, true ) ) {
+			$keys[] = $cart_item_key;
+			$cart->cart_contents[ $parent_key ]['storedash_fbt_keys'] = $keys;
+		}
+	}
+
+	/**
+	 * Key of the main product's own line (not an FBT companion of something
+	 * else), or null when it is not in the cart.
+	 *
+	 * @param \WC_Cart $cart      Cart.
+	 * @param int      $parent_id Main product id (parent id for variables).
+	 * @return string|null
+	 */
+	private static function find_main_line_key( $cart, int $parent_id ): ?string {
+		foreach ( $cart->get_cart() as $key => $line ) {
+			if ( ! empty( $line['storedash_fbt_parent_id'] ) ) {
+				continue;
+			}
+			if ( (int) ( $line['product_id'] ?? 0 ) === $parent_id || (int) ( $line['variation_id'] ?? 0 ) === $parent_id ) {
+				return (string) $key;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * The FBT bundle unit price for a cart line, or null when the line is not
+	 * a discounted FBT companion.
+	 *
+	 * Computed from the product's DATABASE price (sale price when set), never
+	 * from `$cart_item['data']->get_price()`, so it cannot compound. Public so
+	 * the discount engine can compare it against its own winner — the two
+	 * never stack; the cheaper one wins (see Cart_Discount_Orchestrator).
+	 *
+	 * @param array $cart_item Cart line.
+	 * @return float|null
+	 */
+	public static function fbt_unit_price( $cart_item ): ?float {
+		if ( ! is_array( $cart_item ) || empty( $cart_item['storedash_fbt_price_item'] ) ) {
+			return null;
+		}
+
+		$price_pct = (float) $cart_item['storedash_fbt_price_item'];
+		if ( $price_pct >= 100 || $price_pct <= 0 ) {
+			return null;
+		}
+
+		$item_product = wc_get_product( ! empty( $cart_item['variation_id'] ) ? $cart_item['variation_id'] : $cart_item['product_id'] );
+		if ( ! $item_product ) {
+			return null;
+		}
+
+		$original_price = (float) $item_product->get_price();
+
+		return $original_price > 0 ? $original_price * $price_pct / 100 : null;
 	}
 
 	/**
@@ -239,25 +389,9 @@ class FBT_Cart {
 		}
 
 		foreach ( $cart->get_cart() as $cart_item ) {
-			if ( empty( $cart_item['storedash_fbt_price_item'] ) ) {
-				continue;
-			}
-
-			$price_pct = (float) $cart_item['storedash_fbt_price_item'];
-
-			// 100% means no discount.
-			if ( $price_pct >= 100 || $price_pct <= 0 ) {
-				continue;
-			}
-
-			$item_product = wc_get_product( $cart_item['variation_id'] ?: $cart_item['product_id'] );
-			if ( ! $item_product ) {
-				continue;
-			}
-
-			$original_price = (float) $item_product->get_price();
-			if ( $original_price > 0 ) {
-				$cart_item['data']->set_price( $original_price * $price_pct / 100 );
+			$price = self::fbt_unit_price( $cart_item );
+			if ( null !== $price ) {
+				$cart_item['data']->set_price( $price );
 			}
 		}
 	}
