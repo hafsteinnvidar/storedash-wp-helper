@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 6.0.0
 WC tested up to: 10.9
-Stable tag: 1.33.0
+Stable tag: 1.34.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -142,6 +142,10 @@ Your use of these services is subject to the Storedash Terms of Service
 (https://storedash.app/privacy).
 
 == Changelog ==
+
+= 1.34.0 =
+* Frequently bought together: the bundle discount now applies in the cart on headless (Storedash storefront) stores. Before, add-ons shown at the bundle price were charged full price.
+* Discounts: a bundle discount and a Storedash discount never add up on the same item. The customer gets whichever price is lower.
 
 = 1.33.0 =
 * Sitemap: if your store used Yoast or Rank Math before, the old sitemap address (/sitemap_index.xml) now shows your Storedash sitemap, so Google keeps finding it without you having to resubmit anything. Old Yoast, Rank Math and SEOPress sitemap links now forward to /sitemap.xml instead of showing "page not found".
